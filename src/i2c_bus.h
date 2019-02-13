@@ -1,12 +1,3 @@
-/**
- * @file	i2c_smbus.h
- * @brief  	Functions to communicate with the SMBus protocol with ChibiOS
- * 
- * @source			adapted from i2c_bus.c of e-puck2_main-processor project
- * @written by  	Eliot Ferragni
- * @creation date	18.06.2018
- */
-
 #ifndef I2C_BUS_H
 #define I2C_BUS_H
 
@@ -16,18 +7,15 @@ extern "C" {
 
 #include <hal.h>
 
-#define I2C_MAX_SEQUENTIAL_WRITE	20	//bytes
-
-#define I2C_ERROR 					1
 /**
  * @brief Starts the I2C interface
  */
-void i2c_smbus_start(void);
+void i2c_start(void);
 
 /**
  * @brief Stops the I2C module	
  */
-void i2c_smbus_stop(void);
+void i2c_stop(void);
 
 /**
  * @brief 	Gets the last I2C error
@@ -37,16 +25,26 @@ void i2c_smbus_stop(void);
 i2cflags_t get_last_i2c_error(void);
 
 /**
- * @brief 		Reads a register bigger than 8bits over I2C
+ * @brief 		Reads a register over I2C
  * 
- * @param addr	8bits address of the peripherical to write to
+ * @param addr	8bits address of the peripherical to read from
  * @param reg	8bits address of the register to read
- * @param buf	Pointer to a buffer containing the values to send
- * @param len	Length of the requested write
+ * @param value	Pointer used to store the value read
  * 
  * @return		The error code. msg_t format
  */
-int8_t write_reg_multi(uint8_t addr, uint8_t reg, uint8_t *buf, uint8_t len);
+int8_t read_reg(uint8_t addr, uint8_t reg, uint8_t *value);
+
+/**
+ * @brief 		Writes a register over I2C
+ * 
+ * @param addr	8bits address of the peripherical to write to
+ * @param reg	8bits address of the register to write
+ * @param value	Value to write
+ * 
+ * @return		The error code. msg_t format
+ */
+int8_t write_reg(uint8_t addr, uint8_t reg, uint8_t value);
 
 /**
  * @brief 		Reads a register bigger than 8bits over I2C
@@ -58,7 +56,7 @@ int8_t write_reg_multi(uint8_t addr, uint8_t reg, uint8_t *buf, uint8_t len);
  * 
  * @return		The error code. msg_t format
  */
-int8_t read_reg_multi(uint8_t addr, uint8_t reg, uint8_t *buf, uint8_t len);
+int8_t read_reg_multi(uint8_t addr, uint8_t reg, uint8_t *buf, int8_t len);
 
 #ifdef __cplusplus
 }
