@@ -31,11 +31,19 @@ int main(void) {
 	*/
 	usbSerialStart();
 
+	palSetLineMode(LINE_OUT_MOT3_PH1_P, PAL_MODE_OUTPUT_PUSHPULL);
+	palSetLineMode(PAL_LINE(GPIOB, 7U), PAL_MODE_OUTPUT_PUSHPULL);
+	palSetLineMode(LINE_OUT_MOT4_PH2_N, PAL_MODE_OUTPUT_PUSHPULL);
+
+
 	while (true) {
 		chThdSleepMilliseconds(500);
 		palToggleLine(LINE_OUT_MOT3_PH1_P);
 		palToggleLine(PAL_LINE(GPIOB, 7U));
 		palToggleLine(LINE_OUT_MOT4_PH2_N);
-		//printUcUsage((BaseSequentialStream *) &UART_ESP);
+		// chprintf((BaseSequentialStream *) &USB_GDB, "GDB\n");
+		// printUcUsage((BaseSequentialStream *) &USB_GDB);
+		// chprintf((BaseSequentialStream *) &USB_SERIAL, "SERIAL\n");
+		// printUcUsage((BaseSequentialStream *) &USB_SERIAL);
 	}
 }
