@@ -79,6 +79,11 @@ ifeq ($(USE_FPU),)
   USE_FPU = hard
 endif
 
+# FPU-related options.
+ifeq ($(USE_FPU_OPT),)
+  USE_FPU_OPT = -mfloat-abi=$(USE_FPU) -mfpu=fpv5-sp-d16 -fsingle-precision-constant
+endif
+
 #
 # Architecture or project specific options
 ##############################################################################
@@ -88,19 +93,19 @@ endif
 #
 
 # Define project name here
-PROJECT = e-puck2_programmer
+PROJECT = e-puck3-motors_dev_nucleo
 
 # Imported source files and paths
-CHIBIOS = ../../../../ChibiOS
+CHIBIOS = ../ChibiOS
 
 # Licensing files.
 include $(CHIBIOS)/os/license/license.mk
 # Startup files.
-include $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk/startup_stm32f4xx.mk
+include $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk/startup_stm32f7xx.mk
 # HAL-OSAL files (optional).
 include $(CHIBIOS)/os/hal/hal.mk
-include $(CHIBIOS)/os/hal/ports/STM32/STM32F4xx/platform.mk
-include ./e-puck2_board/board.mk
+include $(CHIBIOS)/os/hal/ports/STM32/STM32F7xx/platform.mk
+include ./motors_dev_nucleo_board/board.mk
 include $(CHIBIOS)/os/hal/osal/rt/osal.mk
 # RTOS files (optional).
 include $(CHIBIOS)/os/rt/rt.mk
@@ -113,7 +118,7 @@ include $(CHIBIOS)/os/hal/lib/streams/streams.mk
 include $(CHIBIOS)/os/various/shell/shell.mk
 
 # Define linker script file here
-LDSCRIPT= ./STM32F413CGUx.ld
+LDSCRIPT= $(STARTUPLD)/STM32F746xG.ld
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
@@ -121,47 +126,10 @@ CSRC = $(ALLCSRC) \
        $(TESTSRC) \
        usbcfg.c \
        main.c \
-       platform.c\
        panic.c \
-       ../USB251XB/USB251XB.c\
-       i2c_smbus.c \
-       usb_hub.c \
-       power_button.c \
-       leds.c \
-       gdb.c \
-       uc_usage.c \
-       leds_states.c \
-       battery_measurement.c \
-       aseba_vm/aseba_bridge.c \
-       aseba_vm/aseba_can_interface.c \
-       aseba_vm/can-buffer.c \
-       aseba_vm/can-net.c \
-       aseba_vm/natives.c \
-       aseba_vm/vm-buffer.c \
-       aseba_vm/vm.c \
-       communications.c \
-       flash/flash_common_f24.c \
-       flash/flash_common_f234.c \
-       ../../../target/adiv5.c    \
-       ../../../target/adiv5_swdp.c  \
-       ../../../command.c \
-       ../../../target/cortexa.c \
-       ../../../target/cortexm.c \
-       ../../../exception.c \
-       ../../../gdb_main.c  \
-       ../../../gdb_hostio.c  \
-       ../../../gdb_packet.c  \
-       ../../../hex_utils.c \
-       ../../../morse.c   \
-       ../../../target/swdptap_generic.c \
-       ../../../target/target.c  \
-       ../../../target/stm32f4.c \
-       ../../common/timing.c  \
-       ../../common/swdptap.c \
-       ../../stm32-ChibiOS/timing_stm32.c \
-       ../../stm32-ChibiOS/gdb_if.c  \
-       ../../stm32-ChibiOS/serialno.c \
-       ../../stm32-ChibiOS/crc32_chibios.c
+       i2c_bus.c \
+       uc_usage.c
+
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
@@ -191,10 +159,7 @@ TCPPSRC =
 ASMSRC = $(ALLASMSRC)
 ASMXSRC = $(ALLXASMSRC)
 
-INCDIR = $(ALLINC) $(TESTINC) ../USB251XB \
-         ../../../target/ ../../../include/ \
-         ../../common/ ../../../ \
-         ../../stm32-ChibiOS/ aseba_vm/ flash/
+INCDIR = $(ALLINC) $(TESTINC)
 
 #
 # Project, sources and paths
@@ -204,7 +169,7 @@ INCDIR = $(ALLINC) $(TESTINC) ../USB251XB \
 # Compiler settings
 #
 
-MCU  = cortex-m4
+MCU  = cortex-m7
 
 #TRGT = arm-elf-
 TRGT = arm-none-eabi-
@@ -244,11 +209,7 @@ CPPWARN = -Wall -Wextra -Wundef
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS = -DEPUCK2_CHIBIOS \
-        -DPLATFORM_HAS_ONLY_STM32F4 \
-        -DPLATFORM_HAS_NO_DFU_BOOTLOADER \
-        -DPLATFORM_HAS_NO_JTAG \
-        -DPLATFORM_HAS_COMMANDS
+UDEFS = 
 
 # Define ASM defines here
 UADEFS =

@@ -10,12 +10,12 @@ extern "C" {
 /**
  * @brief Starts the I2C interface
  */
-void i2c_start(void);
+void i2c_start(I2CDriver* I2C);
 
 /**
  * @brief Stops the I2C module	
  */
-void i2c_stop(void);
+void i2c_stop(I2CDriver* I2C_USED);
 
 /**
  * @brief 	Gets the last I2C error
@@ -33,7 +33,7 @@ i2cflags_t get_last_i2c_error(void);
  * 
  * @return		The error code. msg_t format
  */
-int8_t read_reg(uint8_t addr, uint8_t reg, uint8_t *value);
+int8_t read_reg(I2CDriver* I2C_USED, uint8_t addr, uint8_t reg, uint8_t *value);
 
 /**
  * @brief 		Writes a register over I2C
@@ -44,7 +44,7 @@ int8_t read_reg(uint8_t addr, uint8_t reg, uint8_t *value);
  * 
  * @return		The error code. msg_t format
  */
-int8_t write_reg(uint8_t addr, uint8_t reg, uint8_t value);
+int8_t write_reg(I2CDriver* I2C_USED, uint8_t addr, uint8_t reg, uint8_t value);
 
 /**
  * @brief 		Reads a register bigger than 8bits over I2C
@@ -56,7 +56,7 @@ int8_t write_reg(uint8_t addr, uint8_t reg, uint8_t value);
  * 
  * @return		The error code. msg_t format
  */
-int8_t read_reg_multi(uint8_t addr, uint8_t reg, uint8_t *buf, int8_t len);
+int8_t read_reg_multi(I2CDriver* I2C_USED, uint8_t addr, uint8_t reg, uint8_t *buf, int8_t len);
 
 #ifdef __cplusplus
 }
