@@ -24,6 +24,9 @@
 
 #define USB_DATA_SIZE                   0x40
 
+#define USB_GDB             SDU1
+#define USB_SERIAL          SDU2
+
 typedef enum{
     GDB_INTERFACE = 0,
     SERIAL_INTERFACE,

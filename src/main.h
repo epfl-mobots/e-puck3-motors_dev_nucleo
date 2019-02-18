@@ -22,9 +22,6 @@
 #define CONFIGURED		1
 #define NOT_CONFIGURED	0
 
-#define USB_GDB				SDU1
-#define USB_SERIAL			SDU2
-
 #define I2C_PD_CONTROLER	I2CD2
 
 
