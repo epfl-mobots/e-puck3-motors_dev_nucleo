@@ -12,6 +12,7 @@
 
 #include "main.h"
 #include "uc_usage.h"
+#include "gdb.h"
 
 int main(void) {
 
@@ -25,6 +26,8 @@ int main(void) {
 	halInit();
 	chSysInit();
 
+	initGDBEvents();
+	gdbStart();
 
 	/*
 	* Initializes two serial-over-USB CDC drivers and starts and connects the USB.

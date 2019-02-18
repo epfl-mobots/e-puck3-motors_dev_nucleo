@@ -117,6 +117,9 @@ include $(CHIBIOS)/test/oslib/oslib_test.mk
 include $(CHIBIOS)/os/hal/lib/streams/streams.mk
 include $(CHIBIOS)/os/various/shell/shell.mk
 
+BLACKMAGIC = ../blackmagic
+include $(BLACKMAGIC)/src/platforms/stm32-ChibiOS/Blackmagic_ChibiOS.mk
+
 # Define linker script file here
 LDSCRIPT= $(STARTUPLD)/STM32F746xG.ld
 
@@ -209,7 +212,7 @@ CPPWARN = -Wall -Wextra -Wundef
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS = 
+UDEFS = $(ALLDEFS)
 
 # Define ASM defines here
 UADEFS =
