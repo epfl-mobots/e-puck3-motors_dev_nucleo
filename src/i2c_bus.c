@@ -2,7 +2,6 @@
 #include <ch.h>
 #include "i2c_bus.h"
 
-static i2cflags_t errors = 0;
 static systime_t timeout = TIME_MS2I(4); // 4 ms
 
 void i2c_start(I2CDriver* I2C_USED) {
@@ -44,10 +43,6 @@ void i2c_stop(I2CDriver* I2C_USED) {
 	i2cStop(I2C_USED);
 }
 
-i2cflags_t get_last_i2c_error(void) {
-    return errors;
-}
-
 int8_t read_reg(I2CDriver* I2C_USED, uint8_t addr, uint8_t reg, uint8_t *value) {
 	
 	uint8_t txbuf[1] = {reg};
@@ -57,7 +52,6 @@ int8_t read_reg(I2CDriver* I2C_USED, uint8_t addr, uint8_t reg, uint8_t *value) 
 	if(I2C_USED->state != I2C_STOP) {
 		msg_t status = i2cMasterTransmitTimeout(I2C_USED, addr, txbuf, 1, rxbuf, 1, timeout);
 		if (status != MSG_OK){
-			errors = i2cGetErrors(I2C_USED);
 			if(I2C_USED->state == I2C_LOCKED){
 				i2c_stop(I2C_USED);
 				i2c_start(I2C_USED);
@@ -83,7 +77,6 @@ int8_t write_reg(I2CDriver* I2C_USED, uint8_t addr, uint8_t reg, uint8_t value) 
 	if(I2C_USED->state != I2C_STOP) {
 		msg_t status = i2cMasterTransmitTimeout(I2C_USED, addr, txbuf, 2, rxbuf, 0, timeout);
 		if (status != MSG_OK){
-			errors = i2cGetErrors(I2C_USED);
 			if(I2C_USED->state == I2C_LOCKED){
 				i2c_stop(I2C_USED);
 				i2c_start(I2C_USED);
@@ -103,7 +96,6 @@ int8_t read_reg_multi(I2CDriver* I2C_USED, uint8_t addr, uint8_t reg, uint8_t *b
 	if(I2C_USED->state != I2C_STOP) {
 		msg_t status = i2cMasterTransmitTimeout(I2C_USED, addr, &reg, 1, buf, len, timeout);
 		if (status != MSG_OK){
-			errors = i2cGetErrors(I2C_USED);
 			if(I2C_USED->state == I2C_LOCKED){
 				i2c_stop(I2C_USED);
 				i2c_start(I2C_USED);

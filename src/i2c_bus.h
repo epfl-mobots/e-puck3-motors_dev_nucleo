@@ -18,13 +18,6 @@ void i2c_start(I2CDriver* I2C);
 void i2c_stop(I2CDriver* I2C_USED);
 
 /**
- * @brief 	Gets the last I2C error
- * 
- * @return	The last error
- */
-i2cflags_t get_last_i2c_error(void);
-
-/**
  * @brief 		Reads a register over I2C
  * 
  * @param addr	8bits address of the peripherical to read from
