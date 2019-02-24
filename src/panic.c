@@ -20,6 +20,13 @@ void panic_handler(const char *reason)
     (void)reason;
   
     while (1) {
-
+		palSetLine(LD2_LINE);
+		chThdSleepMilliseconds(100);
+		palSetLine(LD3_LINE);
+		chThdSleepMilliseconds(150);
+		palClearLine(LD2_LINE);
+		chThdSleepMilliseconds(100);
+		palClearLine(LD3_LINE);
+		chThdSleepMilliseconds(150);
     }
 }

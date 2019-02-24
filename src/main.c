@@ -22,20 +22,86 @@ static THD_FUNCTION(Thread1,arg) {
   while(true){
 		palSetLine(LD1_LINE);
 		chThdSleepMilliseconds(50);
-		palSetLine(LD2_LINE);
-		chThdSleepMilliseconds(100);
-		palSetLine(LD3_LINE);
-		chThdSleepMilliseconds(150);
 		palClearLine(LD1_LINE);
 		chThdSleepMilliseconds(50);
-		palClearLine(LD2_LINE);
-		chThdSleepMilliseconds(100);
-		palClearLine(LD3_LINE);
-		chThdSleepMilliseconds(150);
   }
 }
 
 
+
+/*===========================================================================*/
+/* ADC Configuration with DMA.                                               */
+/*===========================================================================*/
+
+
+#define ADC_GRP1_NUM_CHANNELS   1
+#define ADC_GRP1_BUF_DEPTH      32
+
+static adcsample_t adc_samples[ADC_GRP1_NUM_CHANNELS * ADC_GRP1_BUF_DEPTH];
+static uint32_t adc_value;
+
+/* Prototypes */
+static void adccallback(ADCDriver *adcp, adcsample_t *buffer, size_t n);
+static void adcerrorcallback(ADCDriver *adcp, adcerror_t err);
+
+
+
+/* ADC 1 Configuration */
+static const ADCConversionGroup ADC1group = {
+    .circular = false,
+    .num_channels = 1,
+    .end_cb = adccallback,
+    .error_cb = adcerrorcallback,
+    .cr1 = 0,	/*No OVR int,12 bit resolution,no AWDG/JAWDG,*/
+    .cr2 = ADC_CR2_SWSTART, /* manual start of regular channels,EOC is set at end of each sequence^,no OVR detect */
+    .htr = 0,
+	.ltr = 0,
+	.smpr1 = 0,
+    .smpr2 = ADC_SMPR2_SMP_AN9(ADC_SAMPLE_3),
+    .sqr1 = ADC_SQR1_NUM_CH(1),
+    .sqr2 = 0,
+    .sqr3 = ADC_SQR3_SQ1_N(9),
+};
+
+
+/*
+ * ADC streaming callback.
+ */
+static void adccallback(ADCDriver *adcp, adcsample_t *buffer, size_t n) {
+
+	(void)adcp;
+
+	adc_value = 0;
+    for (size_t i = 0; i < n; i++) {
+        adc_value += buffer[i];
+    }
+    adc_value /= n;
+
+    /*
+	 * reLaunch the conversion
+	 */
+    chSysLockFromISR();
+    adcStartConversionI(&ADCD1, &ADC1group, adc_samples, ADC_GRP1_BUF_DEPTH);
+    chSysUnlockFromISR();
+}
+
+/*
+ * ADC errors callback, should never happen.
+ */
+static void adcerrorcallback(ADCDriver *adcp, adcerror_t err) {
+
+  (void)adcp;
+  (void)err;
+}
+
+
+
+
+
+
+/*===========================================================================*/
+/* Main.                                                       */
+/*===========================================================================*/
 
 int main(void) {
 
@@ -57,10 +123,28 @@ int main(void) {
 	*/
 	usbSerialStart();
 
-	/*Configure the IO mode*/
+	/*
+	 * Activates the ADC1 driver
+	 */
+	for(int i = 0;i<ADC_GRP1_BUF_DEPTH;i++)
+	{
+		adc_samples[i] = 0;
+	}
+	adcStart(&ADCD1, NULL);
+
+
+	/*
+	 * Launch the conversion
+	 */
+	adcStartConversion(&ADCD1, &ADC1group, adc_samples, ADC_GRP1_BUF_DEPTH);
+
+	/* Configure the IO mode */
 	palSetLineMode(LD1_LINE,PAL_MODE_OUTPUT_PUSHPULL);
 	palSetLineMode(LD2_LINE,PAL_MODE_OUTPUT_PUSHPULL);
 	palSetLineMode(LD3_LINE,PAL_MODE_OUTPUT_PUSHPULL);
+	palClearLine(LD1_LINE);
+	palClearLine(LD2_LINE);
+	palClearLine(LD3_LINE);
 
 	/*
 	palSetLineMode(LINE_OUT_MOT3_PH1_P, PAL_MODE_OUTPUT_PUSHPULL);
