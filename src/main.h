@@ -17,8 +17,6 @@
 #include <shell.h>
 #include <chprintf.h>
 
-#define BOARD_IDENT "Motors_dev_nucleo"
-
 #define CONFIGURED		1
 #define NOT_CONFIGURED	0
 

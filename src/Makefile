@@ -128,6 +128,7 @@ LDSCRIPT= $(STARTUPLD)/STM32F746xG.ld
 CSRC = $(ALLCSRC) \
        $(TESTSRC) \
        usbcfg.c \
+       platform.c \
        main.c \
        panic.c \
        i2c_bus.c \
