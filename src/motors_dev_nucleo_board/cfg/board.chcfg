@@ -391,11 +391,11 @@
         Mode="Input"
         Alternate="0" />
       <pin13
-        ID=""
+        ID="NUCLEO_USER_BUTTON"
         Type="PushPull"
         Level="High"
         Speed="Minimum"
-        Resistor="PullUp"
+        Resistor="Floating"
         Mode="Input"
         Alternate="0" />
       <pin14
