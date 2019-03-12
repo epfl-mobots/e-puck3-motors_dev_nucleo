@@ -132,7 +132,8 @@ CSRC = $(ALLCSRC) \
        main.c \
        panic.c \
        i2c_bus.c \
-       uc_usage.c
+       uc_usage.c \
+       user_shell.c
 
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global

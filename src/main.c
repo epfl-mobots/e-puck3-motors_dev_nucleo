@@ -9,11 +9,10 @@
 
 #include <stdio.h>
 #include <string.h>
-
 #include "main.h"
+#include "user_shell.h"
 #include "uc_usage.h"
 #include "gdb.h"
-
 
 static THD_WORKING_AREA(waThread1,128);
 static THD_FUNCTION(Thread1,arg) {
@@ -44,7 +43,28 @@ static uint32_t adc_value;
 static void adccallback(ADCDriver *adcp, adcsample_t *buffer, size_t n);
 static void adcerrorcallback(ADCDriver *adcp, adcerror_t err);
 
-
+const ioline_t motor_pins[NB_MOTORS][NB_PHASES][NB_TRANSISTORS] = {
+	{
+		{LINE_OUT_MOT1_PH1_P, LINE_OUT_MOT1_PH1_N},
+		{LINE_OUT_MOT1_PH2_P, LINE_OUT_MOT1_PH2_N},
+		{LINE_OUT_MOT1_PH3_P, LINE_OUT_MOT1_PH3_N}
+	},
+	{
+		{LINE_OUT_MOT2_PH1_P, LINE_OUT_MOT2_PH1_N},
+		{LINE_OUT_MOT2_PH2_P, LINE_OUT_MOT2_PH2_N},
+		{LINE_OUT_MOT2_PH3_P, LINE_OUT_MOT2_PH3_N}
+	},
+	{
+		{LINE_OUT_MOT3_PH1_P, LINE_OUT_MOT3_PH1_N},
+		{LINE_OUT_MOT3_PH2_P, LINE_OUT_MOT3_PH2_N},
+		{LINE_OUT_MOT3_PH3_P, LINE_OUT_MOT3_PH3_N}
+	},
+	{
+		{LINE_OUT_MOT4_PH1_P, LINE_OUT_MOT4_PH1_N},
+		{LINE_OUT_MOT4_PH2_P, LINE_OUT_MOT4_PH2_N},
+		{LINE_OUT_MOT4_PH3_P, LINE_OUT_MOT4_PH3_N}
+	}
+};
 
 /* ADC 1 Configuration */
 static const ADCConversionGroup ADC1group = {
@@ -123,6 +143,8 @@ int main(void) {
 	*/
 	usbSerialStart();
 
+	shellInit();
+
 	/*
 	 * Activates the ADC1 driver
 	 */
@@ -146,6 +168,16 @@ int main(void) {
 	palClearLine(LD2_LINE);
 	palClearLine(LD3_LINE);
 
+	for(uint8_t i = 0 ; i < NB_MOTORS ; i++){
+		for(uint8_t j = 0 ; j < NB_PHASES ; j++){
+			for(uint8_t k = 0 ; k < NB_TRANSISTORS ; k++){
+				palSetLineMode(motor_pins[i][j][k], PAL_MODE_OUTPUT_PUSHPULL);
+				palClearLine(motor_pins[i][j][k]);
+				//chprintf((BaseSequentialStream *) &USB_GDB, "GPIO: 0x%x pin: %d\n",PAL_PORT(motor_pins[i][j][k]), PAL_PAD(motor_pins[i][j][k]));
+			}
+		}
+	}
+
 	/*
 	palSetLineMode(LINE_OUT_MOT3_PH1_P, PAL_MODE_OUTPUT_PUSHPULL);
 	palSetLineMode(PAL_LINE(GPIOB, 7U), PAL_MODE_OUTPUT_PUSHPULL);
@@ -157,6 +189,10 @@ int main(void) {
 
 
 	while (true) {
+		if(isUSBConfigured()){
+			//spawns the shell if the usb is connected
+			spawn_shell();
+		}
 		chThdSleepMilliseconds(500);
 		//palToggleLine(LINE_OUT_MOT3_PH1_P);
 		//palToggleLine(PAL_LINE(GPIOB, 7U));
