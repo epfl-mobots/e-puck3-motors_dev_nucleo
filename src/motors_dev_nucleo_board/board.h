@@ -118,7 +118,7 @@
 #define GPIOC_SPI3_SCK              10U
 #define GPIOC_SPI3_MISO             11U
 #define GPIOC_PIN12                 12U
-#define GPIOC_PIN13                 13U
+#define GPIOC_NUCLEO_USER_BUTTON    13U
 #define GPIOC_PIN14                 14U
 #define GPIOC_PIN15                 15U
 
@@ -309,6 +309,7 @@
 #define LINE_OUT_MOT3_PH1_N         PAL_LINE(GPIOC, 9U)
 #define LINE_SPI3_SCK               PAL_LINE(GPIOC, 10U)
 #define LINE_SPI3_MISO              PAL_LINE(GPIOC, 11U)
+#define LINE_NUCLEO_USER_BUTTON     PAL_LINE(GPIOC, 13U)
 
 #define LINE_INT_ENCODERS_n         PAL_LINE(GPIOD, 3U)
 #define LINE_CS_DRIVER_1_n          PAL_LINE(GPIOD, 4U)
@@ -650,7 +651,7 @@
  * PC10 - SPI3_SCK                  (alternate 6).
  * PC11 - SPI3_MISO                 (alternate 6).
  * PC12 - PIN12                     (input pullup).
- * PC13 - PIN13                     (input pullup).
+ * PC13 - NUCLEO_USER_BUTTON        (input floating).
  * PC14 - PIN14                     (input pullup).
  * PC15 - PIN15                     (input pullup).
  */
@@ -667,7 +668,7 @@
                                      PIN_MODE_ALTERNATE(GPIOC_SPI3_SCK) |   \
                                      PIN_MODE_ALTERNATE(GPIOC_SPI3_MISO) |  \
                                      PIN_MODE_INPUT(GPIOC_PIN12) |          \
-                                     PIN_MODE_INPUT(GPIOC_PIN13) |          \
+                                     PIN_MODE_INPUT(GPIOC_NUCLEO_USER_BUTTON) |\
                                      PIN_MODE_INPUT(GPIOC_PIN14) |          \
                                      PIN_MODE_INPUT(GPIOC_PIN15))
 #define VAL_GPIOC_OTYPER            (PIN_OTYPE_PUSHPULL(GPIOC_ADC3_MOT3_PH3) |\
@@ -683,7 +684,7 @@
                                      PIN_OTYPE_PUSHPULL(GPIOC_SPI3_SCK) |   \
                                      PIN_OTYPE_PUSHPULL(GPIOC_SPI3_MISO) |  \
                                      PIN_OTYPE_PUSHPULL(GPIOC_PIN12) |      \
-                                     PIN_OTYPE_PUSHPULL(GPIOC_PIN13) |      \
+                                     PIN_OTYPE_PUSHPULL(GPIOC_NUCLEO_USER_BUTTON) |\
                                      PIN_OTYPE_PUSHPULL(GPIOC_PIN14) |      \
                                      PIN_OTYPE_PUSHPULL(GPIOC_PIN15))
 #define VAL_GPIOC_OSPEEDR           (PIN_OSPEED_VERYLOW(GPIOC_ADC3_MOT3_PH3) |\
@@ -699,7 +700,7 @@
                                      PIN_OSPEED_HIGH(GPIOC_SPI3_SCK) |      \
                                      PIN_OSPEED_HIGH(GPIOC_SPI3_MISO) |     \
                                      PIN_OSPEED_VERYLOW(GPIOC_PIN12) |      \
-                                     PIN_OSPEED_VERYLOW(GPIOC_PIN13) |      \
+                                     PIN_OSPEED_VERYLOW(GPIOC_NUCLEO_USER_BUTTON) |\
                                      PIN_OSPEED_VERYLOW(GPIOC_PIN14) |      \
                                      PIN_OSPEED_VERYLOW(GPIOC_PIN15))
 #define VAL_GPIOC_PUPDR             (PIN_PUPDR_FLOATING(GPIOC_ADC3_MOT3_PH3) |\
@@ -715,7 +716,7 @@
                                      PIN_PUPDR_FLOATING(GPIOC_SPI3_SCK) |   \
                                      PIN_PUPDR_FLOATING(GPIOC_SPI3_MISO) |  \
                                      PIN_PUPDR_PULLUP(GPIOC_PIN12) |        \
-                                     PIN_PUPDR_PULLUP(GPIOC_PIN13) |        \
+                                     PIN_PUPDR_FLOATING(GPIOC_NUCLEO_USER_BUTTON) |\
                                      PIN_PUPDR_PULLUP(GPIOC_PIN14) |        \
                                      PIN_PUPDR_PULLUP(GPIOC_PIN15))
 #define VAL_GPIOC_ODR               (PIN_ODR_HIGH(GPIOC_ADC3_MOT3_PH3) |    \
@@ -731,7 +732,7 @@
                                      PIN_ODR_HIGH(GPIOC_SPI3_SCK) |         \
                                      PIN_ODR_HIGH(GPIOC_SPI3_MISO) |        \
                                      PIN_ODR_HIGH(GPIOC_PIN12) |            \
-                                     PIN_ODR_HIGH(GPIOC_PIN13) |            \
+                                     PIN_ODR_HIGH(GPIOC_NUCLEO_USER_BUTTON) |\
                                      PIN_ODR_HIGH(GPIOC_PIN14) |            \
                                      PIN_ODR_HIGH(GPIOC_PIN15))
 #define VAL_GPIOC_AFRL              (PIN_AFIO_AF(GPIOC_ADC3_MOT3_PH3, 0U) | \
@@ -747,7 +748,7 @@
                                      PIN_AFIO_AF(GPIOC_SPI3_SCK, 6U) |      \
                                      PIN_AFIO_AF(GPIOC_SPI3_MISO, 6U) |     \
                                      PIN_AFIO_AF(GPIOC_PIN12, 0U) |         \
-                                     PIN_AFIO_AF(GPIOC_PIN13, 0U) |         \
+                                     PIN_AFIO_AF(GPIOC_NUCLEO_USER_BUTTON, 0U) |\
                                      PIN_AFIO_AF(GPIOC_PIN14, 0U) |         \
                                      PIN_AFIO_AF(GPIOC_PIN15, 0U))
 

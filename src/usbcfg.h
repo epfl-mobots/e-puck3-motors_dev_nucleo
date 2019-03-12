@@ -27,7 +27,7 @@
     if you don't have enough endpoints to run them
     (we need 2 IN endpoints and 1 OUT endpoints for each serial port)
 */
-//#define USE_TWO_USB_SERIAL
+#define USE_TWO_USB_SERIAL
 
 //power asked to the computer in 2mA incerement (min 100mA, max 500mA)
 #define USB_POWER           50          //(100mA)
