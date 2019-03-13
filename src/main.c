@@ -135,6 +135,9 @@ int main(void) {
 	halInit();
 	chSysInit();
 
+	//keeps the power on
+	palSetLine(LINE_PWR_ON);
+
 	initGDBEvents();
 	gdbStart();
 

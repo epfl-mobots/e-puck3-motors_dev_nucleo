@@ -43,11 +43,46 @@ static void cmd_set_phase(BaseSequentialStream *chp, int argc, char *argv[]) {
 		chprintf(chp, "%d %d %d" SHELL_NEWLINE_STR, motNumber, phaseNumber, onOff);
 		palWriteLine(motor_pins[motNumber-1][phaseNumber-1][0], onOff ? 1 : 0);
 		palWriteLine(motor_pins[motNumber-1][phaseNumber-1][1], onOff ? 0 : 1);
+		chprintf(chp, "motor %d phase %d P : %s" SHELL_NEWLINE_STR, motNumber, phaseNumber, palReadLine(motor_pins[motNumber-1][phaseNumber-1][0]) ? "ON" : "OFF");
+		chprintf(chp, "motor %d phase %d N : %s" SHELL_NEWLINE_STR, motNumber, phaseNumber, palReadLine(motor_pins[motNumber-1][phaseNumber-1][1]) ? "ON" : "OFF");
+	}
+}
+
+static void cmd_power_drivers(BaseSequentialStream *chp, int argc, char *argv[]) {
+
+	(void)argv;	
+	if(argc == 2){
+		uint8_t motNumber = (char)*argv[0]-'0';
+		uint8_t onOff = (char)*argv[1]-'0';
+		ioline_t pin = 0;
+		if(motNumber == 1){
+			pin = LINE_EN_DRIVER_1;
+		}else if(motNumber == 2){
+			pin = LINE_EN_DRIVER_2;
+		}else if(motNumber == 3){
+			pin = LINE_EN_DRIVER_3;
+		}else if(motNumber == 4){
+			pin = LINE_EN_DRIVER_4;
+		}else{
+			return;
+		}
+
+		palWriteLine(pin,onOff);
+	}
+	if(argc == 0 || argc == 2){
+		//gives the actual state
+		chprintf(chp, "power state driver 1 : %s" SHELL_NEWLINE_STR, palReadLine(LINE_EN_DRIVER_1) ? "ON" : "OFF");
+		chprintf(chp, "power state driver 2 : %s" SHELL_NEWLINE_STR, palReadLine(LINE_EN_DRIVER_2) ? "ON" : "OFF");
+		chprintf(chp, "power state driver 3 : %s" SHELL_NEWLINE_STR, palReadLine(LINE_EN_DRIVER_3) ? "ON" : "OFF");
+		chprintf(chp, "power state driver 4 : %s" SHELL_NEWLINE_STR, palReadLine(LINE_EN_DRIVER_4) ? "ON" : "OFF");
+	}else{
+		shellUsage(chp, "power_drivers motNumber 1|0");
 	}
 }
 
 static const ShellCommand commands[] = {
 	{"set_phase", cmd_set_phase},
+	{"power_drivers", cmd_power_drivers},
 	{NULL, NULL}
 };
 
