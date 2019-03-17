@@ -19,9 +19,41 @@ static THD_FUNCTION(Thread1,arg) {
   (void)arg;
   chRegSetThreadName("blinker");
   while(true){
-		palSetLine(LD1_LINE);
+		palClearLine(LINE_STATUS_LED1_RED);
 		chThdSleepMilliseconds(50);
-		palClearLine(LD1_LINE);
+		palClearLine(LINE_STATUS_LED2_RED);
+		chThdSleepMilliseconds(50);
+		palClearLine(LINE_STATUS_LED3_RED);
+		chThdSleepMilliseconds(50);
+		palClearLine(LINE_STATUS_LED1_GREEN);
+		chThdSleepMilliseconds(50);
+		palClearLine(LINE_STATUS_LED2_GREEN);
+		chThdSleepMilliseconds(50);
+		palClearLine(LINE_STATUS_LED3_GREEN);
+		chThdSleepMilliseconds(50);
+		palClearLine(LINE_STATUS_LED1_BLUE);
+		chThdSleepMilliseconds(50);
+		palClearLine(LINE_STATUS_LED2_BLUE);
+		chThdSleepMilliseconds(50);
+		palClearLine(LINE_STATUS_LED3_BLUE);
+		chThdSleepMilliseconds(50);
+		palSetLine(LINE_STATUS_LED1_RED);
+		chThdSleepMilliseconds(50);
+		palSetLine(LINE_STATUS_LED2_RED);
+		chThdSleepMilliseconds(50);
+		palSetLine(LINE_STATUS_LED3_RED);
+		chThdSleepMilliseconds(50);
+		palSetLine(LINE_STATUS_LED1_GREEN);
+		chThdSleepMilliseconds(50);
+		palSetLine(LINE_STATUS_LED2_GREEN);
+		chThdSleepMilliseconds(50);
+		palSetLine(LINE_STATUS_LED3_GREEN);
+		chThdSleepMilliseconds(50);
+		palSetLine(LINE_STATUS_LED1_BLUE);
+		chThdSleepMilliseconds(50);
+		palSetLine(LINE_STATUS_LED2_BLUE);
+		chThdSleepMilliseconds(50);
+		palSetLine(LINE_STATUS_LED3_BLUE);
 		chThdSleepMilliseconds(50);
   }
 }
@@ -125,6 +157,9 @@ static void adcerrorcallback(ADCDriver *adcp, adcerror_t err) {
 
 int main(void) {
 
+	//keeps the power on
+	palSetLine(LINE_PWR_ON);
+
 	/*
 	* System initializations.
 	* - HAL initialization, this also initializes the configured device drivers
@@ -135,8 +170,7 @@ int main(void) {
 	halInit();
 	chSysInit();
 
-	//keeps the power on
-	palSetLine(LINE_PWR_ON);
+
 
 	initGDBEvents();
 	gdbStart();
