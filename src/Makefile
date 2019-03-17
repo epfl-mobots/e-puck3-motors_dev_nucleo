@@ -135,6 +135,7 @@ CSRC = $(ALLCSRC) \
        uc_usage.c \
        user_shell.c \
        drv8323.c \
+       gate_drivers.c
 
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
