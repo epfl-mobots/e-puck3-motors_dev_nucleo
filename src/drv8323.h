@@ -11,23 +11,91 @@
 #define DRV8323_H
 
 
-typedef enum {
-	DRV83223_1 = 0,
-	DRV83223_2,
-	DRV83223_3,
-	DRV83223_4,
-	NB_OF_DRV8323
-} drv8232_id_t;
+/**
+ * @brief   Structure representing a DRV8323 Config.
+ */
+typedef struct {
+	uint16_t 	fault_status_1;
+	uint16_t	fault_status_2;
+	uint16_t	driver_control;
+	uint16_t	gate_drive_hs;
+	uint16_t	gate_drive_ls;
+	uint16_t	ocp_control;
+	uint16_t	csa_control;
+} DRV8323ConfRegisters;
+
+/**
+ * @brief   Structure representing a DRV8323 driver.
+ */
+typedef struct {
+	/**
+	 * SPI driver used
+	 */
+	SPIDriver*				spip;
+	/**
+	 * SPI config used. 
+	 * Note 1 :	The ssline field of spicfg is managed by
+	 * 			the drv8323 driver so you can let it uninitialized.
+	 * Note 2 :	The spicfg should not be declared as static const.
+	 * 			Use static instead.
+	 * Note 3 :	The SPI com should be configured to use 16bits words and CPHA=1
+	 */
+	SPIConfig* 				spicfg;
+	/**
+	 * Enable line of the DRV8323
+	 */
+	ioline_t				enline;
+	/**
+	 * chip select line of the DRV8323
+	 */
+	ioline_t				ssline;
+	/**
+	 * Fault line of the DRV8323
+	 */
+	ioline_t				faultline;
+	/**
+	 * Values to write to the device to configure it
+	 */
+	DRV8323ConfRegisters	*registers;
+
+} DRV8323Config;
+
+/********************          DRV8323 REGISTER EXPLANATION        ********************/
+
+/**
+ *	bit  [15]		-> 	Write or read command
+ *  bits [12..10]	->	Register address
+ *	bits [11..0]	->	Values of the register
+ *	
+ *	With a read command, only the register address is needed and we
+ *	receive during the same transmission the content of the register from the device.
+ *	
+ *	The write command does exactly the same, except it also writes the data we send.
+ *
+ */
+
+/********************               DRV8323 WRITE/READ             ********************/
+
+#define DRV8323_WR_Pos		(15U)
+#define DRV8322_WRITE		(0x0U << DRV8323_WR_Pos)
+#define DRV8322_READ		(0x1U << DRV8323_WR_Pos)
 
 /********************               DRV8323 REGISTERS              ********************/
 
-#define FAULT_STATUS_1_REG	0x00
-#define FAULT_STATUS_2_REG	0x01
-#define DRIVER_CONTROL_REG	0x02
-#define GATE_DRIVE_HS_REG	0x03
-#define GATE_DRIVE_LS_REG	0x04
-#define OCP_CONTROL_REG		0x05
-#define CSA_CONTROL_REG		0x06
+#define DRV8323_REG_Pos				(10U)
+#define DRV8323_REG_Msk				(0x7U << DRV8323_REG_Pos)
+#define FAULT_STATUS_1_REG			(0x0U << DRV8323_REG_Pos)
+#define FAULT_STATUS_2_REG			(0x1U << DRV8323_REG_Pos)
+#define DRIVER_CONTROL_REG			(0x2U << DRV8323_REG_Pos)
+#define GATE_DRIVE_HS_REG			(0x3U << DRV8323_REG_Pos)
+#define GATE_DRIVE_LS_REG			(0x4U << DRV8323_REG_Pos)
+#define OCP_CONTROL_REG				(0x5U << DRV8323_REG_Pos)
+#define CSA_CONTROL_REG				(0x6U << DRV8323_REG_Pos)
+
+/********************              Configuration bits              ********************/
+
+#define DRV8323_CONF_Pos			(0U)
+#define DRV8323_CONF_Msk			(0xFFF << DRV8323_CONF_Pos)
 
 /********************  Bit definition for Fault Status 1 register  ********************/
 
