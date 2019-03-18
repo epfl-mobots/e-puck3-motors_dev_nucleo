@@ -15,6 +15,7 @@
 #include "gdb.h"
 #include "gate_drivers.h"
 #include "drv8323.h"
+#include "power_button.h"
 
 extern DRV8323Config drv8323_1;
 extern DRV8323Config drv8323_2;
@@ -164,8 +165,7 @@ static void adcerrorcallback(ADCDriver *adcp, adcerror_t err) {
 
 int main(void) {
 
-	//keeps the power on
-	palSetLine(LINE_PWR_ON);
+	powerButtonStartSequence();
 
 	/*
 	* System initializations.
@@ -177,7 +177,7 @@ int main(void) {
 	halInit();
 	chSysInit();
 
-
+	powerButtonStart();
 
 	initGDBEvents();
 	gdbStart();
