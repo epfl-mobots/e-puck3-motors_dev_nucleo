@@ -11,24 +11,52 @@
 #include "drv8323.h"
 
 void drv8323WriteConf(DRV8323Config *drv){
+
+	uint16_t rx = 0xFFFF;
+    uint16_t tx = 0;
+
 	/* Bus acquisition and SPI reprogramming.*/
     spiAcquireBus(drv->spip);
     spiStart(drv->spip, drv->spicfg);
 
-    uint16_t rcv = 0xFFFF;
-
 	drv->spicfg->ssline = drv->ssline;
 
+	//we need to release the CS pin between each word
+
 	spiSelect(drv->spip);
-	spiExchange(drv->spip, 1, &drv->registers->fault_status_1, &rcv);
-	spiExchange(drv->spip, 1, &drv->registers->fault_status_2, &rcv);
-	spiExchange(drv->spip, 1, &drv->registers->driver_control, &rcv);
-	spiExchange(drv->spip, 1, &drv->registers->gate_drive_hs, &rcv);
-	spiExchange(drv->spip, 1, &drv->registers->gate_drive_ls, &rcv);
-	spiExchange(drv->spip, 1, &drv->registers->ocp_control, &rcv);
-	spiExchange(drv->spip, 1, &drv->registers->csa_control, &rcv);
+	tx = DRV8322_WRITE | FAULT_STATUS_1_REG | drv->registers->fault_status_1;
+	spiExchange(drv->spip, 1, &tx, &rx);
+	spiUnselect(drv->spip);
+
+	spiSelect(drv->spip);
+	tx = DRV8322_WRITE | FAULT_STATUS_2_REG | drv->registers->fault_status_2;
+	spiExchange(drv->spip, 1, &tx, &rx);
+	spiUnselect(drv->spip);
+
+	spiSelect(drv->spip);
+	tx = DRV8322_WRITE | DRIVER_CONTROL_REG | drv->registers->driver_control;
+	spiExchange(drv->spip, 1, &tx, &rx);
+	spiUnselect(drv->spip);
+
+	spiSelect(drv->spip);
+	tx = DRV8322_WRITE | GATE_DRIVE_HS_REG | drv->registers->gate_drive_hs;
+	spiExchange(drv->spip, 1, &tx, &rx);
+	spiUnselect(drv->spip);
+
+	spiSelect(drv->spip);
+	tx = DRV8322_WRITE | GATE_DRIVE_LS_REG | drv->registers->gate_drive_ls;
+	spiExchange(drv->spip, 1, &tx, &rx);
 	spiUnselect(drv->spip);
 	
+	spiSelect(drv->spip);
+	tx = DRV8322_WRITE | OCP_CONTROL_REG | drv->registers->ocp_control;
+	spiExchange(drv->spip, 1, &tx, &rx);
+	spiUnselect(drv->spip);
+
+	spiSelect(drv->spip);
+	tx = DRV8322_WRITE | CSA_CONTROL_REG | drv->registers->csa_control;
+	spiExchange(drv->spip, 1, &tx, &rx);
+	spiUnselect(drv->spip);
 
 	/* Releasing the bus.*/
 	spiReleaseBus(drv->spip);

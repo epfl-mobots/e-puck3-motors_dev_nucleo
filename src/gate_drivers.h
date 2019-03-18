@@ -11,5 +11,5 @@
 #define GATE_DRIVERS_H
 
 
-
+void gateDriversInit(void);
 #endif /* GATE_DRIVERS_H */

@@ -12,6 +12,18 @@
 
 
 /**
+ * @brief   Id of the four gate drivers present on the motor_dev board
+ */
+typedef enum {
+	DRV8232_1 = 0,
+	DRV8232_2,
+	DRV8232_3,
+	DRV8232_4,
+	NB_OF_DRV8232,
+} DRV8323_ID_t;
+
+
+/**
  * @brief   Structure representing a DRV8323 Config.
  */
 typedef struct {
@@ -60,12 +72,16 @@ typedef struct {
 
 } DRV8323Config;
 
+void drv8323WriteConf(DRV8323Config *drv);
+uint16_t drv8323WriteReg(DRV8323Config *drv, uint16_t reg);
+uint16_t drv8323ReadReg(DRV8323Config *drv, uint16_t reg);
+
 /********************          DRV8323 REGISTER EXPLANATION        ********************/
 
 /**
  *	bit  [15]		-> 	Write or read command
- *  bits [12..10]	->	Register address
- *	bits [11..0]	->	Values of the register
+ *  bits [14..11]	->	Register address
+ *	bits [10..0]	->	Values of the register
  *	
  *	With a read command, only the register address is needed and we
  *	receive during the same transmission the content of the register from the device.
@@ -82,8 +98,8 @@ typedef struct {
 
 /********************               DRV8323 REGISTERS              ********************/
 
-#define DRV8323_REG_Pos				(10U)
-#define DRV8323_REG_Msk				(0x7U << DRV8323_REG_Pos)
+#define DRV8323_REG_Pos				(11U)
+#define DRV8323_REG_Msk				(0xFU << DRV8323_REG_Pos)
 #define FAULT_STATUS_1_REG			(0x0U << DRV8323_REG_Pos)
 #define FAULT_STATUS_2_REG			(0x1U << DRV8323_REG_Pos)
 #define DRIVER_CONTROL_REG			(0x2U << DRV8323_REG_Pos)
@@ -95,7 +111,7 @@ typedef struct {
 /********************              Configuration bits              ********************/
 
 #define DRV8323_CONF_Pos			(0U)
-#define DRV8323_CONF_Msk			(0xFFF << DRV8323_CONF_Pos)
+#define DRV8323_CONF_Msk			(0x7FF << DRV8323_CONF_Pos)
 
 /********************  Bit definition for Fault Status 1 register  ********************/
 
