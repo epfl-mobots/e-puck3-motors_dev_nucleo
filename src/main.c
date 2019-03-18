@@ -13,6 +13,13 @@
 #include "user_shell.h"
 #include "uc_usage.h"
 #include "gdb.h"
+#include "gate_drivers.h"
+#include "drv8323.h"
+
+extern DRV8323Config drv8323_1;
+extern DRV8323Config drv8323_2;
+extern DRV8323Config drv8323_3;
+extern DRV8323Config drv8323_4;
 
 static THD_WORKING_AREA(waThread1,128);
 static THD_FUNCTION(Thread1,arg) {
@@ -181,6 +188,7 @@ int main(void) {
 	usbSerialStart();
 
 	shellInit();
+	gateDriversInit();
 
 	/*
 	 * Activates the ADC1 driver
@@ -231,6 +239,19 @@ int main(void) {
 			spawn_shell();
 		}
 		chThdSleepMilliseconds(500);
+
+		chprintf((BaseSequentialStream *) &USB_SERIAL, "fault status 1 	= 0x%x\n", drv8323ReadReg(&drv8323_1, FAULT_STATUS_1_REG));
+		chprintf((BaseSequentialStream *) &USB_SERIAL, "fault status 2 	= 0x%x\n", drv8323ReadReg(&drv8323_1, FAULT_STATUS_2_REG));
+		chprintf((BaseSequentialStream *) &USB_SERIAL, "driver control  = 0x%x\n", drv8323ReadReg(&drv8323_1, DRIVER_CONTROL_REG));
+		chprintf((BaseSequentialStream *) &USB_SERIAL, "gate driver hs 	= 0x%x\n", drv8323ReadReg(&drv8323_1, GATE_DRIVE_HS_REG));
+		chprintf((BaseSequentialStream *) &USB_SERIAL, "gate driver hs 	= 0x%x\n", drv8323ReadReg(&drv8323_1, GATE_DRIVE_LS_REG));
+		chprintf((BaseSequentialStream *) &USB_SERIAL, "ocp control 	= 0x%x\n", drv8323ReadReg(&drv8323_1, OCP_CONTROL_REG));
+		chprintf((BaseSequentialStream *) &USB_SERIAL, "csa control 	= 0x%x\n\n", drv8323ReadReg(&drv8323_1, CSA_CONTROL_REG));
+		
+		// chprintf((BaseSequentialStream *) &USB_SERIAL, "buffer SPI 1 = 0x%x\n", drv8323ReadReg(&drv8323_1, CSA_CONTROL_REG));
+		// chprintf((BaseSequentialStream *) &USB_SERIAL, "buffer SPI 2 = 0x%x\n", drv8323ReadReg(&drv8323_2, CSA_CONTROL_REG));
+		// chprintf((BaseSequentialStream *) &USB_SERIAL, "buffer SPI 3 = 0x%x\n", drv8323ReadReg(&drv8323_3, CSA_CONTROL_REG));
+		// chprintf((BaseSequentialStream *) &USB_SERIAL, "buffer SPI 4 = 0x%x\n", drv8323ReadReg(&drv8323_4, CSA_CONTROL_REG));
 		//palToggleLine(LINE_OUT_MOT3_PH1_P);
 		//palToggleLine(PAL_LINE(GPIOB, 7U));
 		//palToggleLine(LINE_OUT_MOT4_PH2_N);
