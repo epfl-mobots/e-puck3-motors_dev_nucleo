@@ -13,6 +13,7 @@
 #include <ch.h>
 #include <hal.h>
 
+#include "utility.h"
 #include <usbcfg.h>
 #include <shell.h>
 #include <chprintf.h>
