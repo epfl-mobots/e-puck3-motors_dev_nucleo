@@ -123,12 +123,12 @@ static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 		adc_grp_3[i] = 0;
 	}
 	// Getting the values from the differents channels
-	for(i = 0; i < n ;i = i+ADC_GRP3_NUM_CHANNELS)
+	for(i = 0; i < n ;i++)
 	{
-	  adc_grp_3[0] += buffer[i];   // CH3_IN0
-	  adc_grp_3[1] += buffer[i+1]; // CH3_IN1
-	  adc_grp_3[2] += buffer[i+2]; // CH3_IN2
-	  adc_grp_3[3] += buffer[i+3];
+	  adc_grp_3[0] += buffer[ADC_GRP3_NUM_CHANNELS * i];   // CH3_IN0
+	  adc_grp_3[1] += buffer[ADC_GRP3_NUM_CHANNELS * i + 1]; // CH3_IN1
+	  adc_grp_3[2] += buffer[ADC_GRP3_NUM_CHANNELS * i + 2]; // CH3_IN2
+	  adc_grp_3[3] += buffer[ADC_GRP3_NUM_CHANNELS * i + 3];
 	}
 
 	// Averaging
