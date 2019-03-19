@@ -252,7 +252,7 @@ int main(void) {
 		chThdSleepMilliseconds(DELAY_DEMO);
 
 		/* Disable the CH 1 and */
-	    pwmDisableChannel(&PWMD1, 1);
+	    pwmDisableChannel(&PWMD1, DELAY_DEMO);
 
 	}
 }
