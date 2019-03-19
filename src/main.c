@@ -14,7 +14,38 @@
 #include "uc_usage.h"
 #include "gdb.h"
 
+/*===========================================================================*/
+/* Define				                                                 */
+/*===========================================================================*/
+#define ADC_GRP1_NUM_CHANNELS   1
+#define ADC_GRP1_BUF_DEPTH      32
 
+#define ADC_GRP3_NUM_CHANNELS 	4
+#define ADC_GRP3_BUF_DEPTH		6
+
+/*===========================================================================*/
+/* Variables				                                                 */
+/*===========================================================================*/
+// ADC1
+static adcsample_t adc_samples[ADC_GRP1_NUM_CHANNELS * ADC_GRP1_BUF_DEPTH];
+static uint32_t adc_value;
+// ADC 3
+static adcsample_t adc_sample_3[ADC_GRP3_NUM_CHANNELS * ADC_GRP3_BUF_DEPTH];
+static uint32_t adc_grp_3[ADC_GRP3_NUM_CHANNELS] = {0};
+
+/*===========================================================================*/
+/* Prototypes				                                                 */
+/*===========================================================================*/
+// ADC 1
+static void adc_1_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
+static void adc_1_err(ADCDriver *adcp, adcerror_t err);
+// ADC 3
+static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
+static void adc_3_err_cb(ADCDriver *adcp, adcerror_t err);
+
+/*===========================================================================*/
+/* Threads				                                                 */
+/*===========================================================================*/
 static THD_WORKING_AREA(waThread1,128);
 static THD_FUNCTION(Thread1,arg) {
   (void)arg;
@@ -33,41 +64,97 @@ static THD_FUNCTION(Thread1,arg) {
 /* ADC Configuration with DMA.                                               */
 /*===========================================================================*/
 
-
-#define ADC_GRP1_NUM_CHANNELS   1
-#define ADC_GRP1_BUF_DEPTH      32
-
-static adcsample_t adc_samples[ADC_GRP1_NUM_CHANNELS * ADC_GRP1_BUF_DEPTH];
-static uint32_t adc_value;
-
-/* Prototypes */
-static void adccallback(ADCDriver *adcp, adcsample_t *buffer, size_t n);
-static void adcerrorcallback(ADCDriver *adcp, adcerror_t err);
-
-
-
 /* ADC 1 Configuration */
-static const ADCConversionGroup ADC1group = {
+/*static const ADCConversionGroup ADC1group = {
     .circular = false,
-    .num_channels = 1,
-    .end_cb = adccallback,
-    .error_cb = adcerrorcallback,
+    .num_channels = ADC_GRP1_NUM_CHANNELS,
+    .end_cb = adc_1_cb,
+    .error_cb = adc_1_err,
+    .cr1 = 0,	No OVR int,12 bit resolution,no AWDG/JAWDG,
+    .cr2 = ADC_CR2_SWSTART,  manual start of regular channels,EOC is set at end of each sequence^,no OVR detect
+    .htr = 0,
+	.ltr = 0,
+	.smpr1 = 0,
+    .smpr2 =  ADC_SMPR2_SMP_AN0(ADC_SAMPLE_3)|
+	 	 	  ADC_SMPR2_SMP_AN1(ADC_SAMPLE_3)|
+			  ADC_SMPR2_SMP_AN2(ADC_SAMPLE_3)|
+			  ADC_SMPR2_SMP_AN3(ADC_SAMPLE_3),
+    .sqr1 = ADC_SQR1_NUM_CH(4),
+    .sqr2 = 0,
+    .sqr3 = ADC_SQR3_SQ1_N(ADC_CHANNEL_IN0)|
+			ADC_SQR3_SQ2_N(ADC_CHANNEL_IN1)|
+			ADC_SQR3_SQ3_N(ADC_CHANNEL_IN2)|
+			ADC_SQR3_SQ4_N(ADC_CHANNEL_IN3),
+};*/
+
+/* ADC 3 Configuration */
+static const ADCConversionGroup ADC3group = {
+    .circular = false,
+    .num_channels = ADC_GRP3_NUM_CHANNELS,
+    .end_cb = adc_3_cb,
+    .error_cb = adc_3_err_cb,
     .cr1 = 0,	/*No OVR int,12 bit resolution,no AWDG/JAWDG,*/
     .cr2 = ADC_CR2_SWSTART, /* manual start of regular channels,EOC is set at end of each sequence^,no OVR detect */
     .htr = 0,
 	.ltr = 0,
 	.smpr1 = 0,
-    .smpr2 = ADC_SMPR2_SMP_AN9(ADC_SAMPLE_3),
-    .sqr1 = ADC_SQR1_NUM_CH(1),
+    .smpr2 = ADC_SMPR2_SMP_AN0(ADC_SAMPLE_3)|
+			 ADC_SMPR2_SMP_AN1(ADC_SAMPLE_3)|
+			 ADC_SMPR2_SMP_AN2(ADC_SAMPLE_3)|
+			 ADC_SMPR2_SMP_AN3(ADC_SAMPLE_3),
+    .sqr1 = ADC_SQR1_NUM_CH(ADC_GRP3_NUM_CHANNELS),
     .sqr2 = 0,
-    .sqr3 = ADC_SQR3_SQ1_N(9),
+    .sqr3 = ADC_SQR3_SQ1_N(ADC_CHANNEL_IN0)|
+			ADC_SQR3_SQ2_N(ADC_CHANNEL_IN1)|
+			ADC_SQR3_SQ3_N(ADC_CHANNEL_IN2)|
+			ADC_SQR3_SQ4_N(ADC_CHANNEL_IN3),
 };
 
 
 /*
  * ADC streaming callback.
  */
-static void adccallback(ADCDriver *adcp, adcsample_t *buffer, size_t n) {
+static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
+{
+	size_t i = 0;
+	//Reset the array
+	for(i = 0;i < ADC_GRP3_NUM_CHANNELS;i++)
+	{
+		adc_grp_3[i] = 0;
+	}
+	// Getting the values from the differents channels
+	for(i = 0; i < n ;i = i+ADC_GRP3_NUM_CHANNELS)
+	{
+	  adc_grp_3[0] += buffer[i];   // CH3_IN0
+	  adc_grp_3[1] += buffer[i+1]; // CH3_IN1
+	  adc_grp_3[2] += buffer[i+2]; // CH3_IN2
+	  adc_grp_3[3] += buffer[i+3];
+	}
+
+	// Averaging
+    for (i = 0; i < ADC_GRP3_NUM_CHANNELS; i++) {
+    	adc_grp_3[i] /= ADC_GRP3_BUF_DEPTH;
+    }
+
+    /*
+	 * reLaunch the conversion
+	 */
+    chSysLockFromISR();
+    adcStartConversionI(&ADCD3, &ADC3group, adc_sample_3,ADC_GRP3_BUF_DEPTH);
+    chSysUnlockFromISR();
+}
+
+static void adc_3_err_cb(ADCDriver *adcp, adcerror_t err)
+{
+	(void)adcp;
+	(void)err;
+}
+
+
+/**/
+
+/*
+static void adc_1_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n) {
 
 	(void)adcp;
 
@@ -77,22 +164,23 @@ static void adccallback(ADCDriver *adcp, adcsample_t *buffer, size_t n) {
     }
     adc_value /= n;
 
-    /*
+
 	 * reLaunch the conversion
-	 */
+
     chSysLockFromISR();
     adcStartConversionI(&ADCD1, &ADC1group, adc_samples, ADC_GRP1_BUF_DEPTH);
     chSysUnlockFromISR();
 }
 
-/*
+
  * ADC errors callback, should never happen.
- */
-static void adcerrorcallback(ADCDriver *adcp, adcerror_t err) {
+
+static void adc_1_err(ADCDriver *adcp, adcerror_t err) {
 
   (void)adcp;
   (void)err;
 }
+*/
 
 
 
@@ -124,19 +212,19 @@ int main(void) {
 	usbSerialStart();
 
 	/*
-	 * Activates the ADC1 driver
+	 * Activates the ADC3 driver
 	 */
-	for(int i = 0;i<ADC_GRP1_BUF_DEPTH;i++)
+	for(int i = 0;i< (ADC_GRP3_BUF_DEPTH * ADC_GRP3_NUM_CHANNELS);i++)
 	{
-		adc_samples[i] = 0;
+		adc_sample_3[i] = 0;
 	}
-	adcStart(&ADCD1, NULL);
+	adcStart(&ADCD3, NULL);
 
 
 	/*
 	 * Launch the conversion
 	 */
-	adcStartConversion(&ADCD1, &ADC1group, adc_samples, ADC_GRP1_BUF_DEPTH);
+	adcStartConversion(&ADCD3, &ADC3group, adc_sample_3,ADC_GRP3_BUF_DEPTH);
 
 	/* Configure the IO mode */
 	palSetLineMode(LD1_LINE,PAL_MODE_OUTPUT_PUSHPULL);
@@ -145,12 +233,6 @@ int main(void) {
 	palClearLine(LD1_LINE);
 	palClearLine(LD2_LINE);
 	palClearLine(LD3_LINE);
-
-	/*
-	palSetLineMode(LINE_OUT_MOT3_PH1_P, PAL_MODE_OUTPUT_PUSHPULL);
-	palSetLineMode(PAL_LINE(GPIOB, 7U), PAL_MODE_OUTPUT_PUSHPULL);
-	palSetLineMode(LINE_OUT_MOT4_PH2_N, PAL_MODE_OUTPUT_PUSHPULL);
-	 */
 
 	// Configure the Thread that will blink the leds on the boards
 	chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO + 1, Thread1, NULL);
@@ -161,9 +243,9 @@ int main(void) {
 		//palToggleLine(LINE_OUT_MOT3_PH1_P);
 		//palToggleLine(PAL_LINE(GPIOB, 7U));
 		//palToggleLine(LINE_OUT_MOT4_PH2_N);
-		// chprintf((BaseSequentialStream *) &USB_GDB, "GDB\n");
-		// printUcUsage((BaseSequentialStream *) &USB_GDB);
-		// chprintf((BaseSequentialStream *) &USB_SERIAL, "SERIAL\n");
-		// printUcUsage((BaseSequentialStream *) &USB_SERIAL);
+		chprintf((BaseSequentialStream *) &USB_GDB, "IN1 : %d,IN2 : %d,IN3 : %d,IN4 : %d\n\r",adc_grp_3[0],adc_grp_3[1],adc_grp_3[2],adc_grp_3[3]);
+		//printUcUsage((BaseSequentialStream *) &USB_GDB);
+		//chprintf((BaseSequentialStream *) &USB_SERIAL, "SERIAL\n\r");
+		//printUcUsage((BaseSequentialStream *) &USB_SERIAL);
 	}
 }
