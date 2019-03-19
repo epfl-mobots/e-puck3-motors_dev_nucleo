@@ -64,28 +64,6 @@ static THD_FUNCTION(Thread1,arg) {
 /* ADC Configuration with DMA.                                               */
 /*===========================================================================*/
 
-/* ADC 1 Configuration */
-/*static const ADCConversionGroup ADC1group = {
-    .circular = false,
-    .num_channels = ADC_GRP1_NUM_CHANNELS,
-    .end_cb = adc_1_cb,
-    .error_cb = adc_1_err,
-    .cr1 = 0,	No OVR int,12 bit resolution,no AWDG/JAWDG,
-    .cr2 = ADC_CR2_SWSTART,  manual start of regular channels,EOC is set at end of each sequence^,no OVR detect
-    .htr = 0,
-	.ltr = 0,
-	.smpr1 = 0,
-    .smpr2 =  ADC_SMPR2_SMP_AN0(ADC_SAMPLE_3)|
-	 	 	  ADC_SMPR2_SMP_AN1(ADC_SAMPLE_3)|
-			  ADC_SMPR2_SMP_AN2(ADC_SAMPLE_3)|
-			  ADC_SMPR2_SMP_AN3(ADC_SAMPLE_3),
-    .sqr1 = ADC_SQR1_NUM_CH(4),
-    .sqr2 = 0,
-    .sqr3 = ADC_SQR3_SQ1_N(ADC_CHANNEL_IN0)|
-			ADC_SQR3_SQ2_N(ADC_CHANNEL_IN1)|
-			ADC_SQR3_SQ3_N(ADC_CHANNEL_IN2)|
-			ADC_SQR3_SQ4_N(ADC_CHANNEL_IN3),
-};*/
 
 /* ADC 3 Configuration */
 static const ADCConversionGroup ADC3group = {
@@ -125,10 +103,10 @@ static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 	// Getting the values from the differents channels
 	for(i = 0; i < n ;i++)
 	{
-	  adc_grp_3[0] += buffer[ADC_GRP3_NUM_CHANNELS * i];   // CH3_IN0
+	  adc_grp_3[0] += buffer[ADC_GRP3_NUM_CHANNELS * i];     // CH3_IN0
 	  adc_grp_3[1] += buffer[ADC_GRP3_NUM_CHANNELS * i + 1]; // CH3_IN1
 	  adc_grp_3[2] += buffer[ADC_GRP3_NUM_CHANNELS * i + 2]; // CH3_IN2
-	  adc_grp_3[3] += buffer[ADC_GRP3_NUM_CHANNELS * i + 3];
+	  adc_grp_3[3] += buffer[ADC_GRP3_NUM_CHANNELS * i + 3]; // CH3_IN3
 	}
 
 	// Averaging
@@ -151,36 +129,40 @@ static void adc_3_err_cb(ADCDriver *adcp, adcerror_t err)
 }
 
 
-/**/
-
-/*
-static void adc_1_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n) {
-
-	(void)adcp;
-
-	adc_value = 0;
-    for (size_t i = 0; i < n; i++) {
-        adc_value += buffer[i];
-    }
-    adc_value /= n;
+/*===========================================================================*/
+/* Timer 1 Configuration                                                     */
+/*===========================================================================*/
 
 
-	 * reLaunch the conversion
+// Periodic callback called when PWM counter is reset
+static void pwm_p_cb(PWMDriver *pwmp) {
 
-    chSysLockFromISR();
-    adcStartConversionI(&ADCD1, &ADC1group, adc_samples, ADC_GRP1_BUF_DEPTH);
-    chSysUnlockFromISR();
+  (void)pwmp;
+  palClearPad(GPIOD, GPIOD_LED5);
+}
+
+static void pwmc1cb(PWMDriver *pwmp) {
+
+  (void)pwmp;
+  palSetPad(GPIOD, GPIOD_LED5);
 }
 
 
- * ADC errors callback, should never happen.
-
-static void adc_1_err(ADCDriver *adcp, adcerror_t err) {
-
-  (void)adcp;
-  (void)err;
-}
-*/
+static PWMConfig tim_1_cfg = {
+  .frequency = 10000,                        /* PWM clock frequency.   */
+  .period    = 10000,                        /* PWM period in ticks  (here 1 second)  */
+  pwm_p_cb,									 /**/
+  	  	  	  	  	  	  	  	  	  	  	 /* PWM Channels configuration */
+  {
+   {PWM_OUTPUT_ACTIVE_HIGH|PWM_COMPLEMENTARY_OUTPUT_ACTIVE_HIGH, pwmc1cb},
+   {PWM_OUTPUT_DISABLED, NULL},
+   {PWM_OUTPUT_DISABLED, NULL},
+   {PWM_OUTPUT_DISABLED, NULL}
+  },
+  .cr2  = 0,
+  .bdtr = STM32_TIM_BDTR_DTG(4),			/* WIP : Value is depending on the clock/psc with is done automatically by ChibiOS */
+  .dier = 0
+};
 
 
 
@@ -221,6 +203,14 @@ int main(void) {
 	adcStart(&ADCD3, NULL);
 
 
+	  /*
+	   * Starting PWM driver 1 and enabling the notifications.
+	   * GPIOA8 is programmed as PWM output (channel 1 of TIM1).
+	   */
+	pwmStart(&PWMD1, &pwmcfg); // WARNING : PWM MODE 1 BY DEFAULT
+	pwmEnablePeriodicNotification(&PWMD1);
+
+
 	/*
 	 * Launch the conversion
 	 */
@@ -237,6 +227,11 @@ int main(void) {
 	// Configure the Thread that will blink the leds on the boards
 	chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO + 1, Thread1, NULL);
 
+
+	// WIP
+	  pwmDisableChannel(&PWMD1, 0);
+	  pwmStop(&PWMD1);
+	// END WIP
 
 	while (true) {
 		chThdSleepMilliseconds(500);
