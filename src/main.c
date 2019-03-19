@@ -23,6 +23,9 @@
 #define ADC_GRP3_NUM_CHANNELS 	4
 #define ADC_GRP3_BUF_DEPTH		6
 
+#define PWM_TIM_1_CH2			1
+#define DELAY_DEMO				1000
+
 /*===========================================================================*/
 /* Variables				                                                 */
 /*===========================================================================*/
@@ -138,29 +141,29 @@ static void adc_3_err_cb(ADCDriver *adcp, adcerror_t err)
 static void pwm_p_cb(PWMDriver *pwmp) {
 
   (void)pwmp;
-  palClearPad(GPIOD, GPIOD_LED5);
+  palClearLine(LD2_LINE);
 }
 
-static void pwmc1cb(PWMDriver *pwmp) {
+static void pwm_ch2_cb(PWMDriver *pwmp) {
 
   (void)pwmp;
-  palSetPad(GPIOD, GPIOD_LED5);
+  palSetLine(LD2_LINE);
 }
 
 
 static PWMConfig tim_1_cfg = {
   .frequency = 10000,                        /* PWM clock frequency.   */
-  .period    = 10000,                        /* PWM period in ticks  (here 1 second)  */
+  .period    = 1000,                        /* PWM period in ticks  (here 0.1 second)  */
   pwm_p_cb,									 /**/
   	  	  	  	  	  	  	  	  	  	  	 /* PWM Channels configuration */
   {
-   {PWM_OUTPUT_ACTIVE_HIGH|PWM_COMPLEMENTARY_OUTPUT_ACTIVE_HIGH, pwmc1cb},
    {PWM_OUTPUT_DISABLED, NULL},
+   {PWM_OUTPUT_ACTIVE_HIGH|PWM_COMPLEMENTARY_OUTPUT_ACTIVE_HIGH, pwm_ch2_cb},
    {PWM_OUTPUT_DISABLED, NULL},
    {PWM_OUTPUT_DISABLED, NULL}
   },
   .cr2  = 0,
-  .bdtr = STM32_TIM_BDTR_DTG(4),			/* WIP : Value is depending on the clock/psc with is done automatically by ChibiOS */
+  .bdtr = STM32_TIM_BDTR_DTG(10),			/* WIP : Value is depending on the clock/psc with is computed automatically by ChibiOS */
   .dier = 0
 };
 
@@ -203,11 +206,12 @@ int main(void) {
 	adcStart(&ADCD3, NULL);
 
 
-	  /*
-	   * Starting PWM driver 1 and enabling the notifications.
-	   * GPIOA8 is programmed as PWM output (channel 1 of TIM1).
-	   */
-	pwmStart(&PWMD1, &pwmcfg); // WARNING : PWM MODE 1 BY DEFAULT
+	/*
+	 * Starting PWM driver 1 and enabling the notifications.
+	 */
+	pwmStart(&PWMD1, &tim_1_cfg); // WARNING : PWM MODE 1 BY DEFAULT
+	// We also need to recompute the prescaler ?
+	(&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CKD(2); // Modification of the CR1 CKD in order to have a bigger period for the dead times
 	pwmEnablePeriodicNotification(&PWMD1);
 
 
@@ -227,20 +231,28 @@ int main(void) {
 	// Configure the Thread that will blink the leds on the boards
 	chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO + 1, Thread1, NULL);
 
+	while (true)
+	{
+		/* Send ADC values */
+		/* chThdSleepMilliseconds(500);
+		chprintf((BaseSequentialStream *) &USB_GDB, "IN1 : %d,IN2 : %d,IN3 : %d,IN4 : %d\n\r",adc_grp_3[0],adc_grp_3[1],adc_grp_3[2],adc_grp_3[3]);*/
 
-	// WIP
-	  pwmDisableChannel(&PWMD1, 0);
-	  pwmStop(&PWMD1);
-	// END WIP
+		/* Enable simple PWM */
+		pwmEnableChannel(&PWMD1, PWM_TIM_1_CH2 , PWM_PERCENTAGE_TO_WIDTH(&PWMD1, 7500)); // Set CH1 and CH1N to 75% duty cycle
+		pwmEnableChannelNotification(&PWMD1, PWM_TIM_1_CH2);
+		chThdSleepMilliseconds(DELAY_DEMO);
 
-	while (true) {
-		chThdSleepMilliseconds(500);
-		//palToggleLine(LINE_OUT_MOT3_PH1_P);
-		//palToggleLine(PAL_LINE(GPIOB, 7U));
-		//palToggleLine(LINE_OUT_MOT4_PH2_N);
-		chprintf((BaseSequentialStream *) &USB_GDB, "IN1 : %d,IN2 : %d,IN3 : %d,IN4 : %d\n\r",adc_grp_3[0],adc_grp_3[1],adc_grp_3[2],adc_grp_3[3]);
-		//printUcUsage((BaseSequentialStream *) &USB_GDB);
-		//chprintf((BaseSequentialStream *) &USB_SERIAL, "SERIAL\n\r");
-		//printUcUsage((BaseSequentialStream *) &USB_SERIAL);
+		pwmEnableChannel(&PWMD1, PWM_TIM_1_CH2 , PWM_PERCENTAGE_TO_WIDTH(&PWMD1, 5000)); // Set CH1 and CH1N to 50% duty cycle
+		chThdSleepMilliseconds(DELAY_DEMO);
+
+		pwmEnableChannel(&PWMD1, PWM_TIM_1_CH2 , PWM_PERCENTAGE_TO_WIDTH(&PWMD1, 2500)); // Set CH1 and CH1N to 25% duty cycle
+		chThdSleepMilliseconds(DELAY_DEMO);
+
+		pwmEnableChannel(&PWMD1, PWM_TIM_1_CH2 , PWM_PERCENTAGE_TO_WIDTH(&PWMD1, 1000)); // Set CH1 and CH1N to 10% duty cycle
+		chThdSleepMilliseconds(DELAY_DEMO);
+
+		/* Disable the CH 1 and */
+	    pwmDisableChannel(&PWMD1, 1);
+
 	}
 }
