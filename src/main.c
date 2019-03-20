@@ -182,7 +182,7 @@ int main(void) {
 	usbSerialStart();
 
 	shellInit();
-	gateDriversInit();
+	gateDriversEnableAll();
 
 	/*
 	 * Activates the ADC1 driver

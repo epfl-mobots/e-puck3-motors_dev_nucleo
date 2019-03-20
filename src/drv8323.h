@@ -58,7 +58,7 @@ typedef struct {
 	 */
 	ioline_t				enline;
 	/**
-	 * chip select line of the DRV8323
+	 * Chip select line of the DRV8323
 	 */
 	ioline_t				ssline;
 	/**
@@ -72,8 +72,34 @@ typedef struct {
 
 } DRV8323Config;
 
+/**
+ * @brief Configures the given device.
+ * 
+ * @param drv 	Device to configure. See DRV8323Config
+ */
 void drv8323WriteConf(DRV8323Config *drv);
+
+/**
+ * @brief 			Writes the given register to the given device.
+ * 
+ * @param drv 		Device. See DRV8323Config
+ * @param reg 		Register to write to the device. It should contain the
+ * 					address and the configuration bits of the whole register
+ * 					since it will be replaced by this one on the device.
+ * 
+ * @return 			The register state before the write command.
+ */
 uint16_t drv8323WriteReg(DRV8323Config *drv, uint16_t reg);
+
+/**
+ * @brief 			Reads the given register from the given device.
+ * 
+ * @param drv 		Device. See DRV8323Config
+ * @param reg 		Register to read from the device. It should at least 
+ * 					contain the address of the register.
+ * 
+ * @return 			The register read.
+ */
 uint16_t drv8323ReadReg(DRV8323Config *drv, uint16_t reg);
 
 /********************          DRV8323 REGISTER EXPLANATION        ********************/

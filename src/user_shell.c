@@ -13,6 +13,7 @@
 #include "usbcfg.h"
 #include "main.h"
 #include "user_shell.h"
+#include "gate_drivers.h"
 
 static THD_WORKING_AREA(waShell,2048);
 
@@ -55,19 +56,29 @@ static void cmd_power_drivers(BaseSequentialStream *chp, int argc, char *argv[])
 		uint8_t motNumber = (char)*argv[0]-'0';
 		uint8_t onOff = (char)*argv[1]-'0';
 		ioline_t pin = 0;
+		gateDriver_id device_id;
 		if(motNumber == 1){
 			pin = LINE_EN_DRIVER_1;
+			device_id = 0;
 		}else if(motNumber == 2){
 			pin = LINE_EN_DRIVER_2;
+			device_id = 1;
 		}else if(motNumber == 3){
 			pin = LINE_EN_DRIVER_3;
+			device_id = 2;
 		}else if(motNumber == 4){
 			pin = LINE_EN_DRIVER_4;
+			device_id = 3;
 		}else{
 			return;
 		}
 
-		palWriteLine(pin,onOff);
+		// palWriteLine(pin,onOff);
+		if(onOff){
+			gateDriversEnable(device_id);
+		}else{
+			gateDriversDisable(device_id);
+		}
 	}
 	if(argc == 0 || argc == 2){
 		//gives the actual state
