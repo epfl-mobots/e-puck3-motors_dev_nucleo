@@ -153,13 +153,13 @@ static void pwm_ch2_cb(PWMDriver *pwmp) {
 
 static PWMConfig tim_1_cfg = {
   .frequency = 10000,                        /* PWM clock frequency.   */
-  .period    = 1000,                        /* PWM period in ticks  (here 0.1 second)  */
+  .period    = 4096,                        /* PWM period in ticks  (here 0.4096 second)  */
   pwm_p_cb,									 /**/
   	  	  	  	  	  	  	  	  	  	  	 /* PWM Channels configuration */
   {
-   {PWM_OUTPUT_DISABLED, NULL},
+   {PWM_OUTPUT_ACTIVE_HIGH|PWM_COMPLEMENTARY_OUTPUT_ACTIVE_HIGH, NULL},
    {PWM_OUTPUT_ACTIVE_HIGH|PWM_COMPLEMENTARY_OUTPUT_ACTIVE_HIGH, pwm_ch2_cb},
-   {PWM_OUTPUT_DISABLED, NULL},
+   {PWM_OUTPUT_ACTIVE_HIGH|PWM_COMPLEMENTARY_OUTPUT_ACTIVE_HIGH, NULL},
    {PWM_OUTPUT_DISABLED, NULL}
   },
   .cr2  = 0,
@@ -209,11 +209,69 @@ int main(void) {
 	/*
 	 * Starting PWM driver 1 and enabling the notifications.
 	 */
-	pwmStart(&PWMD1, &tim_1_cfg); // WARNING : PWM MODE 1 BY DEFAULT
-	// We also need to recompute the prescaler ?
-	(&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CKD(2); // Modification of the CR1 CKD in order to have a bigger period for the dead times
-	pwmEnablePeriodicNotification(&PWMD1);
 
+
+	// TIMER 1 Config
+	pwmStart(&PWMD1, &tim_1_cfg); // WARNING : PWM MODE 1 BY DEFAULT AND MOE SET TO 1 !!
+	uint32_t brush_6stpes_cfg = 0;
+
+	if(1 == brush_6stpes_cfg)
+	{
+		/* !!!! WIP NOT VALIDATED CONFIG : Based on TIM_6STEPS  !!!!*/
+
+		(&PWMD1)->tim->CR1 &= (~STM32_TIM_CR1_CEN);  // Disable the counter until correct configuration
+		// We also need to recompute the prescaler ?
+		(&PWMD1)->tim->CR1 &= (~STM32_TIM_CR1_ARPE); // Remove the ARPE
+
+
+		(&PWMD1)->tim->CCER = 0; // Reset Capture/Compare Register
+
+		// 1 : Output channels configuration
+		// Channel 1 Config
+		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC1P);    // OC1 Polarity  : Active High
+		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC1NP);   // OC1N Polarity : Active High
+		(&PWMD1)->tim->CR2  |=  STM32_TIM_CR2_OIS1;       // OC1 Idle State (when MOE=0): 1
+		(&PWMD1)->tim->CR2  |=  STM32_TIM_CR2_OIS1N;      // OC1N Idle State (when MOE=0): 1
+		(&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(0);  // OC1 Mode : Frozen
+		(&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC1FE); // Disable the Fast Mode
+		(&PWMD1)->tim->CCR1  =  2047;					  // Select the Half-period to overflow
+
+		// Channel 2 Config
+		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC2P);    // OC2 Polarity  : Active High
+		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC2NP);   // OC2N Polarity : Active High
+		(&PWMD1)->tim->CR2  |=  STM32_TIM_CR2_OIS2;       // OC2 Idle State (when MOE=0): 1
+		(&PWMD1)->tim->CR2  |=  STM32_TIM_CR2_OIS2N;      // OC2N Idle State (when MOE=0): 1
+		(&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(0);  // OC2 Mode : Frozen
+		(&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC2FE); // Disable the Fast Mode
+		(&PWMD1)->tim->CCR2  =  1023;					  // Select the quarter-period to overflow
+
+		// Channel 3 Config
+		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC3P);    // OC3 Polarity  : Active High
+		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC3NP);   // OC3N Polarity : Active High
+		(&PWMD1)->tim->CR2  |=  STM32_TIM_CR2_OIS3;       // OC3 Idle State (when MOE=0): 1
+		(&PWMD1)->tim->CR2  |=  STM32_TIM_CR2_OIS3N;      // OC3N Idle State (when MOE=0): 1
+		(&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC2M(0);  // OC3 Mode : Frozen
+		(&PWMD1)->tim->CCMR2 &= (~STM32_TIM_CCMR2_OC3FE); // Disable the Fast Mode
+		(&PWMD1)->tim->CCR2  =  511;					  // Select the one-eight-period to overflow
+
+
+
+		// Break stage configuration and Debug configuration
+
+		(&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CKD(2);  // Modification of the CR1 CKD in order to have a bigger period for the dead times
+
+		// Commutation event configuration
+
+		// Start signal generation
+
+		/* !!!! WIP NOT VALIDATED CONFIG : Based on TIM_6STEPS  !!!!*/
+	}
+	else
+	{
+		// Break stage configuration
+		(&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CKD(2);  // Modification of the CR1 CKD in order to have a bigger period for the dead times
+		pwmEnablePeriodicNotification(&PWMD1);
+	}
 
 	/*
 	 * Launch the conversion
