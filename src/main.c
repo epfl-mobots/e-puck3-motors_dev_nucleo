@@ -23,8 +23,15 @@
 #define ADC_GRP3_NUM_CHANNELS 	4
 #define ADC_GRP3_BUF_DEPTH		6
 
+#define PWM_TIM_1_CH1			0
 #define PWM_TIM_1_CH2			1
+#define PWM_TIM_1_CH3 			2
+#define PWM_TIM_1_CH4			3
+
 #define DELAY_DEMO				1000
+#define PERIOD_PWM_32_KHZ		6750
+#define PERIOD_PWM_52_KHZ		4096
+#define PERIOD_100_MS_INT		5273
 
 /*===========================================================================*/
 /* Variables				                                                 */
@@ -151,6 +158,10 @@ static void pwm_ch2_cb(PWMDriver *pwmp) {
 }
 
 
+static void pwm_ch4_cb(PWMDriver *pwmp){
+	// STATE MACHINE
+}
+
 static PWMConfig tim_1_cfg = {
   .frequency = 10000,                        /* PWM clock frequency.   */
   .period    = 4096,                        /* PWM period in ticks  (here 0.4096 second)  */
@@ -220,9 +231,9 @@ int main(void) {
 		/* !!!! WIP NOT VALIDATED CONFIG : Based on TIM_6STEPS  !!!!*/
 
 		(&PWMD1)->tim->CR1 &= (~STM32_TIM_CR1_CEN);  // Disable the counter until correct configuration
-		// We also need to recompute the prescaler ?
+		(&PWMD1)->tim->PSC =  0; 					 // Set the prescaler to 0 TIM_FREQ = 216 MHz
+		(&PWMD1)->tim->ARR =  PERIOD_PWM_52_KHZ - 1; // Set the period of our PWM
 		(&PWMD1)->tim->CR1 &= (~STM32_TIM_CR1_ARPE); // Remove the ARPE
-
 
 		(&PWMD1)->tim->CCER = 0; // Reset Capture/Compare Register
 
@@ -234,7 +245,7 @@ int main(void) {
 		(&PWMD1)->tim->CR2  |=  STM32_TIM_CR2_OIS1N;      // OC1N Idle State (when MOE=0): 1
 		(&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(0);  // OC1 Mode : Frozen
 		(&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC1FE); // Disable the Fast Mode
-		(&PWMD1)->tim->CCR1  =  2047;					  // Select the Half-period to overflow
+		(&PWMD1)->tim->CCR[PWM_TIM_1_CH1] =  PERIOD_PWM_52_KHZ/2 - 1;  // Select the Half-period to overflow
 
 		// Channel 2 Config
 		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC2P);    // OC2 Polarity  : Active High
@@ -243,26 +254,48 @@ int main(void) {
 		(&PWMD1)->tim->CR2  |=  STM32_TIM_CR2_OIS2N;      // OC2N Idle State (when MOE=0): 1
 		(&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(0);  // OC2 Mode : Frozen
 		(&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC2FE); // Disable the Fast Mode
-		(&PWMD1)->tim->CCR2  =  1023;					  // Select the quarter-period to overflow
+		(&PWMD1)->tim->CCR[PWM_TIM_1_CH2] =  PERIOD_PWM_52_KHZ/4 - 1;					  // Select the quarter-period to overflow
 
 		// Channel 3 Config
 		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC3P);    // OC3 Polarity  : Active High
 		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC3NP);   // OC3N Polarity : Active High
 		(&PWMD1)->tim->CR2  |=  STM32_TIM_CR2_OIS3;       // OC3 Idle State (when MOE=0): 1
 		(&PWMD1)->tim->CR2  |=  STM32_TIM_CR2_OIS3N;      // OC3N Idle State (when MOE=0): 1
-		(&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC2M(0);  // OC3 Mode : Frozen
+		(&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(0);  // OC3 Mode : Frozen
 		(&PWMD1)->tim->CCMR2 &= (~STM32_TIM_CCMR2_OC3FE); // Disable the Fast Mode
-		(&PWMD1)->tim->CCR2  =  511;					  // Select the one-eight-period to overflow
+		(&PWMD1)->tim->CCR[PWM_TIM_1_CH3]  =  PERIOD_PWM_52_KHZ/8 - 1;  // Select the one-eight-period to overflow
+
+		// Channel 4 Config (for interruption each ms)
+		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC4P);    // OC4  Polarity : Active High
+		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC4NP);   // OC4N Polarity : Active High
+		(&PWMD1)->tim->CR2  &= (~STM32_TIM_CR2_OIS4);     // OC4 Idle State (when MOE=0): 0
+		(&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC4M(3);  // OC4 Mode : Toggle
+		(&PWMD1)->tim->CCMR2 &= (~STM32_TIM_CCMR2_OC4FE); // Disable the Fast Mode
+
+		// Configure the time and the interruption enable
+
+		// BSP - Style
+		// (&PWMD1)->tim->CCR4   =  PERIOD_100_MS_INT;    // Each 100 ms an interruption
+		// (&PWMD1)->tim->DIER |= STM32_TIM_DIER_CC4IE;	  // Enable Capture/Compare 4 Interrupt
+
+		// ChibiOS - Style
+		pwmEnableChannel(&PWMD1, PWM_TIM_1_CH4 , PERIOD_100_MS_INT); // Set OC4 to 100 ms interruption
+		pwmEnableChannelNotification(&PWMD1, PWM_TIM_1_CH4); 		 // Enable the callback to be called for the specific channel
 
 
 
 		// Break stage configuration and Debug configuration
+		(&PWMD1)->tim->BDTR = 0; 						  // Reset BDTR
+
 
 		(&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CKD(2);  // Modification of the CR1 CKD in order to have a bigger period for the dead times
 
 		// Commutation event configuration
 
+
 		// Start signal generation
+		(&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CEN;     // Disable the counter until correct configuration
+
 
 		/* !!!! WIP NOT VALIDATED CONFIG : Based on TIM_6STEPS  !!!!*/
 	}
@@ -271,6 +304,7 @@ int main(void) {
 		// Break stage configuration
 		(&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CKD(2);  // Modification of the CR1 CKD in order to have a bigger period for the dead times
 		pwmEnablePeriodicNotification(&PWMD1);
+
 	}
 
 	/*
