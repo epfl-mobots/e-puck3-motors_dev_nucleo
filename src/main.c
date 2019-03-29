@@ -164,14 +164,16 @@ static void pwm_ch4_cb(PWMDriver *pwmp){
 
 static PWMConfig tim_1_cfg = {
   .frequency = 10000,                        /* PWM clock frequency.   */
-  .period    = 4096,                        /* PWM period in ticks  (here 0.4096 second)  */
-  pwm_p_cb,									 /**/
+  .period    = 4096,                         /* PWM period in ticks  (here 0.4096 second)  */
+  pwm_p_cb,									 /* Callback called when UIF is set*/
   	  	  	  	  	  	  	  	  	  	  	 /* PWM Channels configuration */
+  // Complete configuration is done after the call of PWmStart
+  // Channels Callback are called when the counter matches the compare value (CCxIF)
   {
-   {PWM_OUTPUT_ACTIVE_HIGH|PWM_COMPLEMENTARY_OUTPUT_ACTIVE_HIGH, NULL},
-   {PWM_OUTPUT_ACTIVE_HIGH|PWM_COMPLEMENTARY_OUTPUT_ACTIVE_HIGH, pwm_ch2_cb},
-   {PWM_OUTPUT_ACTIVE_HIGH|PWM_COMPLEMENTARY_OUTPUT_ACTIVE_HIGH, NULL},
-   {PWM_OUTPUT_DISABLED, NULL}
+   {PWM_OUTPUT_DISABLED, NULL},
+   {PWM_OUTPUT_DISABLED, NULL},
+   {PWM_OUTPUT_DISABLED, NULL},
+   {PWM_OUTPUT_DISABLED, pwm_ch4_cb}
   },
   .cr2  = 0,
   .bdtr = STM32_TIM_BDTR_DTG(10),			/* WIP : Value is depending on the clock/psc with is computed automatically by ChibiOS */
