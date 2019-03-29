@@ -1,10 +1,9 @@
 /**
  * @file	main.c
- * @brief  	Main file of the e-puck2_programmer firmware used by the onboard programmer of the
- * 			e-puck2 educational robot.
+ * @brief  	Main file of the demo brushless command WIP
  * 
- * @written by  	Eliot Ferragni
- * @creation date	18.06.2018
+ * @written by  	Mohammed-Ismail Ben Salah
+ * @creation date   14.02.2019
  */
 
 #include <stdio.h>
@@ -34,6 +33,27 @@
 #define PERIOD_100_MS_INT		5273
 
 /*===========================================================================*/
+/* Typedefs				                                                 */
+/*===========================================================================*/
+
+typedef enum
+{
+  kCW   =0,
+  kCC1  =1
+}Rotation;
+
+typedef enum
+{
+  kStop    = 0,
+  kPhaseUV = 1,
+  kPhaseUW = 2,
+  kPhaseVW = 3,
+  kPhaseVU = 4,
+  kPhaseWU = 5,
+  kPhaseWV = 6
+}CommutationStateMachine;
+
+/*===========================================================================*/
 /* Variables				                                                 */
 /*===========================================================================*/
 // ADC1
@@ -42,6 +62,9 @@ static uint32_t adc_value;
 // ADC 3
 static adcsample_t adc_sample_3[ADC_GRP3_NUM_CHANNELS * ADC_GRP3_BUF_DEPTH];
 static uint32_t adc_grp_3[ADC_GRP3_NUM_CHANNELS] = {0};
+
+// PWM
+static gCommutation CommutationStateMachine=kStop;
 
 /*===========================================================================*/
 /* Prototypes				                                                 */
@@ -204,6 +227,11 @@ int main(void) {
 	initGDBEvents();
 	gdbStart();
 
+
+	// Debug MCU Config
+	DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM1_STOP; // Clock and outputs of TIM 1 are disabled when the core is halted
+
+
 	/*
 	* Initializes two serial-over-USB CDC drivers and starts and connects the USB.
 	*/
@@ -284,9 +312,8 @@ int main(void) {
 		pwmEnableChannel(&PWMD1, PWM_TIM_1_CH4 , PERIOD_100_MS_INT); // Set OC4 to 100 ms interruption
 		pwmEnableChannelNotification(&PWMD1, PWM_TIM_1_CH4); 		 // Enable the callback to be called for the specific channel
 
+		// Break stage configuration and
 
-
-		// Break stage configuration and Debug configuration
 		(&PWMD1)->tim->BDTR = 0; 						  // Reset BDTR
 
 
