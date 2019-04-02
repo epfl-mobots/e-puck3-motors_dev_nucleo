@@ -12,6 +12,7 @@
 #include "main.h"
 #include "uc_usage.h"
 #include "gdb.h"
+#include "custom_io.h"
 
 /*===========================================================================*/
 /* Define				                                                 */
@@ -32,8 +33,10 @@
 #define PERIOD_PWM_52_KHZ		4096
 #define PERIOD_100_MS_INT		5273
 
+
+
 /*===========================================================================*/
-/* Typedefs				                                                 */
+/* Typedefs				                                                     */
 /*===========================================================================*/
 
 typedef enum
@@ -87,7 +90,7 @@ static adcsample_t adc_sample_3[ADC_GRP3_NUM_CHANNELS * ADC_GRP3_BUF_DEPTH];
 static uint32_t adc_grp_3[ADC_GRP3_NUM_CHANNELS] = {0};
 
 // PWM
-static gCommutation CommutationStateMachine=kStop;
+static CommutationStateMachine gCommutation=kStop;
 
 /*===========================================================================*/
 /* Prototypes				                                                 */
@@ -272,19 +275,38 @@ static void tim_1_ocn_start(TimChannel aChannel)
 // Periodic callback called when PWM counter is reset
 static void pwm_p_cb(PWMDriver *pwmp) {
 
-  (void)pwmp;
-  palClearLine(LD2_LINE);
+
 }
 
-static void pwm_ch2_cb(PWMDriver *pwmp) {
+uint8_t state = 0;
+uint32_t count = 0;
+static void pwm_ch4_cb(PWMDriver *pwmp)
+{
+  // STATE MACHINE
+  if(0 == state)
+  {
+	  palSetLine(LD2_LINE);
+	  palSetLine(DEBUG_INT_LINE);
+	  count++;
+	  if(count > 1000)
+	  {
+		 state = 1;
+		 count = 0;
+	  }
+  }
 
-  (void)pwmp;
-  palSetLine(LD2_LINE);
-}
+  if(1 == state)
+  {
+	  palClearLine(LD2_LINE);
+	  palClearLine(DEBUG_INT_LINE);
+	  count++;
+	  if(count > 1000)
+	  {
+		 state = 0;
+		 count = 0;
+	  }
+  }
 
-
-static void pwm_ch4_cb(PWMDriver *pwmp){
-	// STATE MACHINE
 }
 
 static PWMConfig tim_1_cfg = {
@@ -334,6 +356,18 @@ int main(void) {
 	DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM1_STOP; // Clock and outputs of TIM 1 are disabled when the core is halted
 
 
+	/* Configure the IO mode */
+	palSetLineMode(LD1_LINE,PAL_MODE_OUTPUT_PUSHPULL);
+	palSetLineMode(LD2_LINE,PAL_MODE_OUTPUT_PUSHPULL);
+	palSetLineMode(LD3_LINE,PAL_MODE_OUTPUT_PUSHPULL);
+	palClearLine(LD1_LINE);
+	palClearLine(LD2_LINE);
+	palClearLine(LD3_LINE);
+
+	/* Debug IO for interrupt timings */
+	palSetLineMode(DEBUG_INT_LINE,PAL_MODE_OUTPUT_PUSHPULL);
+	palClearLine(DEBUG_INT_LINE);
+
 	/*
 	* Initializes two serial-over-USB CDC drivers and starts and connects the USB.
 	*/
@@ -356,7 +390,7 @@ int main(void) {
 
 	// TIMER 1 Config
 	pwmStart(&PWMD1, &tim_1_cfg); // WARNING : PWM MODE 1 BY DEFAULT AND MOE SET TO 1 !!
-	uint32_t brush_6stpes_cfg = 0;
+	uint32_t brush_6stpes_cfg = 1;
 
 	if(1 == brush_6stpes_cfg)
 	{
@@ -373,8 +407,8 @@ int main(void) {
 		// Channel 1 Config
 		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC1P);    // OC1 Polarity  : Active High
 		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC1NP);   // OC1N Polarity : Active High
-		(&PWMD1)->tim->CR2  |=  STM32_TIM_CR2_OIS1;       // OC1 Idle State (when MOE=0): 1
-		(&PWMD1)->tim->CR2  |=  STM32_TIM_CR2_OIS1N;      // OC1N Idle State (when MOE=0): 1
+		(&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS1);    // OC1 Idle State (when MOE=0) : 0
+		(&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS1N);   // OC1N Idle State (when MOE=0): 0
 		(&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(0);  // OC1 Mode : Frozen
 		(&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC1FE); // Disable the Fast Mode
 		(&PWMD1)->tim->CCR[PWM_TIM_1_CH1] =  PERIOD_PWM_52_KHZ/2 - 1;  // Select the Half-period to overflow
@@ -382,8 +416,8 @@ int main(void) {
 		// Channel 2 Config
 		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC2P);    // OC2 Polarity  : Active High
 		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC2NP);   // OC2N Polarity : Active High
-		(&PWMD1)->tim->CR2  |=  STM32_TIM_CR2_OIS2;       // OC2 Idle State (when MOE=0): 1
-		(&PWMD1)->tim->CR2  |=  STM32_TIM_CR2_OIS2N;      // OC2N Idle State (when MOE=0): 1
+		(&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS2);    // OC2 Idle State (when MOE=0) : 0
+		(&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS2N);   // OC2N Idle State (when MOE=0): 0
 		(&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(0);  // OC2 Mode : Frozen
 		(&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC2FE); // Disable the Fast Mode
 		(&PWMD1)->tim->CCR[PWM_TIM_1_CH2] =  PERIOD_PWM_52_KHZ/4 - 1;					  // Select the quarter-period to overflow
@@ -391,8 +425,8 @@ int main(void) {
 		// Channel 3 Config
 		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC3P);    // OC3 Polarity  : Active High
 		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC3NP);   // OC3N Polarity : Active High
-		(&PWMD1)->tim->CR2  |=  STM32_TIM_CR2_OIS3;       // OC3 Idle State (when MOE=0): 1
-		(&PWMD1)->tim->CR2  |=  STM32_TIM_CR2_OIS3N;      // OC3N Idle State (when MOE=0): 1
+		(&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS3);    // OC3 Idle State (when MOE=0) : 0
+		(&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS3N);   // OC3N Idle State (when MOE=0): 0
 		(&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(0);  // OC3 Mode : Frozen
 		(&PWMD1)->tim->CCMR2 &= (~STM32_TIM_CCMR2_OC3FE); // Disable the Fast Mode
 		(&PWMD1)->tim->CCR[PWM_TIM_1_CH3]  =  PERIOD_PWM_52_KHZ/8 - 1;  // Select the one-eight-period to overflow
@@ -411,7 +445,7 @@ int main(void) {
 		// (&PWMD1)->tim->DIER |= STM32_TIM_DIER_CC4IE;	  // Enable Capture/Compare 4 Interrupt
 
 		// ChibiOS - Style
-		pwmEnableChannel(&PWMD1, PWM_TIM_1_CH4 , PERIOD_100_MS_INT); // Set OC4 to 100 ms interruption
+		pwmEnableChannel(&PWMD1, PWM_TIM_1_CH4 , PERIOD_PWM_52_KHZ); // Set OC4 to 1/52000 second interruption
 		pwmEnableChannelNotification(&PWMD1, PWM_TIM_1_CH4); 		 // Enable the callback to be called for the specific channel
 
 		// Break stage configuration
@@ -434,14 +468,10 @@ int main(void) {
 		tim_1_ocn_start(kTimChannel3); // Channel 3 OC Complementary
 		tim_1_oc_start(kTimChannel4);  // Channel 4 OC
 
-
 		// Force update event (if preload enabled)
 
 		// Enable the Timer
 		(&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CEN;     // Enable the counter in correct configuration
-
-
-
 
 		/* !!!! WIP NOT VALIDATED CONFIG : Based on TIM_6STEPS  !!!!*/
 	}
@@ -449,22 +479,17 @@ int main(void) {
 	{
 		// Break stage configuration
 		(&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CKD(2);  // Modification of the CR1 CKD in order to have a bigger period for the dead times
-		pwmEnablePeriodicNotification(&PWMD1);
 
 	}
+
+	pwmEnablePeriodicNotification(&PWMD1);
 
 	/*
 	 * Launch the conversion
 	 */
 	adcStartConversion(&ADCD3, &ADC3group, adc_sample_3,ADC_GRP3_BUF_DEPTH);
 
-	/* Configure the IO mode */
-	palSetLineMode(LD1_LINE,PAL_MODE_OUTPUT_PUSHPULL);
-	palSetLineMode(LD2_LINE,PAL_MODE_OUTPUT_PUSHPULL);
-	palSetLineMode(LD3_LINE,PAL_MODE_OUTPUT_PUSHPULL);
-	palClearLine(LD1_LINE);
-	palClearLine(LD2_LINE);
-	palClearLine(LD3_LINE);
+
 
 	// Configure the Thread that will blink the leds on the boards
 	chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO + 1, Thread1, NULL);
@@ -475,7 +500,7 @@ int main(void) {
 		/* chThdSleepMilliseconds(500);
 		chprintf((BaseSequentialStream *) &USB_GDB, "IN1 : %d,IN2 : %d,IN3 : %d,IN4 : %d\n\r",adc_grp_3[0],adc_grp_3[1],adc_grp_3[2],adc_grp_3[3]);*/
 
-		/* Enable simple PWM */
+/*		 Enable simple PWM
 		pwmEnableChannel(&PWMD1, PWM_TIM_1_CH2 , PWM_PERCENTAGE_TO_WIDTH(&PWMD1, 7500)); // Set CH1 and CH1N to 75% duty cycle
 		pwmEnableChannelNotification(&PWMD1, PWM_TIM_1_CH2);
 		chThdSleepMilliseconds(DELAY_DEMO);
@@ -489,8 +514,8 @@ int main(void) {
 		pwmEnableChannel(&PWMD1, PWM_TIM_1_CH2 , PWM_PERCENTAGE_TO_WIDTH(&PWMD1, 1000)); // Set CH1 and CH1N to 10% duty cycle
 		chThdSleepMilliseconds(DELAY_DEMO);
 
-		/* Disable the CH 1 and */
-	    pwmDisableChannel(&PWMD1, DELAY_DEMO);
+		 Disable the CH 1 and
+	    pwmDisableChannel(&PWMD1, DELAY_DEMO);*/
 
 	}
 }
