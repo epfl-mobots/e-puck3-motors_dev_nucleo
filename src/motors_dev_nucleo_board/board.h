@@ -261,10 +261,6 @@
 /*
  * IO lines assignments.
  */
-/* Ismail deifinitions*/
-#define LD1_LINE					PAL_LINE(GPIOB,0U)
-#define LD2_LINE					PAL_LINE(GPIOB,7U)
-#define LD3_LINE					PAL_LINE(GPIOB,14U)
 
 /* Eliot definitions */
 #define LINE_ADC3_MOT1_PH1          PAL_LINE(GPIOA, 0U)
