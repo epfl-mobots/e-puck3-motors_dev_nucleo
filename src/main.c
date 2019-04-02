@@ -402,15 +402,15 @@ static void commutation_cb(PWMDriver *pwmp)
      */
     case kPhaseUV:
     {
+      /* Channel 3 not connected */
+      tim_1_oc_stop(kTimChannel3);
+      tim_1_ocn_stop(kTimChannel3);
       /* Channel 1 High transistor connected */
       tim_1_oc_start(kTimChannel1);
       tim_1_ocn_stop(kTimChannel1);
       /* Channel 2 Low  transistor connected */
       tim_1_oc_stop(kTimChannel2);
       tim_1_ocn_start(kTimChannel2);
-      /* Channel 3 not connected */
-      tim_1_oc_stop(kTimChannel3);
-      tim_1_ocn_start(kTimChannel3);
 
       gCommutation = kPhaseUW;
       break;
@@ -418,26 +418,82 @@ static void commutation_cb(PWMDriver *pwmp)
 
     case kPhaseUW:
     {
+      /* Channel 1 High transistor connected */
+      tim_1_oc_start(kTimChannel1);
+      tim_1_ocn_stop(kTimChannel1);
+      /* Channel 2 not connected */
+      tim_1_oc_stop(kTimChannel2);
+      tim_1_ocn_stop(kTimChannel2);
+      /* Channel 3 Low transistor connected */
+      tim_1_oc_stop(kTimChannel3);
+      tim_1_ocn_start(kTimChannel3);
+
+      gCommutation = kPhaseVW;
       break;
     }
 
     case kPhaseVW:
     {
+      /* Channel 1 not connected */
+      tim_1_oc_stop(kTimChannel1);
+      tim_1_ocn_stop(kTimChannel1);
+      /* Channel 2 High connected*/
+      tim_1_oc_start(kTimChannel2);
+      tim_1_ocn_stop(kTimChannel2);
+      /* Channel 3 Low transistor connected */
+      tim_1_oc_stop(kTimChannel3);
+      tim_1_ocn_start(kTimChannel3);
+
+      gCommutation = kPhaseVU;
       break;
     }
 
     case kPhaseVU:
     {
+      /* Channel 3 not connected */
+      tim_1_oc_stop(kTimChannel3);
+      tim_1_ocn_stop(kTimChannel3);
+      /* Channel 2 High connected*/
+      tim_1_oc_start(kTimChannel2);
+      tim_1_ocn_stop(kTimChannel2);
+      /* Channel 1 Low connected */
+      tim_1_oc_stop(kTimChannel1);
+      tim_1_ocn_start(kTimChannel1);
+
+      gCommutation = kPhaseWU;
       break;
     }
 
     case kPhaseWU:
     {
+      /* Channel 2 not connected */
+      tim_1_oc_stop(kTimChannel2);
+      tim_1_ocn_stop(kTimChannel2);
+      /* Channel 3 High connected */
+      tim_1_oc_start(kTimChannel3);
+      tim_1_ocn_stop(kTimChannel3);
+      /* Channel 1 Low connected */
+      tim_1_oc_stop(kTimChannel1);
+      tim_1_ocn_start(kTimChannel1);
+
+      gCommutation = kPhaseWV;
       break;
     }
 
     case kPhaseWV:
     {
+
+      /* Channel 1 not connected */
+      tim_1_oc_stop(kTimChannel1);
+      tim_1_ocn_stop(kTimChannel1);
+      /* Channel 2 Low connected */
+      tim_1_oc_stop(kTimChannel2);
+      tim_1_ocn_start(kTimChannel2);
+      /* Channel 3 High connected */
+      tim_1_oc_start(kTimChannel3);
+      tim_1_ocn_stop(kTimChannel3);
+
+      gCommutation = kPhaseUV;
       break;
     }
 
