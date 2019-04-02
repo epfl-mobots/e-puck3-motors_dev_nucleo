@@ -53,6 +53,29 @@ typedef enum
   kPhaseWV = 6
 }CommutationStateMachine;
 
+typedef enum
+{
+	kTimChannel1=0,
+	kTimChannel2=1,
+	kTimChannel3=2,
+	kTimChannel4=3,
+	kTimChannel5=4,
+	kTimChannel6=5
+}TimChannel;
+
+typedef enum
+{
+	kTimCC_Disable = 0,
+	kTimCC_Enable  = 1
+}TimCCState;
+
+typedef enum
+{
+	kTimCCN_Disable = 0,
+	kTimCCN_Enable  = 4
+}TimCCNState;
+
+
 /*===========================================================================*/
 /* Variables				                                                 */
 /*===========================================================================*/
@@ -165,7 +188,86 @@ static void adc_3_err_cb(ADCDriver *adcp, adcerror_t err)
 /*===========================================================================*/
 /* Timer 1 Configuration                                                     */
 /*===========================================================================*/
+static void tim_1_oc_start(TimChannel aChannel)
+{
+  uint32_t lCCEnable;
+  switch(aChannel)
+  {
+    case kTimChannel1:
+    {
+      lCCEnable = STM32_TIM_CCER_CC1E;
+	  break;
+	}
 
+    case kTimChannel2:
+    {
+      lCCEnable = STM32_TIM_CCER_CC2E;
+	  break;
+	}
+
+    case kTimChannel3:
+    {
+      lCCEnable = STM32_TIM_CCER_CC3E;
+      break;
+	}
+
+    case kTimChannel4:
+    {
+     lCCEnable = STM32_TIM_CCER_CC4E;
+	  break;
+	}
+
+    case kTimChannel5:
+    {
+      lCCEnable = STM32_TIM_CCER_CC5E;
+	  break;
+	}
+
+    case kTimChannel6:
+    {
+      lCCEnable = STM32_TIM_CCER_CC6E;
+	  break;
+	}
+
+    default:
+    {
+
+    }
+  }
+
+  (&PWMD1)->tim->CCER |= lCCEnable;
+}
+
+static void tim_1_ocn_start(TimChannel aChannel)
+{
+  uint32_t lCCNEnable;
+  switch(aChannel)
+  {
+    case kTimChannel1:
+    {
+      lCCNEnable = STM32_TIM_CCER_CC1NE;
+	  break;
+	}
+
+    case kTimChannel2:
+    {
+      lCCNEnable = STM32_TIM_CCER_CC2NE;
+	  break;
+	}
+
+    case kTimChannel3:
+    {
+      lCCNEnable = STM32_TIM_CCER_CC3NE;
+      break;
+	}
+
+    default:
+    {
+
+    }
+  }
+  (&PWMD1)->tim->CCER |= lCCNEnable;
+}
 
 // Periodic callback called when PWM counter is reset
 static void pwm_p_cb(PWMDriver *pwmp) {
@@ -312,18 +414,33 @@ int main(void) {
 		pwmEnableChannel(&PWMD1, PWM_TIM_1_CH4 , PERIOD_100_MS_INT); // Set OC4 to 100 ms interruption
 		pwmEnableChannelNotification(&PWMD1, PWM_TIM_1_CH4); 		 // Enable the callback to be called for the specific channel
 
-		// Break stage configuration and
+		// Break stage configuration
 
-		(&PWMD1)->tim->BDTR = 0; 						  // Reset BDTR
+		(&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CKD(2);  	// Modification of the CR1 CKD in order to have a bigger period for the dead times
+														// OSSR and OSSI not needed
+		(&PWMD1)->tim->BDTR = 0; 						// Reset BDTR to everything disabled (BK,BK2 not enabled)
+		(&PWMD1)->tim->BDTR |= STM32_TIM_BDTR_DTG(10);  // Dead-time generator Setup
+		(&PWMD1)->tim->BDTR |= STM32_TIM_BDTR_MOE;		// Main Output Enable
 
-
-		(&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CKD(2);  // Modification of the CR1 CKD in order to have a bigger period for the dead times
-
-		// Commutation event configuration
+		// Commutation event configuration (Not needed at the moment.)
 
 
 		// Start signal generation
-		(&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CEN;     // Disable the counter until correct configuration
+		tim_1_oc_start(kTimChannel1);  // Channel 1 OC
+		tim_1_ocn_start(kTimChannel1); // Channel 1 OC Complementary
+		tim_1_oc_start(kTimChannel2);  // Channel 2 OC
+		tim_1_ocn_start(kTimChannel2); // Channel 2 OC Complementary
+		tim_1_oc_start(kTimChannel3);  // Channel 3 OC
+		tim_1_ocn_start(kTimChannel3); // Channel 3 OC Complementary
+		tim_1_oc_start(kTimChannel4);  // Channel 4 OC
+
+
+		// Force update event (if preload enabled)
+
+		// Enable the Timer
+		(&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CEN;     // Enable the counter in correct configuration
+
+
 
 
 		/* !!!! WIP NOT VALIDATED CONFIG : Based on TIM_6STEPS  !!!!*/
