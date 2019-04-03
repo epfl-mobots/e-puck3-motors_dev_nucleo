@@ -23,6 +23,7 @@ void drv8323WriteConf(DRV8323Config *drv){
 
     //we need a pullup for the MISO when communicating with DRV8323
     uint16_t pupdr = utilityChangePUPDRGpio(LINE_SPI3_MISO, PAL_STM32_PUPDR_PULLUP);
+    //sets the chip select line to the good one
 	drv->spicfg->ssline = drv->ssline;
 
 	//we need to release the CS pin between each word
@@ -62,6 +63,7 @@ void drv8323WriteConf(DRV8323Config *drv){
 	spiExchange(drv->spip, 1, &tx, &rx);
 	spiUnselect(drv->spip);
 
+	//we restore the original pupdr state
 	utilityChangePUPDRGpio(LINE_SPI3_MISO, pupdr);
 
 	/* Releasing the bus.*/
@@ -79,12 +81,14 @@ uint16_t drv8323WriteReg(DRV8323Config *drv, uint16_t reg){
 
     //we need a pullup for the MISO when communicating with DRV8323
     uint16_t pupdr = utilityChangePUPDRGpio(LINE_SPI3_MISO, PAL_STM32_PUPDR_PULLUP);
+    //sets the chip select line to the good one
 	drv->spicfg->ssline = drv->ssline;
 
 	spiSelect(drv->spip);
 	spiExchange(drv->spip, 1, &reg, &rcv);
 	spiUnselect(drv->spip);
 
+	//we restore the original pupdr state
 	utilityChangePUPDRGpio(LINE_SPI3_MISO, pupdr);
 
 	/* Releasing the bus.*/
@@ -104,12 +108,14 @@ uint16_t drv8323ReadReg(DRV8323Config *drv, uint16_t reg){
 
     //we need a pullup for the MISO when communicating with DRV8323
     uint16_t pupdr = utilityChangePUPDRGpio(LINE_SPI3_MISO, PAL_STM32_PUPDR_PULLUP);
+    //sets the chip select line to the good one
 	drv->spicfg->ssline = drv->ssline;
 
 	spiSelect(drv->spip);
 	spiExchange(drv->spip, 1, &reg, &rcv);
 	spiUnselect(drv->spip);
 
+	//we restore the original pupdr state
 	utilityChangePUPDRGpio(LINE_SPI3_MISO, pupdr);
 
 	/* Releasing the bus.*/
