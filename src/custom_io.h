@@ -22,6 +22,7 @@
 #define LD2_LINE					PAL_LINE(GPIOB,7U)
 #define LD3_LINE					PAL_LINE(GPIOB,14U)
 #define DEBUG_INT_LINE				PAL_LINE(GPIOB,2U)
+#define DEBUG_INT_LINE2             PAL_LINE(GPIOB,6U)
 
 
 #endif /* CUSTOM_IO_H_ */
