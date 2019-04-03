@@ -74,7 +74,7 @@ typedef enum
  kForcedMatchLow  = 2,
  kToggle          = 3,
  kForceRefHigh    = 4,
- kForceRefHigh    = 5,
+ kForceRefLow     = 5,
  kPWMMode1        = 6,
  kPWMMode2        = 7,
  kRetrOPM1        = 8,
@@ -341,14 +341,22 @@ static void pwm_p_cb(PWMDriver *pwmp)
 
 uint8_t state = 0;
 uint32_t count = 0;
-static void pwm_ch4_cb(PWMDriver *pwmp)
+static void debug_cb(PWMDriver *pwmp)
 {
+  /* Configure the mode of each channel */
+  (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kPWMMode1);  // OC1 Mode : PWM Mode 1
+  (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(kPWMMode1);  // OC2 Mode : PWM Mode 1
+  (&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(kPWMMode1);  // OC3 Mode : PWM Mode 1
+
+
 
   // STATE MACHINE
   if(0 == state)
   {
 	  palSetLine(LD2_LINE);
 	  palSetLine(DEBUG_INT_LINE);
+	  palClearLine(DEBUG_INT_LINE2);
+
 	  count++;
 	  if(count > 1000)
 	  {
@@ -361,6 +369,7 @@ static void pwm_ch4_cb(PWMDriver *pwmp)
   {
 	  palClearLine(LD2_LINE);
 	  palClearLine(DEBUG_INT_LINE);
+	  palSetLine(DEBUG_INT_LINE2);
 	  count++;
 	  if(count > 1000)
 	  {
@@ -378,7 +387,10 @@ static void commutation_cb(PWMDriver *pwmp)
   {
     case kStop:
     {
+
       //TODO : Not optimal but will do the job.
+      palSetLine(LD2_LINE);
+      palSetLine(DEBUG_INT_LINE);
 
       /* Stop all the channels */
       tim_1_oc_stop(kTimChannel1);
@@ -402,6 +414,9 @@ static void commutation_cb(PWMDriver *pwmp)
      */
     case kPhaseUV:
     {
+      palSetLine(LD2_LINE);
+      palSetLine(DEBUG_INT_LINE);
+
       /* Channel 3 not connected */
       tim_1_oc_stop(kTimChannel3);
       tim_1_ocn_stop(kTimChannel3);
@@ -418,6 +433,7 @@ static void commutation_cb(PWMDriver *pwmp)
 
     case kPhaseUW:
     {
+
       /* Channel 1 High transistor connected */
       tim_1_oc_start(kTimChannel1);
       tim_1_ocn_stop(kTimChannel1);
@@ -434,6 +450,7 @@ static void commutation_cb(PWMDriver *pwmp)
 
     case kPhaseVW:
     {
+
       /* Channel 1 not connected */
       tim_1_oc_stop(kTimChannel1);
       tim_1_ocn_stop(kTimChannel1);
@@ -450,6 +467,7 @@ static void commutation_cb(PWMDriver *pwmp)
 
     case kPhaseVU:
     {
+
       /* Channel 3 not connected */
       tim_1_oc_stop(kTimChannel3);
       tim_1_ocn_stop(kTimChannel3);
@@ -466,6 +484,7 @@ static void commutation_cb(PWMDriver *pwmp)
 
     case kPhaseWU:
     {
+
       /* Channel 2 not connected */
       tim_1_oc_stop(kTimChannel2);
       tim_1_ocn_stop(kTimChannel2);
@@ -482,6 +501,8 @@ static void commutation_cb(PWMDriver *pwmp)
 
     case kPhaseWV:
     {
+      palClearLine(LD2_LINE);
+      palClearLine(DEBUG_INT_LINE);
 
       /* Channel 1 not connected */
       tim_1_oc_stop(kTimChannel1);
@@ -518,7 +539,7 @@ static PWMConfig tim_1_cfg = {
    {PWM_OUTPUT_DISABLED, NULL},
    {PWM_OUTPUT_DISABLED, NULL},
    {PWM_OUTPUT_DISABLED, NULL},
-   {PWM_OUTPUT_DISABLED, pwm_ch4_cb}
+   {PWM_OUTPUT_DISABLED, debug_cb}
   },
   .cr2  = 0,
   .bdtr = 0,
@@ -565,6 +586,8 @@ int main(void) {
 	/* Debug IO for interrupt timings */
 	palSetLineMode(DEBUG_INT_LINE,PAL_MODE_OUTPUT_PUSHPULL);
 	palClearLine(DEBUG_INT_LINE);
+    palSetLineMode(DEBUG_INT_LINE2,PAL_MODE_OUTPUT_PUSHPULL);
+    palClearLine(DEBUG_INT_LINE2);
 
 	/*
 	* Initializes two serial-over-USB CDC drivers and starts and connects the USB.
@@ -600,11 +623,16 @@ int main(void) {
 		(&PWMD1)->tim->PSC =  0; 					    // Set the prescaler to 0 TIM_FREQ = 216 MHz
 		(&PWMD1)->tim->ARR =  PERIOD_PWM_52_KHZ - 1;    // Set the period of our PWM
 
-		(&PWMD1)->tim->CR1 &= (~STM32_TIM_CR1_ARPE); // Remove the ARPE
+		(&PWMD1)->tim->CR1 &= (~STM32_TIM_CR1_ARPE);    // Remove the ARPE
 
 		(&PWMD1)->tim->CCER = 0; // Reset Capture/Compare Register
+		//
 
 		// 1 : Output channels configuration
+		// General Config
+		(&PWMD1)->tim->CCMR1 = 0;                         // Reset OC 1 and OC2 configuration
+        (&PWMD1)->tim->CCMR2 = 0;                         // Reset OC 3 and OC4 configuration
+
 		// Channel 1 Config
 		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC1P);    // OC1 Polarity  : Active High
 		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC1NP);   // OC1N Polarity : Active High
@@ -621,7 +649,7 @@ int main(void) {
 		(&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS2N);   // OC2N Idle State (when MOE=0): 0
 		(&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(0);  // OC2 Mode : Frozen
 		(&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC2FE); // Disable the Fast Mode
-		(&PWMD1)->tim->CCR[PWM_TIM_1_CH2] =  PERIOD_PWM_52_KHZ/4 - 1;					  // Select the quarter-period to overflow
+		(&PWMD1)->tim->CCR[PWM_TIM_1_CH2] =  PERIOD_PWM_52_KHZ/4 - 1;  // Select the Half-period to overflow
 
 		// Channel 3 Config
 		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC3P);    // OC3 Polarity  : Active High
@@ -630,7 +658,7 @@ int main(void) {
 		(&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS3N);   // OC3N Idle State (when MOE=0): 0
 		(&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(0);  // OC3 Mode : Frozen
 		(&PWMD1)->tim->CCMR2 &= (~STM32_TIM_CCMR2_OC3FE); // Disable the Fast Mode
-		(&PWMD1)->tim->CCR[PWM_TIM_1_CH3]  =  PERIOD_PWM_52_KHZ/8 - 1;  // Select the one-eight-period to overflow
+		(&PWMD1)->tim->CCR[PWM_TIM_1_CH3]  =  PERIOD_PWM_52_KHZ/8 - 1;  // Select the Half-period to overflow
 
 		// Channel 4 Config (for interruption each ms)
 		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC4P);    // OC4  Polarity : Active High
@@ -654,7 +682,8 @@ int main(void) {
 		(&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CKD(2);  	// Modification of the CR1 CKD in order to have a bigger period for the dead times
 														// OSSR and OSSI not needed
 		(&PWMD1)->tim->BDTR = 0; 						// Reset BDTR to everything disabled (BK,BK2 not enabled)
-		(&PWMD1)->tim->BDTR |= STM32_TIM_BDTR_DTG(10);  // Dead-time generator Setup
+		(&PWMD1)->tim->BDTR |= STM32_TIM_BDTR_DTG(0);   // Dead-time generator Setup
+		(&PWMD1)->tim->BDTR |= STM32_TIM_BDTR_OSSR;     // Off-state selection for Run Mode
 		(&PWMD1)->tim->BDTR |= STM32_TIM_BDTR_MOE;		// Main Output Enable
 
 		// Commutation event configuration (Not needed at the moment.)
