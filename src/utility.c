@@ -24,3 +24,12 @@ uint16_t utilityChangePUPDRGpio(ioline_t line, uint16_t mode){
 	chSysUnlock();
 	return current_mode;
 }
+
+void utilityReconfigureSPI(SPIDriver *spip, const SPIConfig *config){
+
+	if(spip->config == config){
+		return;
+	}else{
+		spiStart(spip, config);
+	}
+}

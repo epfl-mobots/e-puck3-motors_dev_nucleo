@@ -19,7 +19,7 @@ void drv8323WriteConf(DRV8323Config *drv){
 	/* Bus acquisition and SPI reprogramming.*/
     spiAcquireBus(drv->spip);
 
-    spiStart(drv->spip, drv->spicfg);
+    utilityReconfigureSPI(drv->spip, drv->spicfg);
 
     //we need a pullup for the MISO when communicating with DRV8323
     uint16_t pupdr = utilityChangePUPDRGpio(LINE_SPI3_MISO, PAL_STM32_PUPDR_PULLUP);
@@ -77,7 +77,7 @@ uint16_t drv8323WriteReg(DRV8323Config *drv, uint16_t reg){
 
 	/* Bus acquisition and SPI reprogramming.*/
     spiAcquireBus(drv->spip);
-    spiStart(drv->spip, drv->spicfg);
+    utilityReconfigureSPI(drv->spip, drv->spicfg);
 
     //we need a pullup for the MISO when communicating with DRV8323
     uint16_t pupdr = utilityChangePUPDRGpio(LINE_SPI3_MISO, PAL_STM32_PUPDR_PULLUP);
@@ -104,7 +104,7 @@ uint16_t drv8323ReadReg(DRV8323Config *drv, uint16_t reg){
 
 	/* Bus acquisition and SPI reprogramming.*/
     spiAcquireBus(drv->spip);
-    spiStart(drv->spip, drv->spicfg);
+    utilityReconfigureSPI(drv->spip, drv->spicfg);
 
     //we need a pullup for the MISO when communicating with DRV8323
     uint16_t pupdr = utilityChangePUPDRGpio(LINE_SPI3_MISO, PAL_STM32_PUPDR_PULLUP);
