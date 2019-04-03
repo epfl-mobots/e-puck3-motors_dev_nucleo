@@ -95,6 +95,17 @@ typedef enum
 
 
 /*===========================================================================*/
+/* Structures                                                                */
+/*===========================================================================*/
+typedef struct
+{
+  uint32_t InStepCount;             // Count the number of iteration has done in a given step
+  const uint32_t kMaxStepCount;     // Maximum number of iteration inside a step
+}BrushlessConfig;
+
+
+
+/*===========================================================================*/
 /* Variables				                                                 */
 /*===========================================================================*/
 // ADC1
@@ -106,6 +117,7 @@ static uint32_t adc_grp_3[ADC_GRP3_NUM_CHANNELS] = {0};
 
 // PWM
 static CommutationStateMachine gCommutation=kStop;
+static BrushlessConfig gBrushCfg = {.InStepCount = 0,.kMaxStepCount = 100};
 
 /*===========================================================================*/
 /* Prototypes				                                                 */
@@ -391,6 +403,7 @@ static void commutation_cb(PWMDriver *pwmp)
       //TODO : Not optimal but will do the job.
       palSetLine(LD2_LINE);
       palSetLine(DEBUG_INT_LINE);
+      palSetLine(DEBUG_INT_LINE2);
 
       /* Stop all the channels */
       tim_1_oc_stop(kTimChannel1);
@@ -400,22 +413,33 @@ static void commutation_cb(PWMDriver *pwmp)
       tim_1_ocn_stop(kTimChannel2);
       tim_1_ocn_stop(kTimChannel3);
 
+      /* Set all the OC output to same PWM */
+      (&PWMD1)->tim->CCR[kTimChannel1]  =  PERIOD_PWM_52_KHZ - 1;  // Select the complete period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel2]  =  PERIOD_PWM_52_KHZ - 1;  // Select the complete period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel3]  =  PERIOD_PWM_52_KHZ - 1;  // Select the complete period to overflow
+
       /* Configure the mode of each channel */
       (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kPWMMode1);  // OC1 Mode : PWM Mode 1
       (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(kPWMMode1);  // OC2 Mode : PWM Mode 1
       (&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(kPWMMode1);  // OC3 Mode : PWM Mode 1
 
+      gBrushCfg.InStepCount = 0;
       gCommutation = kPhaseUV;
+
       break;
     }
 
     /*
-     *
+     * To see which step we are we will count from 0 up to 3 and down to 1
      */
     case kPhaseUV:
     {
+      /* Debug IO in order to see in which step we are */
       palSetLine(LD2_LINE);
-      palSetLine(DEBUG_INT_LINE);
+
+      /* Step 0 */
+      palClearLine(DEBUG_INT_LINE);
+      palClearLine(DEBUG_INT_LINE2);
 
       /* Channel 3 not connected */
       tim_1_oc_stop(kTimChannel3);
@@ -427,12 +451,21 @@ static void commutation_cb(PWMDriver *pwmp)
       tim_1_oc_stop(kTimChannel2);
       tim_1_ocn_start(kTimChannel2);
 
-      gCommutation = kPhaseUW;
+      gBrushCfg.InStepCount++;
+      if (gBrushCfg.kMaxStepCount == gBrushCfg.InStepCount)
+      {
+        gCommutation = kPhaseUW;
+        gBrushCfg.InStepCount = 0;
+      }
+
       break;
     }
 
     case kPhaseUW:
     {
+      /* Step 1 */
+      palSetLine(DEBUG_INT_LINE);
+      palClearLine(DEBUG_INT_LINE2);
 
       /* Channel 1 High transistor connected */
       tim_1_oc_start(kTimChannel1);
@@ -444,12 +477,22 @@ static void commutation_cb(PWMDriver *pwmp)
       tim_1_oc_stop(kTimChannel3);
       tim_1_ocn_start(kTimChannel3);
 
-      gCommutation = kPhaseVW;
+      gBrushCfg.InStepCount++;
+      if (gBrushCfg.kMaxStepCount == gBrushCfg.InStepCount)
+      {
+        gCommutation = kPhaseVW;
+        gBrushCfg.InStepCount = 0;
+      }
+
       break;
     }
 
     case kPhaseVW:
     {
+
+      /* Step 2 */
+      palClearLine(DEBUG_INT_LINE);
+      palSetLine(DEBUG_INT_LINE2);
 
       /* Channel 1 not connected */
       tim_1_oc_stop(kTimChannel1);
@@ -461,48 +504,75 @@ static void commutation_cb(PWMDriver *pwmp)
       tim_1_oc_stop(kTimChannel3);
       tim_1_ocn_start(kTimChannel3);
 
-      gCommutation = kPhaseVU;
+      gBrushCfg.InStepCount++;
+      if (gBrushCfg.kMaxStepCount == gBrushCfg.InStepCount)
+      {
+        gCommutation = kPhaseVU;
+        gBrushCfg.InStepCount = 0;
+      }
+
       break;
     }
 
     case kPhaseVU:
     {
 
-      /* Channel 3 not connected */
-      tim_1_oc_stop(kTimChannel3);
-      tim_1_ocn_stop(kTimChannel3);
-      /* Channel 2 High connected*/
-      tim_1_oc_start(kTimChannel2);
-      tim_1_ocn_stop(kTimChannel2);
+      /* Step 3 */
+      palSetLine(DEBUG_INT_LINE);
+      palSetLine(DEBUG_INT_LINE2);
+
       /* Channel 1 Low connected */
       tim_1_oc_stop(kTimChannel1);
       tim_1_ocn_start(kTimChannel1);
+      /* Channel 2 High connected*/
+      tim_1_oc_start(kTimChannel2);
+      tim_1_ocn_stop(kTimChannel2);
+      /* Channel 3 not connected */
+      tim_1_oc_stop(kTimChannel3);
+      tim_1_ocn_stop(kTimChannel3);
 
-      gCommutation = kPhaseWU;
+      gBrushCfg.InStepCount++;
+      if (gBrushCfg.kMaxStepCount == gBrushCfg.InStepCount)
+      {
+        gCommutation = kPhaseWU;
+        gBrushCfg.InStepCount = 0;
+      }
       break;
     }
 
     case kPhaseWU:
     {
+      /* Step 2 */
+      palClearLine(DEBUG_INT_LINE);
+      palSetLine(DEBUG_INT_LINE2);
 
+      /* Channel 1 Low connected */
+      tim_1_oc_stop(kTimChannel1);
+      tim_1_ocn_start(kTimChannel1);
       /* Channel 2 not connected */
       tim_1_oc_stop(kTimChannel2);
       tim_1_ocn_stop(kTimChannel2);
       /* Channel 3 High connected */
       tim_1_oc_start(kTimChannel3);
       tim_1_ocn_stop(kTimChannel3);
-      /* Channel 1 Low connected */
-      tim_1_oc_stop(kTimChannel1);
-      tim_1_ocn_start(kTimChannel1);
 
-      gCommutation = kPhaseWV;
+      gBrushCfg.InStepCount++;
+      if (gBrushCfg.kMaxStepCount == gBrushCfg.InStepCount)
+      {
+        gCommutation = kPhaseWV;
+        gBrushCfg.InStepCount = 0;
+      }
       break;
     }
 
     case kPhaseWV:
     {
+
       palClearLine(LD2_LINE);
-      palClearLine(DEBUG_INT_LINE);
+
+      /* Step 3 */
+      palSetLine(DEBUG_INT_LINE);
+      palClearLine(DEBUG_INT_LINE2);
 
       /* Channel 1 not connected */
       tim_1_oc_stop(kTimChannel1);
@@ -514,7 +584,13 @@ static void commutation_cb(PWMDriver *pwmp)
       tim_1_oc_start(kTimChannel3);
       tim_1_ocn_stop(kTimChannel3);
 
-      gCommutation = kPhaseUV;
+
+      gBrushCfg.InStepCount++;
+      if (gBrushCfg.kMaxStepCount == gBrushCfg.InStepCount)
+      {
+        gCommutation = kPhaseUV;
+        gBrushCfg.InStepCount = 0;
+      }
       break;
     }
 
@@ -539,7 +615,7 @@ static PWMConfig tim_1_cfg = {
    {PWM_OUTPUT_DISABLED, NULL},
    {PWM_OUTPUT_DISABLED, NULL},
    {PWM_OUTPUT_DISABLED, NULL},
-   {PWM_OUTPUT_DISABLED, debug_cb}
+   {PWM_OUTPUT_DISABLED, commutation_cb}
   },
   .cr2  = 0,
   .bdtr = 0,
@@ -640,7 +716,7 @@ int main(void) {
 		(&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS1N);   // OC1N Idle State (when MOE=0): 0
 		(&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(0);  // OC1 Mode : Frozen
 		(&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC1FE); // Disable the Fast Mode
-		(&PWMD1)->tim->CCR[PWM_TIM_1_CH1] =  PERIOD_PWM_52_KHZ/2 - 1;  // Select the Half-period to overflow
+		(&PWMD1)->tim->CCR[kTimChannel1] =  PERIOD_PWM_52_KHZ/2 - 1;  // Select the Half-period to overflow
 
 		// Channel 2 Config
 		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC2P);    // OC2 Polarity  : Active High
@@ -649,7 +725,7 @@ int main(void) {
 		(&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS2N);   // OC2N Idle State (when MOE=0): 0
 		(&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(0);  // OC2 Mode : Frozen
 		(&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC2FE); // Disable the Fast Mode
-		(&PWMD1)->tim->CCR[PWM_TIM_1_CH2] =  PERIOD_PWM_52_KHZ/4 - 1;  // Select the Half-period to overflow
+		(&PWMD1)->tim->CCR[kTimChannel2] =  PERIOD_PWM_52_KHZ/4 - 1;  // Select the Quarter-period to overflow
 
 		// Channel 3 Config
 		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC3P);    // OC3 Polarity  : Active High
@@ -658,7 +734,7 @@ int main(void) {
 		(&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS3N);   // OC3N Idle State (when MOE=0): 0
 		(&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(0);  // OC3 Mode : Frozen
 		(&PWMD1)->tim->CCMR2 &= (~STM32_TIM_CCMR2_OC3FE); // Disable the Fast Mode
-		(&PWMD1)->tim->CCR[PWM_TIM_1_CH3]  =  PERIOD_PWM_52_KHZ/8 - 1;  // Select the Half-period to overflow
+		(&PWMD1)->tim->CCR[kTimChannel3]  =  PERIOD_PWM_52_KHZ/8 - 1;  // Select the 1/8 period to overflow
 
 		// Channel 4 Config (for interruption each ms)
 		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC4P);    // OC4  Polarity : Active High
@@ -674,7 +750,7 @@ int main(void) {
 		// (&PWMD1)->tim->DIER |= STM32_TIM_DIER_CC4IE;	  // Enable Capture/Compare 4 Interrupt
 
 		// ChibiOS - Style
-		pwmEnableChannel(&PWMD1, PWM_TIM_1_CH4 , PERIOD_PWM_52_KHZ); // Set OC4 to 1/52000 second interruption
+		pwmEnableChannel(&PWMD1, PWM_TIM_1_CH4 , PERIOD_PWM_52_KHZ/16); // Set OC4 to 1/52000 second interruption
 		pwmEnableChannelNotification(&PWMD1, PWM_TIM_1_CH4); 		 // Enable the callback to be called for the specific channel
 
 		// Break stage configuration
