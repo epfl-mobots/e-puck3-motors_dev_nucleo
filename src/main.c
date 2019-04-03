@@ -99,7 +99,7 @@ typedef enum
 /*===========================================================================*/
 typedef struct
 {
-  uint32_t InStepCount;             // Count the number of iteration has done in a given step
+  uint32_t InStepCount;             // Count the number of iteration has done in a given step,determine the frequency of the 6 steps
   const uint32_t kMaxStepCount;     // Maximum number of iteration inside a step
 }BrushlessConfig;
 
@@ -117,7 +117,7 @@ static uint32_t adc_grp_3[ADC_GRP3_NUM_CHANNELS] = {0};
 
 // PWM
 static CommutationStateMachine gCommutation=kStop;
-static BrushlessConfig gBrushCfg = {.InStepCount = 0,.kMaxStepCount = 100};
+static BrushlessConfig gBrushCfg = {.InStepCount = 0,.kMaxStepCount = 4};
 
 /*===========================================================================*/
 /* Prototypes				                                                 */
@@ -414,9 +414,9 @@ static void commutation_cb(PWMDriver *pwmp)
       tim_1_ocn_stop(kTimChannel3);
 
       /* Set all the OC output to same PWM */
-      (&PWMD1)->tim->CCR[kTimChannel1]  =  PERIOD_PWM_52_KHZ - 1;  // Select the complete period to overflow
-      (&PWMD1)->tim->CCR[kTimChannel2]  =  PERIOD_PWM_52_KHZ - 1;  // Select the complete period to overflow
-      (&PWMD1)->tim->CCR[kTimChannel3]  =  PERIOD_PWM_52_KHZ - 1;  // Select the complete period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel1]  =  PERIOD_PWM_52_KHZ/2 - 1;  // Select the Half-Period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel2]  =  PERIOD_PWM_52_KHZ/2 - 1;  // Select the Half-Period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel3]  =  PERIOD_PWM_52_KHZ/2 - 1;  // Select the Half-Period to overflow
 
       /* Configure the mode of each channel */
       (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kPWMMode1);  // OC1 Mode : PWM Mode 1
@@ -444,12 +444,12 @@ static void commutation_cb(PWMDriver *pwmp)
       /* Channel 3 not connected */
       tim_1_oc_stop(kTimChannel3);
       tim_1_ocn_stop(kTimChannel3);
-      /* Channel 1 High transistor connected */
-      tim_1_oc_start(kTimChannel1);
-      tim_1_ocn_stop(kTimChannel1);
       /* Channel 2 Low  transistor connected */
       tim_1_oc_stop(kTimChannel2);
       tim_1_ocn_start(kTimChannel2);
+      /* Channel 1 High transistor connected */
+      tim_1_oc_start(kTimChannel1);
+      tim_1_ocn_stop(kTimChannel1);
 
       gBrushCfg.InStepCount++;
       if (gBrushCfg.kMaxStepCount == gBrushCfg.InStepCount)
@@ -467,12 +467,12 @@ static void commutation_cb(PWMDriver *pwmp)
       palSetLine(DEBUG_INT_LINE);
       palClearLine(DEBUG_INT_LINE2);
 
-      /* Channel 1 High transistor connected */
-      tim_1_oc_start(kTimChannel1);
-      tim_1_ocn_stop(kTimChannel1);
       /* Channel 2 not connected */
       tim_1_oc_stop(kTimChannel2);
       tim_1_ocn_stop(kTimChannel2);
+      /* Channel 1 High transistor connected */
+      tim_1_oc_start(kTimChannel1);
+      tim_1_ocn_stop(kTimChannel1);
       /* Channel 3 Low transistor connected */
       tim_1_oc_stop(kTimChannel3);
       tim_1_ocn_start(kTimChannel3);
@@ -497,12 +497,13 @@ static void commutation_cb(PWMDriver *pwmp)
       /* Channel 1 not connected */
       tim_1_oc_stop(kTimChannel1);
       tim_1_ocn_stop(kTimChannel1);
-      /* Channel 2 High connected*/
-      tim_1_oc_start(kTimChannel2);
-      tim_1_ocn_stop(kTimChannel2);
       /* Channel 3 Low transistor connected */
       tim_1_oc_stop(kTimChannel3);
       tim_1_ocn_start(kTimChannel3);
+      /* Channel 2 High connected*/
+      tim_1_oc_start(kTimChannel2);
+      tim_1_ocn_stop(kTimChannel2);
+
 
       gBrushCfg.InStepCount++;
       if (gBrushCfg.kMaxStepCount == gBrushCfg.InStepCount)
@@ -521,15 +522,15 @@ static void commutation_cb(PWMDriver *pwmp)
       palSetLine(DEBUG_INT_LINE);
       palSetLine(DEBUG_INT_LINE2);
 
-      /* Channel 1 Low connected */
-      tim_1_oc_stop(kTimChannel1);
-      tim_1_ocn_start(kTimChannel1);
-      /* Channel 2 High connected*/
-      tim_1_oc_start(kTimChannel2);
-      tim_1_ocn_stop(kTimChannel2);
       /* Channel 3 not connected */
       tim_1_oc_stop(kTimChannel3);
       tim_1_ocn_stop(kTimChannel3);
+      /* Channel 2 High connected*/
+      tim_1_oc_start(kTimChannel2);
+      tim_1_ocn_stop(kTimChannel2);
+      /* Channel 1 Low connected */
+      tim_1_oc_stop(kTimChannel1);
+      tim_1_ocn_start(kTimChannel1);
 
       gBrushCfg.InStepCount++;
       if (gBrushCfg.kMaxStepCount == gBrushCfg.InStepCount)
@@ -546,12 +547,12 @@ static void commutation_cb(PWMDriver *pwmp)
       palClearLine(DEBUG_INT_LINE);
       palSetLine(DEBUG_INT_LINE2);
 
-      /* Channel 1 Low connected */
-      tim_1_oc_stop(kTimChannel1);
-      tim_1_ocn_start(kTimChannel1);
       /* Channel 2 not connected */
       tim_1_oc_stop(kTimChannel2);
       tim_1_ocn_stop(kTimChannel2);
+      /* Channel 1 Low connected */
+      tim_1_oc_stop(kTimChannel1);
+      tim_1_ocn_start(kTimChannel1);
       /* Channel 3 High connected */
       tim_1_oc_start(kTimChannel3);
       tim_1_ocn_stop(kTimChannel3);
@@ -750,15 +751,15 @@ int main(void) {
 		// (&PWMD1)->tim->DIER |= STM32_TIM_DIER_CC4IE;	  // Enable Capture/Compare 4 Interrupt
 
 		// ChibiOS - Style
-		pwmEnableChannel(&PWMD1, PWM_TIM_1_CH4 , PERIOD_PWM_52_KHZ/16); // Set OC4 to 1/52000 second interruption
-		pwmEnableChannelNotification(&PWMD1, PWM_TIM_1_CH4); 		 // Enable the callback to be called for the specific channel
+		pwmEnableChannel(&PWMD1, kTimChannel4 , 1);  // Interruption when CNT == CCR (same period)
+		pwmEnableChannelNotification(&PWMD1, PWM_TIM_1_CH4); 		     // Enable the callback to be called for the specific channel
 
 		// Break stage configuration
 
 		(&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CKD(2);  	// Modification of the CR1 CKD in order to have a bigger period for the dead times
 														// OSSR and OSSI not needed
 		(&PWMD1)->tim->BDTR = 0; 						// Reset BDTR to everything disabled (BK,BK2 not enabled)
-		(&PWMD1)->tim->BDTR |= STM32_TIM_BDTR_DTG(0);   // Dead-time generator Setup
+		(&PWMD1)->tim->BDTR |= STM32_TIM_BDTR_DTG(255); // Dead-time generator Setup
 		(&PWMD1)->tim->BDTR |= STM32_TIM_BDTR_OSSR;     // Off-state selection for Run Mode
 		(&PWMD1)->tim->BDTR |= STM32_TIM_BDTR_MOE;		// Main Output Enable
 
