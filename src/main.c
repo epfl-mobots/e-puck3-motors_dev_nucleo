@@ -117,7 +117,7 @@ static uint32_t adc_grp_3[ADC_GRP3_NUM_CHANNELS] = {0};
 
 // PWM
 static CommutationStateMachine gCommutation=kStop;
-static BrushlessConfig gBrushCfg = {.InStepCount = 0,.kMaxStepCount = 4};
+static BrushlessConfig gBrushCfg = {.InStepCount = 0,.kMaxStepCount = 40};
 
 /*===========================================================================*/
 /* Prototypes				                                                 */
@@ -180,6 +180,7 @@ static const ADCConversionGroup ADC3group = {
  */
 static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 {
+  palSetLine(DEBUG_INT_LINE2);
 	size_t i = 0;
 	//Reset the array
 	for(i = 0;i < ADC_GRP3_NUM_CHANNELS;i++)
@@ -203,9 +204,11 @@ static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
     /*
 	 * reLaunch the conversion
 	 */
+
     chSysLockFromISR();
     adcStartConversionI(&ADCD3, &ADC3group, adc_sample_3,ADC_GRP3_BUF_DEPTH);
     chSysUnlockFromISR();
+    palClearLine(DEBUG_INT_LINE2);
 }
 
 static void adc_3_err_cb(ADCDriver *adcp, adcerror_t err)
@@ -347,8 +350,7 @@ static void tim_1_ocn_stop(TimChannel aChannel)
 // Periodic callback called when Update event happens
 static void pwm_p_cb(PWMDriver *pwmp)
 {
-
-
+  
 }
 
 uint8_t state = 0;
@@ -395,6 +397,9 @@ static void debug_cb(PWMDriver *pwmp)
 
 static void commutation_cb(PWMDriver *pwmp)
 {
+
+  palSetLine(DEBUG_INT_LINE);
+
   switch (gCommutation)
   {
     case kStop:
@@ -402,9 +407,9 @@ static void commutation_cb(PWMDriver *pwmp)
 
       //TODO : Not optimal but will do the job.
       palSetLine(LD2_LINE);
-      palSetLine(DEBUG_INT_LINE);
+/*       palSetLine(DEBUG_INT_LINE);
       palSetLine(DEBUG_INT_LINE2);
-
+ */
       /* Stop all the channels */
       tim_1_oc_stop(kTimChannel1);
       tim_1_oc_stop(kTimChannel2);
@@ -418,10 +423,16 @@ static void commutation_cb(PWMDriver *pwmp)
       (&PWMD1)->tim->CCR[kTimChannel2]  =  PERIOD_PWM_52_KHZ/2 - 1;  // Select the Half-Period to overflow
       (&PWMD1)->tim->CCR[kTimChannel3]  =  PERIOD_PWM_52_KHZ/2 - 1;  // Select the Half-Period to overflow
 
+      // Force update event (if preload enabled)
+      (&PWMD1)->tim->EGR |= STM32_TIM_EGR_UG;
+
       /* Configure the mode of each channel */
       (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kPWMMode1);  // OC1 Mode : PWM Mode 1
       (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(kPWMMode1);  // OC2 Mode : PWM Mode 1
       (&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(kPWMMode1);  // OC3 Mode : PWM Mode 1
+
+      // Force update event (if preload enabled)
+      (&PWMD1)->tim->EGR |= STM32_TIM_EGR_COMG;
 
       gBrushCfg.InStepCount = 0;
       gCommutation = kPhaseUV;
@@ -438,18 +449,18 @@ static void commutation_cb(PWMDriver *pwmp)
       palSetLine(LD2_LINE);
 
       /* Step 0 */
-      palClearLine(DEBUG_INT_LINE);
+/*       palClearLine(DEBUG_INT_LINE);
       palClearLine(DEBUG_INT_LINE2);
-
-      /* Channel 3 not connected */
-      tim_1_oc_stop(kTimChannel3);
-      tim_1_ocn_stop(kTimChannel3);
-      /* Channel 2 Low  transistor connected */
-      tim_1_oc_stop(kTimChannel2);
-      tim_1_ocn_start(kTimChannel2);
+ */
       /* Channel 1 High transistor connected */
       tim_1_oc_start(kTimChannel1);
       tim_1_ocn_stop(kTimChannel1);
+      /* Channel 2 Low  transistor connected */
+      tim_1_oc_stop(kTimChannel2);
+      tim_1_ocn_start(kTimChannel2);
+      /* Channel 3 not connected */
+      tim_1_oc_stop(kTimChannel3);
+      tim_1_ocn_stop(kTimChannel3);
 
       gBrushCfg.InStepCount++;
       if (gBrushCfg.kMaxStepCount == gBrushCfg.InStepCount)
@@ -464,15 +475,15 @@ static void commutation_cb(PWMDriver *pwmp)
     case kPhaseUW:
     {
       /* Step 1 */
-      palSetLine(DEBUG_INT_LINE);
+/*       palSetLine(DEBUG_INT_LINE);      
       palClearLine(DEBUG_INT_LINE2);
-
-      /* Channel 2 not connected */
-      tim_1_oc_stop(kTimChannel2);
-      tim_1_ocn_stop(kTimChannel2);
+ */
       /* Channel 1 High transistor connected */
       tim_1_oc_start(kTimChannel1);
       tim_1_ocn_stop(kTimChannel1);
+      /* Channel 2 not connected */
+      tim_1_oc_stop(kTimChannel2);
+      tim_1_ocn_stop(kTimChannel2);
       /* Channel 3 Low transistor connected */
       tim_1_oc_stop(kTimChannel3);
       tim_1_ocn_start(kTimChannel3);
@@ -491,19 +502,18 @@ static void commutation_cb(PWMDriver *pwmp)
     {
 
       /* Step 2 */
-      palClearLine(DEBUG_INT_LINE);
+/*       palClearLine(DEBUG_INT_LINE);
       palSetLine(DEBUG_INT_LINE2);
-
+ */
       /* Channel 1 not connected */
       tim_1_oc_stop(kTimChannel1);
       tim_1_ocn_stop(kTimChannel1);
-      /* Channel 3 Low transistor connected */
-      tim_1_oc_stop(kTimChannel3);
-      tim_1_ocn_start(kTimChannel3);
       /* Channel 2 High connected*/
       tim_1_oc_start(kTimChannel2);
       tim_1_ocn_stop(kTimChannel2);
-
+      /* Channel 3 Low transistor connected */
+      tim_1_oc_stop(kTimChannel3);
+      tim_1_ocn_start(kTimChannel3);
 
       gBrushCfg.InStepCount++;
       if (gBrushCfg.kMaxStepCount == gBrushCfg.InStepCount)
@@ -519,18 +529,18 @@ static void commutation_cb(PWMDriver *pwmp)
     {
 
       /* Step 3 */
-      palSetLine(DEBUG_INT_LINE);
+/*       palSetLine(DEBUG_INT_LINE);
       palSetLine(DEBUG_INT_LINE2);
-
-      /* Channel 3 not connected */
-      tim_1_oc_stop(kTimChannel3);
-      tim_1_ocn_stop(kTimChannel3);
-      /* Channel 2 High connected*/
-      tim_1_oc_start(kTimChannel2);
-      tim_1_ocn_stop(kTimChannel2);
+ */
       /* Channel 1 Low connected */
       tim_1_oc_stop(kTimChannel1);
       tim_1_ocn_start(kTimChannel1);
+      /* Channel 2 High connected*/
+      tim_1_oc_start(kTimChannel2);
+      tim_1_ocn_stop(kTimChannel2);
+      /* Channel 3 not connected */
+      tim_1_oc_stop(kTimChannel3);
+      tim_1_ocn_stop(kTimChannel3);
 
       gBrushCfg.InStepCount++;
       if (gBrushCfg.kMaxStepCount == gBrushCfg.InStepCount)
@@ -544,15 +554,15 @@ static void commutation_cb(PWMDriver *pwmp)
     case kPhaseWU:
     {
       /* Step 2 */
-      palClearLine(DEBUG_INT_LINE);
-      palSetLine(DEBUG_INT_LINE2);
+/*       palClearLine(DEBUG_INT_LINE);
+      palSetLine(DEBUG_INT_LINE2); */
 
-      /* Channel 2 not connected */
-      tim_1_oc_stop(kTimChannel2);
-      tim_1_ocn_stop(kTimChannel2);
       /* Channel 1 Low connected */
       tim_1_oc_stop(kTimChannel1);
       tim_1_ocn_start(kTimChannel1);
+      /* Channel 2 not connected */
+      tim_1_oc_stop(kTimChannel2);
+      tim_1_ocn_stop(kTimChannel2);
       /* Channel 3 High connected */
       tim_1_oc_start(kTimChannel3);
       tim_1_ocn_stop(kTimChannel3);
@@ -570,10 +580,6 @@ static void commutation_cb(PWMDriver *pwmp)
     {
 
       palClearLine(LD2_LINE);
-
-      /* Step 3 */
-      palSetLine(DEBUG_INT_LINE);
-      palClearLine(DEBUG_INT_LINE2);
 
       /* Channel 1 not connected */
       tim_1_oc_stop(kTimChannel1);
@@ -598,6 +604,11 @@ static void commutation_cb(PWMDriver *pwmp)
     default:
         break;
   }
+
+  palClearLine(DEBUG_INT_LINE);
+
+  // Force update event (if preload enabled) for CxE,CxNE and OCxM
+  (&PWMD1)->tim->EGR |= STM32_TIM_EGR_COMG;
 }
 
 
@@ -701,6 +712,7 @@ int main(void) {
 		(&PWMD1)->tim->ARR =  PERIOD_PWM_52_KHZ - 1;    // Set the period of our PWM
 
 		(&PWMD1)->tim->CR1 &= (~STM32_TIM_CR1_ARPE);    // Remove the ARPE
+		(&PWMD1)->tim->CR2 |= STM32_TIM_CR2_CCPC;       // Enable the Preload of the CxE,CxNE bits
 
 		(&PWMD1)->tim->CCER = 0; // Reset Capture/Compare Register
 		//
@@ -717,6 +729,7 @@ int main(void) {
 		(&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS1N);   // OC1N Idle State (when MOE=0): 0
 		(&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(0);  // OC1 Mode : Frozen
 		(&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC1FE); // Disable the Fast Mode
+		(&PWMD1)->tim->CCMR1 |= STM32_TIM_CCMR1_OC1PE;    // Enable the Preload -> CCR is loaded in the active register at each update event
 		(&PWMD1)->tim->CCR[kTimChannel1] =  PERIOD_PWM_52_KHZ/2 - 1;  // Select the Half-period to overflow
 
 		// Channel 2 Config
@@ -726,6 +739,7 @@ int main(void) {
 		(&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS2N);   // OC2N Idle State (when MOE=0): 0
 		(&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(0);  // OC2 Mode : Frozen
 		(&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC2FE); // Disable the Fast Mode
+		(&PWMD1)->tim->CCMR1 |= STM32_TIM_CCMR1_OC2PE;    // Enable the Preload
 		(&PWMD1)->tim->CCR[kTimChannel2] =  PERIOD_PWM_52_KHZ/4 - 1;  // Select the Quarter-period to overflow
 
 		// Channel 3 Config
@@ -735,6 +749,7 @@ int main(void) {
 		(&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS3N);   // OC3N Idle State (when MOE=0): 0
 		(&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(0);  // OC3 Mode : Frozen
 		(&PWMD1)->tim->CCMR2 &= (~STM32_TIM_CCMR2_OC3FE); // Disable the Fast Mode
+		(&PWMD1)->tim->CCMR2 |= STM32_TIM_CCMR2_OC3PE;    // Enable the Preload
 		(&PWMD1)->tim->CCR[kTimChannel3]  =  PERIOD_PWM_52_KHZ/8 - 1;  // Select the 1/8 period to overflow
 
 		// Channel 4 Config (for interruption each ms)
@@ -756,14 +771,17 @@ int main(void) {
 
 		// Break stage configuration
 
-		(&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CKD(2);  	// Modification of the CR1 CKD in order to have a bigger period for the dead times
+		(&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CKD(0);  	// Modification of the CR1 CKD in order to have a bigger period for the dead times
 														// OSSR and OSSI not needed
 		(&PWMD1)->tim->BDTR = 0; 						// Reset BDTR to everything disabled (BK,BK2 not enabled)
-		(&PWMD1)->tim->BDTR |= STM32_TIM_BDTR_DTG(255); // Dead-time generator Setup
+		(&PWMD1)->tim->BDTR |= STM32_TIM_BDTR_DTG(0);   // Dead-time generator Setup
 		(&PWMD1)->tim->BDTR |= STM32_TIM_BDTR_OSSR;     // Off-state selection for Run Mode
 		(&PWMD1)->tim->BDTR |= STM32_TIM_BDTR_MOE;		// Main Output Enable
 
 		// Commutation event configuration (Not needed at the moment.)
+
+
+
 
 		// Start signal generation
 		tim_1_oc_start(kTimChannel1);  // Channel 1 OC
@@ -774,7 +792,12 @@ int main(void) {
 		tim_1_ocn_start(kTimChannel3); // Channel 3 OC Complementary
 		tim_1_oc_start(kTimChannel4);  // Channel 4 OC
 
+
 		// Force update event (if preload enabled)
+		(&PWMD1)->tim->EGR |= STM32_TIM_EGR_UG;
+
+        // Force update event (if preload enabled) for CxE,CxNE and OCxM
+        (&PWMD1)->tim->EGR |= STM32_TIM_EGR_COMG;
 
 		// Enable the Timer
 		(&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CEN;     // Enable the counter in correct configuration
