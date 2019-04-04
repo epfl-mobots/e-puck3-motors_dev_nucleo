@@ -473,9 +473,9 @@
                                      PIN_PUPDR_FLOATING(GPIOA_ADC1_MOT1_PH2_C) |\
                                      PIN_PUPDR_FLOATING(GPIOA_ADC1_MOT1_PH3_C) |\
                                      PIN_PUPDR_FLOATING(GPIOA_OUT_MOT4_PH1_N) |\
-                                     PIN_PUPDR_FLOATING(GPIOA_OUT_MOT1_PH1_P) |\
+                                     PIN_PUPDR_PULLDOWN(GPIOA_OUT_MOT1_PH1_P) |\
                                      PIN_PUPDR_FLOATING(GPIOA_OTG_FS_VBUS) |\
-                                     PIN_PUPDR_FLOATING(GPIOA_OUT_MOT1_PH3_P) |\
+                                     PIN_PUPDR_PULLDOWN(GPIOA_OUT_MOT1_PH3_P) |\
                                      PIN_PUPDR_FLOATING(GPIOA_OTG_FS_DM) |  \
                                      PIN_PUPDR_FLOATING(GPIOA_OTG_FS_DP) |  \
                                      PIN_PUPDR_FLOATING(GPIOA_SWDIO) |      \
@@ -595,7 +595,7 @@
                                      PIN_PUPDR_FLOATING(GPIOB_OUT_MOT2_PH2_P) |\
                                      PIN_PUPDR_FLOATING(GPIOB_OUT_MOT2_PH2_N) |\
                                      PIN_PUPDR_FLOATING(GPIOB_EN_DRIVER_1) |\
-                                     PIN_PUPDR_FLOATING(GPIOB_OUT_MOT1_PH1_N) |\
+                                     PIN_PUPDR_PULLDOWN(GPIOB_OUT_MOT1_PH1_N) |\
                                      PIN_PUPDR_FLOATING(GPIOB_OUT_MOT4_PH2_N) |\
                                      PIN_PUPDR_FLOATING(GPIOB_OUT_MOT4_PH3_N))
 #define VAL_GPIOB_ODR               (PIN_ODR_LOW(GPIOB_OUT_MOT3_PH1_P) |    \
@@ -943,9 +943,9 @@
                                      PIN_PUPDR_PULLUP(GPIOE_PIN7) |         \
                                      PIN_PUPDR_PULLUP(GPIOE_PIN8) |         \
                                      PIN_PUPDR_PULLUP(GPIOE_PWR_ON_BTN_STATE_n) |\
-                                     PIN_PUPDR_FLOATING(GPIOE_OUT_MOT1_PH2_N) |\
-                                     PIN_PUPDR_FLOATING(GPIOE_OUT_MOT1_PH2_P) |\
-                                     PIN_PUPDR_FLOATING(GPIOE_OUT_MOT1_PH3_N) |\
+                                     PIN_PUPDR_PULLDOWN(GPIOE_OUT_MOT1_PH2_N) |\
+                                     PIN_PUPDR_PULLDOWN(GPIOE_OUT_MOT1_PH2_P) |\
+                                     PIN_PUPDR_PULLDOWN(GPIOE_OUT_MOT1_PH3_N) |\
                                      PIN_PUPDR_FLOATING(GPIOE_EN_DRIVER_2) |\
                                      PIN_PUPDR_FLOATING(GPIOE_EN_DRIVER_3) |\
                                      PIN_PUPDR_FLOATING(GPIOE_EN_DRIVER_4))
