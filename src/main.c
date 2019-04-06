@@ -15,6 +15,7 @@
 #include "gdb.h"
 #include "gate_drivers.h"
 #include "power_button.h"
+#include "usb_pd_controller.h"
 
 static THD_WORKING_AREA(waThread1,128);
 static THD_FUNCTION(Thread1,arg) {
@@ -106,6 +107,8 @@ int main(void) {
 
 	initGDBEvents();
 	gdbStart();
+
+	usbPDControllerInit();
 
 	/*
 	* Initializes two serial-over-USB CDC drivers and starts and connects the USB.

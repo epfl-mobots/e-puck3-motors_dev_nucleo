@@ -120,6 +120,9 @@ include $(CHIBIOS)/os/various/shell/shell.mk
 BLACKMAGIC = ../blackmagic
 include $(BLACKMAGIC)/src/platforms/stm32-ChibiOS/Blackmagic_ChibiOS.mk
 
+PDBLIB = ../../pd-buddy-firmware_original/pdblib
+include $(PDBLIB)/pdblib.mk
+
 # Define linker script file here
 LDSCRIPT= $(STARTUPLD)/STM32F746xG.ld
 
@@ -137,7 +140,9 @@ CSRC = $(ALLCSRC) \
        drv8323.c \
        gate_drivers.c \
        utility.c \
-       power_button.c
+       power_button.c \
+       $(PDBLIB)/../platform_dependant_files/device_policy_manager.c \
+       usb_pd_controller.c
 
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
@@ -168,7 +173,7 @@ TCPPSRC =
 ASMSRC = $(ALLASMSRC)
 ASMXSRC = $(ALLXASMSRC)
 
-INCDIR = $(ALLINC) $(TESTINC)
+INCDIR = $(ALLINC) $(TESTINC) $(PDBLIB)/../platform_dependant_files/
 
 #
 # Project, sources and paths
