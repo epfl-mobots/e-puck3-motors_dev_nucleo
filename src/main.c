@@ -33,6 +33,7 @@
 #define PERIOD_PWM_52_KHZ		4096
 #define PERIOD_100_MS_INT		5273
 
+#define NB_PHASE                3
 
 
 /*===========================================================================*/
@@ -101,6 +102,10 @@ typedef struct
 {
   uint32_t InStepCount;             // Count the number of iteration has done in a given step,determine the frequency of the 6 steps
   const uint32_t kMaxStepCount;     // Maximum number of iteration inside a step
+  const iomode_t kDefaultIOConfig;
+  ioline_t P_Channels[NB_PHASE];
+  ioline_t N_Channels[NB_PHASE];
+
 }BrushlessConfig;
 
 
@@ -117,7 +122,13 @@ static uint32_t adc_grp_3[ADC_GRP3_NUM_CHANNELS] = {0};
 
 // PWM
 static CommutationStateMachine gCommutation=kStop;
-static BrushlessConfig gBrushCfg = {.InStepCount = 0,.kMaxStepCount = 40};
+static BrushlessConfig gBrushCfg = {
+    .InStepCount = 0,
+    .kMaxStepCount = 40,
+    .kDefaultIOConfig = PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1),
+    .P_Channels = {LINE_OUT_MOT1_PH1_P,LINE_OUT_MOT1_PH2_P,LINE_OUT_MOT1_PH3_P},
+    .N_Channels = {LINE_OUT_MOT1_PH1_N,LINE_OUT_MOT1_PH2_N,LINE_OUT_MOT1_PH3_N}
+};
 
 /*===========================================================================*/
 /* Prototypes				                                                 */
@@ -270,11 +281,14 @@ static void tim_1_oc_cmd(TimChannel aChannel,TimChannel aState)
   {
     case kTimCh_Disable:
     {
+      palSetLineMode(gBrushCfg.P_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
+      palClearLine(gBrushCfg.P_Channels[aChannel]);
       (&PWMD1)->tim->CCER &= (~lCCEnable);
       break;
     }
     case kTimCh_Enable:
     {
+      palSetLineMode(gBrushCfg.P_Channels[aChannel],gBrushCfg.kDefaultIOConfig);
       (&PWMD1)->tim->CCER |= lCCEnable;
       break;
     }
@@ -314,11 +328,14 @@ static void tim_1_ocn_cmd(TimChannel aChannel,TimChannel aState)
   {
     case kTimCh_Disable:
     {
+      palSetLineMode(gBrushCfg.N_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
+      palClearLine(gBrushCfg.N_Channels[aChannel]);
       (&PWMD1)->tim->CCER &= (~lCCNEnable);
       break;
     }
     case kTimCh_Enable:
     {
+      palSetLineMode(gBrushCfg.N_Channels[aChannel],gBrushCfg.kDefaultIOConfig);
       (&PWMD1)->tim->CCER |= lCCNEnable;
       break;
     }
@@ -345,6 +362,18 @@ static void tim_1_ocn_stop(TimChannel aChannel)
   tim_1_ocn_cmd(aChannel,kTimCh_Disable);
 }
 
+
+
+static void tim_1_enable_channel_out(TimChannel aChannel)
+{
+
+}
+
+
+static void tim_1_disable_channel_out(TimChannel aChannel)
+{
+
+}
 
 
 // Periodic callback called when Update event happens
@@ -676,6 +705,51 @@ int main(void) {
 	palClearLine(DEBUG_INT_LINE);
     palSetLineMode(DEBUG_INT_LINE2,PAL_MODE_OUTPUT_PUSHPULL);
     palClearLine(DEBUG_INT_LINE2);
+
+
+    /* Motor 1 IO configuration when High-Impedance due to TIM 1
+     * Phase 1 P : PA8  AF : 1
+     * Phase 1 N : PB13 AF : 1
+     * Phase 2 P : PE11 AF : 1
+     * Phase 2 N : PE10 AF : 1
+     * Phase 3 P : PA10 AF : 1
+     * Phase 3 N : PE12 AF : 1
+     *
+     * */
+
+    /* Phase 1 P */
+    palSetLineMode(LINE_OUT_MOT1_PH1_P,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+    palClearLine(LINE_OUT_MOT1_PH1_P);                            // Set to 0
+    // Set back to alternate function
+    palSetLineMode(LINE_OUT_MOT1_PH1_P,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+    /* Phase 1 N */
+    palSetLineMode(LINE_OUT_MOT1_PH1_N,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+    palClearLine(LINE_OUT_MOT1_PH1_N);                            // Set to 0
+    // Set back to alternate function
+    palSetLineMode(LINE_OUT_MOT1_PH1_N,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+
+    /* Phase 2 P */
+    palSetLineMode(LINE_OUT_MOT1_PH2_P,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+    palClearLine(LINE_OUT_MOT1_PH2_P);                            // Set to 0
+    // Set back to alternate function
+    palSetLineMode(LINE_OUT_MOT1_PH2_P,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+    /* Phase 2 N */
+    palSetLineMode(LINE_OUT_MOT1_PH2_N,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+    palClearLine(LINE_OUT_MOT1_PH2_N);                            // Set to 0
+    // Set back to alternate function
+    palSetLineMode(LINE_OUT_MOT1_PH2_N,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+
+    /* Phase 3 P */
+    palSetLineMode(LINE_OUT_MOT1_PH3_P,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+    palClearLine(LINE_OUT_MOT1_PH3_P);                            // Set to 0
+    // Set back to alternate function
+    palSetLineMode(LINE_OUT_MOT1_PH3_P,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+    /* Phase 3 N */
+    palSetLineMode(LINE_OUT_MOT1_PH3_N,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+    palClearLine(LINE_OUT_MOT1_PH3_N);                            // Set to 0
+    // Set back to alternate function
+    palSetLineMode(LINE_OUT_MOT1_PH3_N,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+
 
 	/*
 	* Initializes two serial-over-USB CDC drivers and starts and connects the USB.
