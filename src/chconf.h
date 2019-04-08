@@ -702,6 +702,9 @@ void panic_handler(const char *reason);
 /*===========================================================================*/
 // chprintf float enable
 #define CHPRINTF_USE_FLOAT true
+#define SHELL_USE_HISTORY true
+#define SHELL_USE_COMPLETION true
+#define SHELL_USE_ESC_SEQ true
 #endif  /* CHCONF_H */
 
 /** @} */

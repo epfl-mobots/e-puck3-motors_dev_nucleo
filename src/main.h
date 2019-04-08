@@ -13,6 +13,7 @@
 #include <ch.h>
 #include <hal.h>
 
+#include "utility.h"
 #include <usbcfg.h>
 #include <shell.h>
 #include <chprintf.h>
@@ -21,6 +22,13 @@
 #define NOT_CONFIGURED	0
 
 #define I2C_PD_CONTROLER	I2CD2
+#define SPI_DRV8323			SPID3
+
+#define NB_MOTORS		4
+#define NB_PHASES		3
+#define NB_TRANSISTORS	2
+
+extern const ioline_t motor_pins[NB_MOTORS][NB_PHASES][NB_TRANSISTORS];
 
 
 #endif  /* MAIN_H */

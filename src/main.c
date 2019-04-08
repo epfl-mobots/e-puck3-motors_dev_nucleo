@@ -8,10 +8,12 @@
 
 #include <stdio.h>
 #include <string.h>
-
 #include "main.h"
+#include "user_shell.h"
 #include "uc_usage.h"
 #include "gdb.h"
+#include "gate_drivers.h"
+#include "power_button.h"
 #include "custom_io.h"
 
 /*===========================================================================*/
@@ -149,9 +151,41 @@ static THD_FUNCTION(Thread1,arg) {
   (void)arg;
   chRegSetThreadName("blinker");
   while(true){
-		palSetLine(LD1_LINE);
+		palClearLine(LINE_STATUS_LED1_RED);
 		chThdSleepMilliseconds(50);
-		palClearLine(LD1_LINE);
+		palClearLine(LINE_STATUS_LED2_RED);
+		chThdSleepMilliseconds(50);
+		palClearLine(LINE_STATUS_LED3_RED);
+		chThdSleepMilliseconds(50);
+		palClearLine(LINE_STATUS_LED1_GREEN);
+		chThdSleepMilliseconds(50);
+		palClearLine(LINE_STATUS_LED2_GREEN);
+		chThdSleepMilliseconds(50);
+		palClearLine(LINE_STATUS_LED3_GREEN);
+		chThdSleepMilliseconds(50);
+		palClearLine(LINE_STATUS_LED1_BLUE);
+		chThdSleepMilliseconds(50);
+		palClearLine(LINE_STATUS_LED2_BLUE);
+		chThdSleepMilliseconds(50);
+		palClearLine(LINE_STATUS_LED3_BLUE);
+		chThdSleepMilliseconds(50);
+		palSetLine(LINE_STATUS_LED1_RED);
+		chThdSleepMilliseconds(50);
+		palSetLine(LINE_STATUS_LED2_RED);
+		chThdSleepMilliseconds(50);
+		palSetLine(LINE_STATUS_LED3_RED);
+		chThdSleepMilliseconds(50);
+		palSetLine(LINE_STATUS_LED1_GREEN);
+		chThdSleepMilliseconds(50);
+		palSetLine(LINE_STATUS_LED2_GREEN);
+		chThdSleepMilliseconds(50);
+		palSetLine(LINE_STATUS_LED3_GREEN);
+		chThdSleepMilliseconds(50);
+		palSetLine(LINE_STATUS_LED1_BLUE);
+		chThdSleepMilliseconds(50);
+		palSetLine(LINE_STATUS_LED2_BLUE);
+		chThdSleepMilliseconds(50);
+		palSetLine(LINE_STATUS_LED3_BLUE);
 		chThdSleepMilliseconds(50);
   }
 }
@@ -678,6 +712,8 @@ static PWMConfig tim_1_cfg = {
 
 int main(void) {
 
+	powerButtonStartSequence();
+
 	/*
 	* System initializations.
 	* - HAL initialization, this also initializes the configured device drivers
@@ -687,6 +723,8 @@ int main(void) {
 	*/
 	halInit();
 	chSysInit();
+
+	powerButtonStart();
 
 	initGDBEvents();
 	gdbStart();
@@ -759,6 +797,9 @@ int main(void) {
 	* Initializes two serial-over-USB CDC drivers and starts and connects the USB.
 	*/
 	usbSerialStart();
+
+	shellInit();
+	gateDriversEnableAll();
 
 	/*
 	 * Activates the ADC3 driver
@@ -922,6 +963,20 @@ int main(void) {
 
 		 Disable the CH 1 and
 	    pwmDisableChannel(&PWMD1, DELAY_DEMO);*/
-
+	    
+		if(isUSBConfigured()){
+			//spawns the shell if the usb is connected
+			spawn_shell();
+		}
+		chThdSleepMilliseconds(500);
+		
+		// chprintf((BaseSequentialStream *) &USB_SERIAL, "fault status 1 	= 0x%x\n", gateDriversReadReg(DRV8323_1, FAULT_STATUS_1_REG));
+		// chprintf((BaseSequentialStream *) &USB_SERIAL, "fault status 2 	= 0x%x\n", gateDriversReadReg(DRV8323_1, FAULT_STATUS_2_REG));
+		// chprintf((BaseSequentialStream *) &USB_SERIAL, "driver control  = 0x%x\n", gateDriversReadReg(DRV8323_1, DRIVER_CONTROL_REG));
+		// chprintf((BaseSequentialStream *) &USB_SERIAL, "gate driver hs 	= 0x%x\n", gateDriversReadReg(DRV8323_1, GATE_DRIVE_HS_REG));
+		// chprintf((BaseSequentialStream *) &USB_SERIAL, "gate driver hs 	= 0x%x\n", gateDriversReadReg(DRV8323_1, GATE_DRIVE_LS_REG));
+		// chprintf((BaseSequentialStream *) &USB_SERIAL, "ocp control 	= 0x%x\n", gateDriversReadReg(DRV8323_1, OCP_CONTROL_REG));
+		// chprintf((BaseSequentialStream *) &USB_SERIAL, "csa control 	= 0x%x\n\n", gateDriversReadReg(DRV8323_1, CSA_CONTROL_REG));
+		
 	}
 }

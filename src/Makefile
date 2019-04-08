@@ -132,7 +132,12 @@ CSRC = $(ALLCSRC) \
        main.c \
        panic.c \
        i2c_bus.c \
-       uc_usage.c
+       uc_usage.c \
+       user_shell.c \
+       drv8323.c \
+       gate_drivers.c \
+       utility.c \
+       power_button.c
 
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
