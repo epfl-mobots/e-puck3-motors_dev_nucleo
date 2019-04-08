@@ -31,6 +31,7 @@
 #define DELAY_DEMO				1000
 #define PERIOD_PWM_32_KHZ		6750
 #define PERIOD_PWM_52_KHZ		4096
+#define PERIOD_PWM_20_KHZ       10800
 #define PERIOD_100_MS_INT		5273
 
 #define NB_PHASE                3
@@ -124,7 +125,7 @@ static uint32_t adc_grp_3[ADC_GRP3_NUM_CHANNELS] = {0};
 static CommutationStateMachine gCommutation=kStop;
 static BrushlessConfig gBrushCfg = {
     .InStepCount = 0,
-    .kMaxStepCount = 40,
+    .kMaxStepCount = 666,
     .kDefaultIOConfig = PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1),
     .P_Channels = {LINE_OUT_MOT1_PH1_P,LINE_OUT_MOT1_PH2_P,LINE_OUT_MOT1_PH3_P},
     .N_Channels = {LINE_OUT_MOT1_PH1_N,LINE_OUT_MOT1_PH2_N,LINE_OUT_MOT1_PH3_N}
@@ -448,9 +449,9 @@ static void commutation_cb(PWMDriver *pwmp)
       tim_1_ocn_stop(kTimChannel3);
 
       /* Set all the OC output to same PWM */
-      (&PWMD1)->tim->CCR[kTimChannel1]  =  PERIOD_PWM_52_KHZ/2 - 1;  // Select the Half-Period to overflow
-      (&PWMD1)->tim->CCR[kTimChannel2]  =  PERIOD_PWM_52_KHZ/2 - 1;  // Select the Half-Period to overflow
-      (&PWMD1)->tim->CCR[kTimChannel3]  =  PERIOD_PWM_52_KHZ/2 - 1;  // Select the Half-Period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel1]  =  PERIOD_PWM_20_KHZ/2 - 1;  // Select the Half-Period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel2]  =  PERIOD_PWM_20_KHZ/2 - 1;  // Select the Half-Period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel3]  =  PERIOD_PWM_20_KHZ/2 - 1;  // Select the Half-Period to overflow
 
       // Force update event (if preload enabled)
       (&PWMD1)->tim->EGR |= STM32_TIM_EGR_UG;
@@ -783,7 +784,7 @@ int main(void) {
 		(&PWMD1)->tim->CR1 &= (~STM32_TIM_CR1_CMS(0));  // Edge-aligned mode
 		(&PWMD1)->tim->CR1 &= (~STM32_TIM_CR1_DIR);     // Direction : upcounter
 		(&PWMD1)->tim->PSC =  0; 					    // Set the prescaler to 0 TIM_FREQ = 216 MHz
-		(&PWMD1)->tim->ARR =  PERIOD_PWM_52_KHZ - 1;    // Set the period of our PWM
+		(&PWMD1)->tim->ARR =  PERIOD_PWM_20_KHZ - 1;    // Set the period of our PWM
 
 		(&PWMD1)->tim->CR1 &= (~STM32_TIM_CR1_ARPE);    // Remove the ARPE
 		(&PWMD1)->tim->CR2 |= STM32_TIM_CR2_CCPC;       // Enable the Preload of the CxE,CxNE bits
@@ -804,7 +805,7 @@ int main(void) {
 		(&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(0);  // OC1 Mode : Frozen
 		(&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC1FE); // Disable the Fast Mode
 		(&PWMD1)->tim->CCMR1 |= STM32_TIM_CCMR1_OC1PE;    // Enable the Preload -> CCR is loaded in the active register at each update event
-		(&PWMD1)->tim->CCR[kTimChannel1] =  PERIOD_PWM_52_KHZ/2 - 1;  // Select the Half-period to overflow
+		(&PWMD1)->tim->CCR[kTimChannel1] =  PERIOD_PWM_20_KHZ/2 - 1;  // Select the Half-period to overflow
 
 		// Channel 2 Config
 		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC2P);    // OC2 Polarity  : Active High
@@ -814,7 +815,7 @@ int main(void) {
 		(&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(0);  // OC2 Mode : Frozen
 		(&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC2FE); // Disable the Fast Mode
 		(&PWMD1)->tim->CCMR1 |= STM32_TIM_CCMR1_OC2PE;    // Enable the Preload
-		(&PWMD1)->tim->CCR[kTimChannel2] =  PERIOD_PWM_52_KHZ/4 - 1;  // Select the Quarter-period to overflow
+		(&PWMD1)->tim->CCR[kTimChannel2] =  PERIOD_PWM_20_KHZ/4 - 1;  // Select the Quarter-period to overflow
 
 		// Channel 3 Config
 		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC3P);    // OC3 Polarity  : Active High
@@ -824,7 +825,7 @@ int main(void) {
 		(&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(0);  // OC3 Mode : Frozen
 		(&PWMD1)->tim->CCMR2 &= (~STM32_TIM_CCMR2_OC3FE); // Disable the Fast Mode
 		(&PWMD1)->tim->CCMR2 |= STM32_TIM_CCMR2_OC3PE;    // Enable the Preload
-		(&PWMD1)->tim->CCR[kTimChannel3]  =  PERIOD_PWM_52_KHZ/8 - 1;  // Select the 1/8 period to overflow
+		(&PWMD1)->tim->CCR[kTimChannel3]  =  PERIOD_PWM_20_KHZ/8 - 1;  // Select the 1/8 period to overflow
 
 		// Channel 4 Config (for interruption each ms)
 		(&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC4P);    // OC4  Polarity : Active High
