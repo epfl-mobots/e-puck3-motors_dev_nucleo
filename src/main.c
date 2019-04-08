@@ -319,6 +319,9 @@ static void tim_1_ocn_cmd(TimChannel aChannel,TimChannel aState)
       break;
     }
 
+    case kTimChannel4:
+    case kTimChannel5:
+    case kTimChannel6:
     default:
     {
 
