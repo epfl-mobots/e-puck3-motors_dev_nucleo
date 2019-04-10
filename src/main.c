@@ -133,7 +133,6 @@ static const ADCConversionGroup ADC3group = {
  */
 static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 {
-  palSetLine(DEBUG_INT_LINE2);
 	size_t i = 0;
 	//Reset the array
 	for(i = 0;i < ADC_GRP3_NUM_CHANNELS;i++)
@@ -161,7 +160,6 @@ static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
     chSysLockFromISR();
     adcStartConversionI(&ADCD3, &ADC3group, adc_sample_3,ADC_GRP3_BUF_DEPTH);
     chSysUnlockFromISR();
-    palClearLine(DEBUG_INT_LINE2);
 }
 
 static void adc_3_err_cb(ADCDriver *adcp, adcerror_t err)
