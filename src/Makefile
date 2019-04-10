@@ -120,7 +120,7 @@ include $(CHIBIOS)/os/various/shell/shell.mk
 BLACKMAGIC = ../blackmagic
 include $(BLACKMAGIC)/src/platforms/stm32-ChibiOS/Blackmagic_ChibiOS.mk
 
-PDBLIB = ../../pd-buddy-firmware_original/pdblib
+PDBLIB = ../usb_pd_controller/pdblib
 include $(PDBLIB)/pdblib.mk
 
 # Define linker script file here
@@ -141,7 +141,7 @@ CSRC = $(ALLCSRC) \
        gate_drivers.c \
        utility.c \
        power_button.c \
-       $(PDBLIB)/../platform_dependant_files/device_policy_manager.c \
+       device_policy_manager.c \
        usb_pd_controller.c
 
 
@@ -173,7 +173,7 @@ TCPPSRC =
 ASMSRC = $(ALLASMSRC)
 ASMXSRC = $(ALLXASMSRC)
 
-INCDIR = $(ALLINC) $(TESTINC) $(PDBLIB)/../platform_dependant_files/
+INCDIR = $(ALLINC) $(TESTINC)
 
 #
 # Project, sources and paths
