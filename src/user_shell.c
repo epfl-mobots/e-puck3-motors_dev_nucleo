@@ -116,10 +116,37 @@ static void cmd_step_time(BaseSequentialStream *chp, int argc, char *argv[])
   }
 }
 
+static void cmd_dir(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  (void)argv;
+  if(argc == 1)
+  {
+    char *endptr;
+    uint32_t lDirection = strtol(argv[0], &endptr, 0);
+
+    if(kCW == lDirection)
+    {
+        gBrushCfg.RotationDir = kCW;
+        chprintf(chp, "Motor direction : Clockwise" SHELL_NEWLINE_STR);
+    }
+    else
+    {
+      gBrushCfg.RotationDir = kCCW;
+       chprintf(chp, "Motor direction : CounterClockwise" SHELL_NEWLINE_STR);
+    }
+  }
+  else
+  {
+      shellUsage(chp, "set_direction 0=Clockwise|1=CounterCW");
+  }
+}
+
+
 static const ShellCommand commands[] = {
 	{"set_phase", cmd_set_phase},
 	{"power_drivers", cmd_power_drivers},
 	{"set_step_time", cmd_step_time},
+	{"set_direction",cmd_dir},
 	{NULL, NULL}
 };
 
