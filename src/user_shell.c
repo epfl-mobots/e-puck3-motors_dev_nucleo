@@ -98,7 +98,7 @@ static const ShellCommand commands[] = {
 };
 
 static const ShellConfig shell_cfg = {
-	(BaseSequentialStream *)&SDU1,
+	(BaseSequentialStream *)&USB_SERIAL,
 	commands,
 	sc_histbuf,
 	sizeof(sc_histbuf),
@@ -109,5 +109,6 @@ void spawn_shell(void){
 	static thread_t *shellTh = NULL;
 	if(shellTh == NULL){
 		shellTh = chThdCreateStatic(waShell, sizeof(waShell), NORMALPRIO + 1, shellThread, (void *)&shell_cfg);
+		shellTh->name = "Shell";
 	}	
 }
