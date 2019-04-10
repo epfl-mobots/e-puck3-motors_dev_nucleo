@@ -16,8 +16,12 @@
 /* Variables                                                                 */
 /*===========================================================================*/
 // PWM
-CommutationStateMachine gCommutation=kStop;
+
 BrushlessConfig gBrushCfg = {
+    .StateCommutation=kStop,
+    .RotationDir=kCCW,
+    .StateIterator=0,
+    .StateArray = {kStop,kPhaseUV,kPhaseUW,kPhaseVW,kPhaseVU,kPhaseWU,kPhaseWV},
     .InStepCount = 0,
     .kMaxStepCount = 666,
     .kDefaultIOConfig = PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1),
@@ -29,7 +33,7 @@ BrushlessConfig gBrushCfg = {
 /* Timer 1 Configuration                                                     */
 /*===========================================================================*/
 
-static void tim_1_oc_cmd(TimChannel aChannel,TimChannel aState)
+static void tim_1_oc_cmd(TimChannel aChannel,TimChannelState aState)
 {
   uint32_t lCCEnable;
   switch(aChannel)
@@ -92,7 +96,7 @@ static void tim_1_oc_cmd(TimChannel aChannel,TimChannel aState)
   }
 }
 
-static void tim_1_ocn_cmd(TimChannel aChannel,TimChannel aState)
+static void tim_1_ocn_cmd(TimChannel aChannel,TimChannelState aState)
 {
   uint32_t lCCNEnable;
   switch(aChannel)
@@ -262,16 +266,42 @@ void timer_1_pwm_config (void)
 
 }
 
+void commutation_nextstep(BrushlessConfig *pBrushCfg)
+{
+  pBrushCfg->InStepCount++;
+  if (pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount)
+  {
+    if(pBrushCfg->RotationDir==kCCW)
+    {
+      pBrushCfg->StateIterator++;
+      if(NB_STATE == pBrushCfg->StateIterator)
+      {
+        pBrushCfg->StateIterator=kPhaseUV;
+      }
 
+    }
+    else
+    {
+      pBrushCfg->StateIterator--;
+      if(((int32_t) kStop) >= pBrushCfg->StateIterator)
+      {
+        pBrushCfg->StateIterator=kPhaseWV;
+      }
+    }
+
+    pBrushCfg->StateCommutation = pBrushCfg->StateArray[pBrushCfg->StateIterator];
+    pBrushCfg->InStepCount = 0;
+  }
+}
 
 
 
 void commutation_cb(PWMDriver *pwmp)
 {
 
-  palSetLine(DEBUG_INT_LINE);
+  //palSetLine(DEBUG_INT_LINE);
 
-  switch (gCommutation)
+  switch (gBrushCfg.StateCommutation)
   {
     case kStop:
     {
@@ -305,8 +335,9 @@ void commutation_cb(PWMDriver *pwmp)
       // Force update event (if preload enabled)
       (&PWMD1)->tim->EGR |= STM32_TIM_EGR_COMG;
 
-      gBrushCfg.InStepCount = 0;
-      gCommutation = kPhaseUV;
+      commutation_nextstep(&gBrushCfg);
+      //gBrushCfg.StateCommutation = kPhaseUV;
+      //gBrushCfg.InStepCount = 0;
 
       break;
     }
@@ -320,9 +351,9 @@ void commutation_cb(PWMDriver *pwmp)
       palSetLine(LD2_LINE);
 
       /* Step 0 */
-/*       palClearLine(DEBUG_INT_LINE);
+      palClearLine(DEBUG_INT_LINE);
       palClearLine(DEBUG_INT_LINE2);
- */
+
       /* Channel 1 High transistor connected */
       tim_1_oc_start(kTimChannel1);
       tim_1_ocn_stop(kTimChannel1);
@@ -333,12 +364,14 @@ void commutation_cb(PWMDriver *pwmp)
       tim_1_oc_stop(kTimChannel3);
       tim_1_ocn_stop(kTimChannel3);
 
-      gBrushCfg.InStepCount++;
+      commutation_nextstep(&gBrushCfg);
+
+      /*gBrushCfg.InStepCount++;
       if (gBrushCfg.kMaxStepCount <= gBrushCfg.InStepCount)
       {
-        gCommutation = kPhaseUW;
+        gBrushCfg.StateCommutation = kPhaseUW;
         gBrushCfg.InStepCount = 0;
-      }
+      }*/
 
       break;
     }
@@ -346,9 +379,8 @@ void commutation_cb(PWMDriver *pwmp)
     case kPhaseUW:
     {
       /* Step 1 */
-/*       palSetLine(DEBUG_INT_LINE);
+      palSetLine(DEBUG_INT_LINE);
       palClearLine(DEBUG_INT_LINE2);
- */
       /* Channel 1 High transistor connected */
       tim_1_oc_start(kTimChannel1);
       tim_1_ocn_stop(kTimChannel1);
@@ -359,12 +391,13 @@ void commutation_cb(PWMDriver *pwmp)
       tim_1_oc_stop(kTimChannel3);
       tim_1_ocn_start(kTimChannel3);
 
-      gBrushCfg.InStepCount++;
+      commutation_nextstep(&gBrushCfg);
+      /*gBrushCfg.InStepCount++;
       if (gBrushCfg.kMaxStepCount <= gBrushCfg.InStepCount)
       {
-        gCommutation = kPhaseVW;
+        gBrushCfg.StateCommutation = kPhaseVW;
         gBrushCfg.InStepCount = 0;
-      }
+      }*/
 
       break;
     }
@@ -373,9 +406,9 @@ void commutation_cb(PWMDriver *pwmp)
     {
 
       /* Step 2 */
-/*       palClearLine(DEBUG_INT_LINE);
+      palClearLine(DEBUG_INT_LINE);
       palSetLine(DEBUG_INT_LINE2);
- */
+
       /* Channel 1 not connected */
       tim_1_oc_stop(kTimChannel1);
       tim_1_ocn_stop(kTimChannel1);
@@ -386,12 +419,14 @@ void commutation_cb(PWMDriver *pwmp)
       tim_1_oc_stop(kTimChannel3);
       tim_1_ocn_start(kTimChannel3);
 
-      gBrushCfg.InStepCount++;
+      commutation_nextstep(&gBrushCfg);
+      /*gBrushCfg.InStepCount++;
       if (gBrushCfg.kMaxStepCount <= gBrushCfg.InStepCount)
       {
-        gCommutation = kPhaseVU;
+        gBrushCfg.StateCommutation = kPhaseVU;
         gBrushCfg.InStepCount = 0;
-      }
+      }*/
+
 
       break;
     }
@@ -400,9 +435,9 @@ void commutation_cb(PWMDriver *pwmp)
     {
 
       /* Step 3 */
-/*       palSetLine(DEBUG_INT_LINE);
+      palSetLine(DEBUG_INT_LINE);
       palSetLine(DEBUG_INT_LINE2);
- */
+
       /* Channel 1 Low connected */
       tim_1_oc_stop(kTimChannel1);
       tim_1_ocn_start(kTimChannel1);
@@ -413,20 +448,22 @@ void commutation_cb(PWMDriver *pwmp)
       tim_1_oc_stop(kTimChannel3);
       tim_1_ocn_stop(kTimChannel3);
 
-      gBrushCfg.InStepCount++;
+      commutation_nextstep(&gBrushCfg);
+      /*gBrushCfg.InStepCount++;
       if (gBrushCfg.kMaxStepCount <= gBrushCfg.InStepCount)
       {
-        gCommutation = kPhaseWU;
+        gBrushCfg.StateCommutation = kPhaseWU;
         gBrushCfg.InStepCount = 0;
-      }
+      }*/
+
       break;
     }
 
     case kPhaseWU:
     {
       /* Step 2 */
-/*       palClearLine(DEBUG_INT_LINE);
-      palSetLine(DEBUG_INT_LINE2); */
+      palClearLine(DEBUG_INT_LINE);
+      palSetLine(DEBUG_INT_LINE2);
 
       /* Channel 1 Low connected */
       tim_1_oc_stop(kTimChannel1);
@@ -438,19 +475,23 @@ void commutation_cb(PWMDriver *pwmp)
       tim_1_oc_start(kTimChannel3);
       tim_1_ocn_stop(kTimChannel3);
 
-      gBrushCfg.InStepCount++;
+      commutation_nextstep(&gBrushCfg);
+     /* gBrushCfg.InStepCount++;
       if (gBrushCfg.kMaxStepCount <= gBrushCfg.InStepCount)
       {
-        gCommutation = kPhaseWV;
+        gBrushCfg.StateCommutation = kPhaseWV;
         gBrushCfg.InStepCount = 0;
-      }
+      }*/
+
       break;
     }
 
     case kPhaseWV:
     {
 
-      palClearLine(LD2_LINE);
+      /* Step 1 */
+      palSetLine(DEBUG_INT_LINE);
+      palClearLine(DEBUG_INT_LINE2);
 
       /* Channel 1 not connected */
       tim_1_oc_stop(kTimChannel1);
@@ -463,12 +504,14 @@ void commutation_cb(PWMDriver *pwmp)
       tim_1_ocn_stop(kTimChannel3);
 
 
-      gBrushCfg.InStepCount++;
+      commutation_nextstep(&gBrushCfg);
+      /*gBrushCfg.InStepCount++;
       if (gBrushCfg.kMaxStepCount <= gBrushCfg.InStepCount)
       {
-        gCommutation = kPhaseUV;
+        gBrushCfg.StateCommutation = kPhaseUV;
         gBrushCfg.InStepCount = 0;
-      }
+      }*/
+
       break;
     }
 
@@ -476,7 +519,7 @@ void commutation_cb(PWMDriver *pwmp)
         break;
   }
 
-  palClearLine(DEBUG_INT_LINE);
+  //palClearLine(DEBUG_INT_LINE);
 
   // Force update event (if preload enabled) for CxE,CxNE and OCxM
   (&PWMD1)->tim->EGR |= STM32_TIM_EGR_COMG;

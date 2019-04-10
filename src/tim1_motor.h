@@ -19,7 +19,7 @@
 #define PERIOD_100_MS_INT       5273
 
 #define NB_PHASE                3
-
+#define NB_STATE                7
 
 /*===========================================================================*/
 /* Typedefs                                                                  */
@@ -28,7 +28,7 @@
 typedef enum
 {
   kCW   =0,
-  kCC1  =1
+  kCCW  =1
 }Rotation;
 
 typedef enum
@@ -92,11 +92,17 @@ typedef enum
 /*===========================================================================*/
 typedef struct
 {
-  uint32_t InStepCount;       // Count the number of iteration has done in a given step,determine the frequency of the 6 steps
-  uint32_t kMaxStepCount;      // Maximum number of iteration inside a step
+  CommutationStateMachine StateCommutation;
+  Rotation RotationDir;
+  uint32_t InStepCount;             // Count the number of iteration has done in a given step,determine the frequency of the 6 steps
+  uint32_t kMaxStepCount;           // Maximum number of iteration inside a step
   const iomode_t kDefaultIOConfig;
   ioline_t P_Channels[NB_PHASE];
   ioline_t N_Channels[NB_PHASE];
+
+  int32_t StateIterator;
+  const CommutationStateMachine StateArray[NB_STATE];
+
 }BrushlessConfig;
 
 /*===========================================================================*/
