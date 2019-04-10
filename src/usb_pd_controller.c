@@ -20,8 +20,8 @@
 
 /*
  * I2C configuration object.
- * I2C2_TIMINGR: 1000 kHz with I2CCLK = 48 MHz, rise time = 100 ns,
- *               fall time = 10 ns (0x00700818)
+ * I2C2_TIMINGR: 1000 kHz with I2CCLK = 54 MHz, rise time = 100 ns,
+ *               fall time = 10 ns (0x0080091C)
  */
 static const I2CConfig i2c2config = {
     0x0080091C,
@@ -208,7 +208,11 @@ bool usbPDControllerIsPowerReady(void){
 }
 
 bool usbPDControllerIsContract(void){
-    return dpm_data._capability_match;
+    if(pdb_config.pe._explicit_contract){
+        return dpm_data._capability_match;
+    }else{
+        return false;
+    }
 }
 
 uint16_t usbPDControllerGetNegociatedVoltage(void){
