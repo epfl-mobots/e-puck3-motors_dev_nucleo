@@ -14,6 +14,10 @@
 #include "main.h"
 #include "user_shell.h"
 #include "gate_drivers.h"
+#include "tim1_motor.h"
+
+
+extern BrushlessConfig gBrushCfg;
 
 static THD_WORKING_AREA(waShell,2048);
 
@@ -91,9 +95,31 @@ static void cmd_power_drivers(BaseSequentialStream *chp, int argc, char *argv[])
 	}
 }
 
+
+static void cmd_step_time(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  (void)argv;
+  if(argc == 1)
+  {
+    char *endptr;
+    uint32_t lMaxStepCount = strtol(argv[0], &endptr, 0);
+    gBrushCfg.kMaxStepCount = lMaxStepCount;
+  }
+  if(argc == 2)
+  {
+      //gives the actual step number timer and the step status
+      chprintf(chp, "Iteration per step : %d" SHELL_NEWLINE_STR, gBrushCfg.kMaxStepCount);
+  }
+  else
+  {
+      shellUsage(chp, "set_step_time 0-65535");
+  }
+}
+
 static const ShellCommand commands[] = {
 	{"set_phase", cmd_set_phase},
 	{"power_drivers", cmd_power_drivers},
+	{"set_step_time", cmd_step_time},
 	{NULL, NULL}
 };
 
