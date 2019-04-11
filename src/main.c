@@ -108,7 +108,7 @@ int main(void) {
 	initGDBEvents();
 	gdbStart();
 
-	usbPDControllerInit();
+	usbPDControllerStart();
 
 	/*
 	* Initializes two serial-over-USB CDC drivers and starts and connects the USB.
