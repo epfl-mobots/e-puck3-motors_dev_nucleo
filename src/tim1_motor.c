@@ -18,13 +18,47 @@
 // PWM
 
 BrushlessConfig gBrushCfg = {
-    .StateCommutation=kStop,
+
     .RotationDir=kCCW,
     .StateIterator=0,
-    .StateArray = {kStop,kPhaseUV,kPhaseUW,kPhaseVW,kPhaseVU,kPhaseWU,kPhaseWV},
     .InStepCount = 0,
-    .kMaxStepCount = 666,
+    .kMaxStepCount = 55,
     .kDefaultIOConfig = PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1),
+    .Mode = kInitCfg,
+
+    /** Configuration of the commutation steps of the brushless motor **/
+
+    /* Channel 1 - Channel 1 Comp - Channel 2 - Channel 2 Comp - Channel 3 - Channel 3 Comp */
+
+    /* ALL CHANNELS OFF */
+    .kChannelStateArray[kStop] = {kTimCh_Disable,kTimCh_Disable,kTimCh_Disable,kTimCh_Disable,kTimCh_Disable,kTimCh_Disable},
+
+    /* C1 : ENABLE - C1C - C2 - C2C : ENABLE - C3 - C3C */
+    .kChannelStateArray[kPhaseUV] = {kTimCh_Enable,kTimCh_Disable,kTimCh_Disable,kTimCh_Enable,kTimCh_Disable,kTimCh_Disable},
+
+    /* C1 : ENABLE - C1C - C2 - C2C - C3 - C3C : ENABLE */
+    .kChannelStateArray[kPhaseUW] = {kTimCh_Enable,kTimCh_Disable,kTimCh_Disable,kTimCh_Disable,kTimCh_Disable,kTimCh_Enable},
+
+    /* C1 - C1C - C2 : ENABLE - C2C - C3 - C3C : ENABLE */
+    .kChannelStateArray[kPhaseVW] = {kTimCh_Disable,kTimCh_Disable,kTimCh_Enable,kTimCh_Disable,kTimCh_Disable,kTimCh_Enable},
+
+    /* C1 - C1C : ENABLE - C2 : ENABLE - C2C - C3 - C3C */
+    .kChannelStateArray[kPhaseVU] = {kTimCh_Disable,kTimCh_Enable,kTimCh_Enable,kTimCh_Disable,kTimCh_Disable,kTimCh_Disable},
+
+    /* C1 - C1C : ENABLE - C2 - C2C - C3 : ENABLE - C3C */
+    .kChannelStateArray[kPhaseWU] = {kTimCh_Disable,kTimCh_Enable,kTimCh_Disable,kTimCh_Disable,kTimCh_Enable,kTimCh_Disable},
+
+    /* C1 - C1C - C2 - C2C : ENABLE - C3 : ENABLE - C3C */
+    .kChannelStateArray[kPhaseWV] = {kTimCh_Disable,kTimCh_Disable,kTimCh_Disable,kTimCh_Enable,kTimCh_Enable,kTimCh_Disable},
+
+    /** Ramp speed **/
+
+    .RampStepSpeed = {100,75,55},
+    .RampIter = 0,
+    .RampTime = 0,
+    .kMaxRampTime = 20,
+
+    /** IO Configuration **/
     .P_Channels = {LINE_OUT_MOT1_PH1_P,LINE_OUT_MOT1_PH2_P,LINE_OUT_MOT1_PH3_P},
     .N_Channels = {LINE_OUT_MOT1_PH1_N,LINE_OUT_MOT1_PH2_N,LINE_OUT_MOT1_PH3_N}
 };
@@ -277,6 +311,7 @@ void commutation_nextstep(BrushlessConfig *pBrushCfg)
       if(NB_STATE == pBrushCfg->StateIterator)
       {
         pBrushCfg->StateIterator=kPhaseUV;
+        pBrushCfg->CycleCount++;
       }
 
     }
@@ -286,10 +321,10 @@ void commutation_nextstep(BrushlessConfig *pBrushCfg)
       if(((int32_t) kStop) >= pBrushCfg->StateIterator)
       {
         pBrushCfg->StateIterator=kPhaseWV;
+        pBrushCfg->CycleCount++;
       }
     }
 
-    pBrushCfg->StateCommutation = pBrushCfg->StateArray[pBrushCfg->StateIterator];
     pBrushCfg->InStepCount = 0;
   }
 }
@@ -298,19 +333,17 @@ void commutation_nextstep(BrushlessConfig *pBrushCfg)
 
 void commutation_cb(PWMDriver *pwmp)
 {
-
-  //palSetLine(DEBUG_INT_LINE);
-
-  switch (gBrushCfg.StateCommutation)
+  uint32_t lOldCycle = 0;
+  palSetLine(LD2_LINE);
+  switch (gBrushCfg.Mode)
   {
-    case kStop:
-    {
 
-      //TODO : Not optimal but will do the job.
-      palSetLine(LD2_LINE);
-/*       palSetLine(DEBUG_INT_LINE);
-      palSetLine(DEBUG_INT_LINE2);
- */
+
+    case kInitCfg:
+    {
+      palClearLine(DEBUG_INT_LINE);
+      palClearLine(DEBUG_INT_LINE2);
+
       /* Stop all the channels */
       tim_1_oc_stop(kTimChannel1);
       tim_1_oc_stop(kTimChannel2);
@@ -320,9 +353,9 @@ void commutation_cb(PWMDriver *pwmp)
       tim_1_ocn_stop(kTimChannel3);
 
       /* Set all the OC output to same PWM */
-      (&PWMD1)->tim->CCR[kTimChannel1]  =  PERIOD_PWM_20_KHZ/2 - 1;  // Select the Half-Period to overflow
-      (&PWMD1)->tim->CCR[kTimChannel2]  =  PERIOD_PWM_20_KHZ/2 - 1;  // Select the Half-Period to overflow
-      (&PWMD1)->tim->CCR[kTimChannel3]  =  PERIOD_PWM_20_KHZ/2 - 1;  // Select the Half-Period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel1]  =  PERIOD_PWM_20_KHZ/4 - 1;  // Select the Half-Period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel2]  =  PERIOD_PWM_20_KHZ/4 - 1;  // Select the Half-Period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel3]  =  PERIOD_PWM_20_KHZ/4 - 1;  // Select the Half-Period to overflow
 
       // Force update event (if preload enabled)
       (&PWMD1)->tim->EGR |= STM32_TIM_EGR_UG;
@@ -335,191 +368,65 @@ void commutation_cb(PWMDriver *pwmp)
       // Force update event (if preload enabled)
       (&PWMD1)->tim->EGR |= STM32_TIM_EGR_COMG;
 
-      commutation_nextstep(&gBrushCfg);
-      //gBrushCfg.StateCommutation = kPhaseUV;
-      //gBrushCfg.InStepCount = 0;
-
+      gBrushCfg.Mode = kInitRamp;
       break;
     }
-
-    /*
-     * To see which step we are we will count from 0 up to 3 and down to 1
-     */
-    case kPhaseUV:
+    case kInitRamp:
     {
-      /* Debug IO in order to see in which step we are */
-      palSetLine(LD2_LINE);
 
-      /* Step 0 */
-      palClearLine(DEBUG_INT_LINE);
-      palClearLine(DEBUG_INT_LINE2);
-
-      /* Channel 1 High transistor connected */
-      tim_1_oc_start(kTimChannel1);
-      tim_1_ocn_stop(kTimChannel1);
-      /* Channel 2 Low  transistor connected */
-      tim_1_oc_stop(kTimChannel2);
-      tim_1_ocn_start(kTimChannel2);
-      /* Channel 3 not connected */
-      tim_1_oc_stop(kTimChannel3);
-      tim_1_ocn_stop(kTimChannel3);
-
-      commutation_nextstep(&gBrushCfg);
-
-      /*gBrushCfg.InStepCount++;
-      if (gBrushCfg.kMaxStepCount <= gBrushCfg.InStepCount)
-      {
-        gBrushCfg.StateCommutation = kPhaseUW;
-        gBrushCfg.InStepCount = 0;
-      }*/
-
-      break;
-    }
-
-    case kPhaseUW:
-    {
-      /* Step 1 */
       palSetLine(DEBUG_INT_LINE);
       palClearLine(DEBUG_INT_LINE2);
-      /* Channel 1 High transistor connected */
-      tim_1_oc_start(kTimChannel1);
-      tim_1_ocn_stop(kTimChannel1);
-      /* Channel 2 not connected */
-      tim_1_oc_stop(kTimChannel2);
-      tim_1_ocn_stop(kTimChannel2);
-      /* Channel 3 Low transistor connected */
-      tim_1_oc_stop(kTimChannel3);
-      tim_1_ocn_start(kTimChannel3);
+      // Set the speed to the ramp speed
+      gBrushCfg.kMaxStepCount = gBrushCfg.RampStepSpeed[gBrushCfg.RampIter];
 
+      lOldCycle = gBrushCfg.CycleCount;
+      tim_1_oc_cmd(kTimChannel1 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][0]);
+      tim_1_ocn_cmd(kTimChannel1,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][1]);
+      tim_1_oc_cmd(kTimChannel2 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][2]);
+      tim_1_ocn_cmd(kTimChannel2,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][3]);
+      tim_1_oc_cmd(kTimChannel3 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][4]);
+      tim_1_ocn_cmd(kTimChannel3,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][5]);
       commutation_nextstep(&gBrushCfg);
-      /*gBrushCfg.InStepCount++;
-      if (gBrushCfg.kMaxStepCount <= gBrushCfg.InStepCount)
+
+      // Detect when a complete 6-steps cycle has been done
+      if(lOldCycle != gBrushCfg.CycleCount)
       {
-        gBrushCfg.StateCommutation = kPhaseVW;
-        gBrushCfg.InStepCount = 0;
-      }*/
+        gBrushCfg.RampTime++;
+
+        // Check if we can change the speed
+        if(gBrushCfg.RampTime >= gBrushCfg.kMaxRampTime)
+        {
+          gBrushCfg.RampTime = 0;
+          gBrushCfg.RampIter++;
+        }
+        // Check if we have done all the ramp speeds
+        if(NB_RAMP_STEPS <= gBrushCfg.RampIter)
+        {
+          gBrushCfg.Mode = kEndless;
+        }
+      }
 
       break;
     }
-
-    case kPhaseVW:
+    case kEndless:
     {
-
-      /* Step 2 */
-      palClearLine(DEBUG_INT_LINE);
-      palSetLine(DEBUG_INT_LINE2);
-
-      /* Channel 1 not connected */
-      tim_1_oc_stop(kTimChannel1);
-      tim_1_ocn_stop(kTimChannel1);
-      /* Channel 2 High connected*/
-      tim_1_oc_start(kTimChannel2);
-      tim_1_ocn_stop(kTimChannel2);
-      /* Channel 3 Low transistor connected */
-      tim_1_oc_stop(kTimChannel3);
-      tim_1_ocn_start(kTimChannel3);
-
-      commutation_nextstep(&gBrushCfg);
-      /*gBrushCfg.InStepCount++;
-      if (gBrushCfg.kMaxStepCount <= gBrushCfg.InStepCount)
-      {
-        gBrushCfg.StateCommutation = kPhaseVU;
-        gBrushCfg.InStepCount = 0;
-      }*/
-
-
-      break;
-    }
-
-    case kPhaseVU:
-    {
-
-      /* Step 3 */
       palSetLine(DEBUG_INT_LINE);
       palSetLine(DEBUG_INT_LINE2);
-
-      /* Channel 1 Low connected */
-      tim_1_oc_stop(kTimChannel1);
-      tim_1_ocn_start(kTimChannel1);
-      /* Channel 2 High connected*/
-      tim_1_oc_start(kTimChannel2);
-      tim_1_ocn_stop(kTimChannel2);
-      /* Channel 3 not connected */
-      tim_1_oc_stop(kTimChannel3);
-      tim_1_ocn_stop(kTimChannel3);
+      tim_1_oc_cmd(kTimChannel1 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][0]);
+      tim_1_ocn_cmd(kTimChannel1,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][1]);
+      tim_1_oc_cmd(kTimChannel2 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][2]);
+      tim_1_ocn_cmd(kTimChannel2,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][3]);
+      tim_1_oc_cmd(kTimChannel3 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][4]);
+      tim_1_ocn_cmd(kTimChannel3,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][5]);
 
       commutation_nextstep(&gBrushCfg);
-      /*gBrushCfg.InStepCount++;
-      if (gBrushCfg.kMaxStepCount <= gBrushCfg.InStepCount)
-      {
-        gBrushCfg.StateCommutation = kPhaseWU;
-        gBrushCfg.InStepCount = 0;
-      }*/
-
-      break;
-    }
-
-    case kPhaseWU:
-    {
-      /* Step 2 */
-      palClearLine(DEBUG_INT_LINE);
-      palSetLine(DEBUG_INT_LINE2);
-
-      /* Channel 1 Low connected */
-      tim_1_oc_stop(kTimChannel1);
-      tim_1_ocn_start(kTimChannel1);
-      /* Channel 2 not connected */
-      tim_1_oc_stop(kTimChannel2);
-      tim_1_ocn_stop(kTimChannel2);
-      /* Channel 3 High connected */
-      tim_1_oc_start(kTimChannel3);
-      tim_1_ocn_stop(kTimChannel3);
-
-      commutation_nextstep(&gBrushCfg);
-     /* gBrushCfg.InStepCount++;
-      if (gBrushCfg.kMaxStepCount <= gBrushCfg.InStepCount)
-      {
-        gBrushCfg.StateCommutation = kPhaseWV;
-        gBrushCfg.InStepCount = 0;
-      }*/
-
-      break;
-    }
-
-    case kPhaseWV:
-    {
-
-      /* Step 1 */
-      palSetLine(DEBUG_INT_LINE);
-      palClearLine(DEBUG_INT_LINE2);
-
-      /* Channel 1 not connected */
-      tim_1_oc_stop(kTimChannel1);
-      tim_1_ocn_stop(kTimChannel1);
-      /* Channel 2 Low connected */
-      tim_1_oc_stop(kTimChannel2);
-      tim_1_ocn_start(kTimChannel2);
-      /* Channel 3 High connected */
-      tim_1_oc_start(kTimChannel3);
-      tim_1_ocn_stop(kTimChannel3);
-
-
-      commutation_nextstep(&gBrushCfg);
-      /*gBrushCfg.InStepCount++;
-      if (gBrushCfg.kMaxStepCount <= gBrushCfg.InStepCount)
-      {
-        gBrushCfg.StateCommutation = kPhaseUV;
-        gBrushCfg.InStepCount = 0;
-      }*/
-
       break;
     }
 
     default:
-        break;
+      break;
   }
-
-  //palClearLine(DEBUG_INT_LINE);
+  palClearLine(LD2_LINE);
 
   // Force update event (if preload enabled) for CxE,CxNE and OCxM
   (&PWMD1)->tim->EGR |= STM32_TIM_EGR_COMG;

@@ -19,7 +19,9 @@
 #define PERIOD_100_MS_INT       5273
 
 #define NB_PHASE                3
+#define NB_CHANNELS             2 * NB_PHASE
 #define NB_STATE                7
+#define NB_RAMP_STEPS           3
 
 /*===========================================================================*/
 /* Typedefs                                                                  */
@@ -44,7 +46,8 @@ typedef enum
 
 typedef enum
 {
-  kInitRamp = 0,
+  kInitCfg  = 0,
+  kInitRamp = 1,
   kEndless  = 255
 }CmdMode;
 
@@ -92,7 +95,7 @@ typedef enum
 /*===========================================================================*/
 typedef struct
 {
-  CommutationStateMachine StateCommutation;
+
   Rotation RotationDir;
   uint32_t InStepCount;             // Count the number of iteration has done in a given step,determine the frequency of the 6 steps
   uint32_t kMaxStepCount;           // Maximum number of iteration inside a step
@@ -100,8 +103,21 @@ typedef struct
   ioline_t P_Channels[NB_PHASE];
   ioline_t N_Channels[NB_PHASE];
 
+
+  /* Actual command mode inside the brushless config */
+  CmdMode Mode;
+  uint32_t CycleCount;
+
+  /* Commutation tables and iterator */
   int32_t StateIterator;
-  const CommutationStateMachine StateArray[NB_STATE];
+  const TimChannelState kChannelStateArray[NB_STATE][NB_CHANNELS]; // Each phase has a P and N channel
+
+  /* Ramp speed */
+  uint32_t RampIter;
+  uint32_t RampTime; // Number of cycle in a given speed
+  const uint32_t kMaxRampTime;
+  uint32_t RampStepSpeed[NB_RAMP_STEPS]; //
+
 
 }BrushlessConfig;
 
