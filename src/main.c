@@ -12,10 +12,14 @@
 #include "user_shell.h"
 #include "uc_usage.h"
 #include "gdb.h"
+#include "ch.h"
+#include "hal.h"
 #include "gate_drivers.h"
 #include "power_button.h"
 #include "custom_io.h"
 #include "tim1_motor.h"
+#include <chprintf.h>
+
 
 /*===========================================================================*/
 /* Define				                                                 */
@@ -29,6 +33,31 @@
 #define DELAY_DEMO				1000
 
 /*===========================================================================*/
+/* Enumeration                                                               */
+/*===========================================================================*/
+typedef enum
+{
+  kTimer1_CH1   = 0,
+  kTimer1_CH2   = 1,
+  kTimer1_CH3   = 2,
+  kTimer2_CH2   = 3,
+  kTimer5_TRGO  = 4,
+  kTimer4_CH4   = 5,
+  kTimer3_CH4   = 6,
+  kTimer8_TRGO  = 7,
+  kTimer8_TRGO2 = 8,
+  kTimer1_TRGO  = 9,
+  kTimer1_TRGO2 = 10,
+  kTimer2_TRGO  = 11,
+  kTimer4_TRGO  = 12,
+  kTimer6_TRGO  = 13,
+  kReserved     = 14,
+  kExti_Line11  = 15
+}AdcExtTrigSrc;
+
+
+
+/*===========================================================================*/
 /* Variables				                                                 */
 /*===========================================================================*/
 // ADC1
@@ -37,7 +66,7 @@ static uint32_t adc_value;
 // ADC 3
 static adcsample_t adc_sample_3[ADC_GRP3_NUM_CHANNELS * ADC_GRP3_BUF_DEPTH];
 static uint32_t adc_grp_3[ADC_GRP3_NUM_CHANNELS] = {0};
-
+static uint8_t acq_done = 0;
 
 
 /*===========================================================================*/
@@ -49,6 +78,10 @@ static void adc_1_err(ADCDriver *adcp, adcerror_t err);
 // ADC 3
 static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
 static void adc_3_err_cb(ADCDriver *adcp, adcerror_t err);
+
+// UART
+static void Send_UINT16_Uart(uint16_t* data, uint16_t size);
+static void Send_UINT32_Uart(uint32_t* data, uint16_t size);
 
 /*===========================================================================*/
 /* Threads				                                                 */
@@ -97,6 +130,43 @@ static THD_FUNCTION(Thread1,arg) {
   }
 }
 
+static THD_WORKING_AREA(waThread2,128);
+static THD_FUNCTION(Thread2,arg) {
+  (void)arg;
+  chRegSetThreadName("sender");
+  while(true){
+
+    if(1==acq_done)
+    {
+      Send_UINT32_Uart(adc_grp_3,4);
+      acq_done = 0;
+    }
+    chThdSleepMilliseconds(500);
+  }
+}
+
+
+/*===========================================================================*/
+/* UART Communication                                                        */
+/*===========================================================================*/
+
+
+void Send_UINT16_Uart(uint16_t* data, uint16_t size)
+{
+
+    chprintf((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"START", 5);
+    chprintf((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&size, sizeof(uint16_t));
+    chprintf((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)data, sizeof(uint16_t) * size);
+}
+
+
+void Send_UINT32_Uart(uint32_t* data, uint16_t size)
+{
+    chprintf((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"START", 5);
+    chprintf((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&size, sizeof(uint16_t));
+    chprintf((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)data, sizeof(uint32_t) * size);
+}
+
 
 
 /*===========================================================================*/
@@ -106,12 +176,14 @@ static THD_FUNCTION(Thread1,arg) {
 
 /* ADC 3 Configuration */
 static const ADCConversionGroup ADC3group = {
-    .circular = false,
+    .circular = true,
     .num_channels = ADC_GRP3_NUM_CHANNELS,
     .end_cb = adc_3_cb,
     .error_cb = adc_3_err_cb,
     .cr1 = 0,	/*No OVR int,12 bit resolution,no AWDG/JAWDG,*/
-    .cr2 = ADC_CR2_SWSTART, /* manual start of regular channels,EOC is set at end of each sequence^,no OVR detect */
+    .cr2 = //ADC_CR2_SWSTART      | /* manual start of regular channels,EOC is set at end of each sequence^,no OVR detect */
+           ADC_CR2_EXTEN_RISING | /* Rising edge trigger detection */
+           ADC_CR2_EXTSEL_SRC(kTimer1_TRGO2),
     .htr = 0,
 	.ltr = 0,
 	.smpr1 = 0,
@@ -133,6 +205,7 @@ static const ADCConversionGroup ADC3group = {
  */
 static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 {
+    palSetLine(DEBUG_INT_LINE);
 	size_t i = 0;
 	//Reset the array
 	for(i = 0;i < ADC_GRP3_NUM_CHANNELS;i++)
@@ -152,14 +225,15 @@ static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
     for (i = 0; i < ADC_GRP3_NUM_CHANNELS; i++) {
     	adc_grp_3[i] /= ADC_GRP3_BUF_DEPTH;
     }
-
+    acq_done = 1;
+    palClearLine(DEBUG_INT_LINE);
     /*
 	 * reLaunch the conversion
 	 */
 
-    chSysLockFromISR();
+    /* chSysLockFromISR();
     adcStartConversionI(&ADCD3, &ADC3group, adc_sample_3,ADC_GRP3_BUF_DEPTH);
-    chSysUnlockFromISR();
+    chSysUnlockFromISR();*/
 }
 
 static void adc_3_err_cb(ADCDriver *adcp, adcerror_t err)
@@ -170,57 +244,16 @@ static void adc_3_err_cb(ADCDriver *adcp, adcerror_t err)
 
 
 
+/*===========================================================================*/
+/* PWM Configuration                                                         */
+/*===========================================================================*/
+
+
 // Periodic callback called when Update event happens
 static void pwm_p_cb(PWMDriver *pwmp)
 {
   
 }
-
-uint8_t state = 0;
-uint32_t count = 0;
-static void debug_cb(PWMDriver *pwmp)
-{
-  /* Configure the mode of each channel */
-  (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kPWMMode1);  // OC1 Mode : PWM Mode 1
-  (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(kPWMMode1);  // OC2 Mode : PWM Mode 1
-  (&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(kPWMMode1);  // OC3 Mode : PWM Mode 1
-
-
-
-  // STATE MACHINE
-  if(0 == state)
-  {
-	  palSetLine(LD2_LINE);
-	  palSetLine(DEBUG_INT_LINE);
-	  palClearLine(DEBUG_INT_LINE2);
-
-	  count++;
-	  if(count > 1000)
-	  {
-		 state = 1;
-		 count = 0;
-	  }
-  }
-
-  if(1 == state)
-  {
-	  palClearLine(LD2_LINE);
-	  palClearLine(DEBUG_INT_LINE);
-	  palSetLine(DEBUG_INT_LINE2);
-	  count++;
-	  if(count > 1000)
-	  {
-		 state = 0;
-		 count = 0;
-	  }
-  }
-
-}
-
-
-
-
-
 
 /*
  * Use PWM_Config only to configure the callback definitions
@@ -352,37 +385,25 @@ int main(void) {
 	}
 	adcStart(&ADCD3, NULL);
 
+    /*
+     * Launch the conversion (to get the buffer configured)
+     */
+    adcStartConversion(&ADCD3, &ADC3group, adc_sample_3,ADC_GRP3_BUF_DEPTH);
+
 
 	/*
 	 * Starting PWM driver 1 and enabling the notifications.
 	 */
-
-
 	// TIMER 1 Config
 	pwmStart(&PWMD1, &tim_1_cfg); // WARNING : PWM MODE 1 BY DEFAULT AND MOE SET TO 1 !!
-	uint32_t brush_6stpes_cfg = 1;
-
-	if(1 == brush_6stpes_cfg)
-	{
-	  timer_1_pwm_config();
-	}
-	else
-	{
-		// Break stage configuration
-		(&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CKD(2);  // Modification of the CR1 CKD in order to have a bigger period for the dead times
-	}
-
+	timer_1_pwm_config();
 	pwmEnablePeriodicNotification(&PWMD1); // Enable the Update Event interruption
-
-	/*
-	 * Launch the conversion
-	 */
-	adcStartConversion(&ADCD3, &ADC3group, adc_sample_3,ADC_GRP3_BUF_DEPTH);
-
-
 
 	// Configure the Thread that will blink the leds on the boards
 	chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO + 1, Thread1, NULL);
+
+    // Configure the Thread that will blink the leds on the boards
+    chThdCreateStatic(waThread2, sizeof(waThread2), NORMALPRIO + 2, Thread2, NULL);
 
 	while (true)
 	{
@@ -390,22 +411,7 @@ int main(void) {
 		/* chThdSleepMilliseconds(500);
 		chprintf((BaseSequentialStream *) &USB_GDB, "IN1 : %d,IN2 : %d,IN3 : %d,IN4 : %d\n\r",adc_grp_3[0],adc_grp_3[1],adc_grp_3[2],adc_grp_3[3]);*/
 
-/*		 Enable simple PWM
-		pwmEnableChannel(&PWMD1, PWM_TIM_1_CH2 , PWM_PERCENTAGE_TO_WIDTH(&PWMD1, 7500)); // Set CH1 and CH1N to 75% duty cycle
-		pwmEnableChannelNotification(&PWMD1, PWM_TIM_1_CH2);
-		chThdSleepMilliseconds(DELAY_DEMO);
 
-		pwmEnableChannel(&PWMD1, PWM_TIM_1_CH2 , PWM_PERCENTAGE_TO_WIDTH(&PWMD1, 5000)); // Set CH1 and CH1N to 50% duty cycle
-		chThdSleepMilliseconds(DELAY_DEMO);
-
-		pwmEnableChannel(&PWMD1, PWM_TIM_1_CH2 , PWM_PERCENTAGE_TO_WIDTH(&PWMD1, 2500)); // Set CH1 and CH1N to 25% duty cycle
-		chThdSleepMilliseconds(DELAY_DEMO);
-
-		pwmEnableChannel(&PWMD1, PWM_TIM_1_CH2 , PWM_PERCENTAGE_TO_WIDTH(&PWMD1, 1000)); // Set CH1 and CH1N to 10% duty cycle
-		chThdSleepMilliseconds(DELAY_DEMO);
-
-		 Disable the CH 1 and
-	    pwmDisableChannel(&PWMD1, DELAY_DEMO);*/
 	    
 		if(isUSBConfigured()){
 			//spawns the shell if the usb is connected
