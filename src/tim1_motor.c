@@ -53,10 +53,12 @@ BrushlessConfig gBrushCfg = {
 
     /** Ramp speed **/
 
-    .RampStepSpeed = {100,75,55},
-    .RampIter = 0,
+    .RampMinSpeed = 100,
+    .RampMaxSpeed = 55,
+    .RampCurSpeed = 0,
+    .RampStep = 1,
     .RampTime = 0,
-    .kMaxRampTime = 20,
+    .kMaxRampTime = 500,
 
     /** IO Configuration **/
     .P_Channels = {LINE_OUT_MOT1_PH1_P,LINE_OUT_MOT1_PH2_P,LINE_OUT_MOT1_PH3_P},
@@ -226,7 +228,7 @@ void timer_1_pwm_config (void)
     (&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC1NP);   // OC1N Polarity : Active High
     (&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS1);    // OC1 Idle State (when MOE=0) : 0
     (&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS1N);   // OC1N Idle State (when MOE=0): 0
-    (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(0);  // OC1 Mode : Frozen
+    (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kFrozen);  // OC1 Mode : Frozen
     (&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC1FE); // Disable the Fast Mode
     (&PWMD1)->tim->CCMR1 |= STM32_TIM_CCMR1_OC1PE;    // Enable the Preload -> CCR is loaded in the active register at each update event
     (&PWMD1)->tim->CCR[kTimChannel1] =  PERIOD_PWM_20_KHZ/2 - 1;  // Select the Half-period to overflow
@@ -236,7 +238,7 @@ void timer_1_pwm_config (void)
     (&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC2NP);   // OC2N Polarity : Active High
     (&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS2);    // OC2 Idle State (when MOE=0) : 0
     (&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS2N);   // OC2N Idle State (when MOE=0): 0
-    (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(0);  // OC2 Mode : Frozen
+    (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(kFrozen);  // OC2 Mode : Frozen
     (&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC2FE); // Disable the Fast Mode
     (&PWMD1)->tim->CCMR1 |= STM32_TIM_CCMR1_OC2PE;    // Enable the Preload
     (&PWMD1)->tim->CCR[kTimChannel2] =  PERIOD_PWM_20_KHZ/4 - 1;  // Select the Quarter-period to overflow
@@ -278,6 +280,10 @@ void timer_1_pwm_config (void)
     (&PWMD1)->tim->BDTR |= STM32_TIM_BDTR_MOE;      // Main Output Enable
 
     // Commutation event configuration (Not needed at the moment.)
+
+    // Select OC4REF as TRGO2
+    (&PWMD1)->tim->CR2 |= STM32_TIM_CR2_MMS2(7); // Master Mode Selection 2 : OC4REF
+
 
     // Start signal generation
     tim_1_oc_start(kTimChannel1);  // Channel 1 OC
@@ -333,16 +339,17 @@ void commutation_nextstep(BrushlessConfig *pBrushCfg)
 
 void commutation_cb(PWMDriver *pwmp)
 {
+
   uint32_t lOldCycle = 0;
+
   palSetLine(LD2_LINE);
+  palSetLine(DEBUG_INT_LINE2);
   switch (gBrushCfg.Mode)
   {
 
 
     case kInitCfg:
     {
-      palClearLine(DEBUG_INT_LINE);
-      palClearLine(DEBUG_INT_LINE2);
 
       /* Stop all the channels */
       tim_1_oc_stop(kTimChannel1);
@@ -353,31 +360,30 @@ void commutation_cb(PWMDriver *pwmp)
       tim_1_ocn_stop(kTimChannel3);
 
       /* Set all the OC output to same PWM */
-      (&PWMD1)->tim->CCR[kTimChannel1]  =  PERIOD_PWM_20_KHZ/4 - 1;  // Select the Half-Period to overflow
-      (&PWMD1)->tim->CCR[kTimChannel2]  =  PERIOD_PWM_20_KHZ/4 - 1;  // Select the Half-Period to overflow
-      (&PWMD1)->tim->CCR[kTimChannel3]  =  PERIOD_PWM_20_KHZ/4 - 1;  // Select the Half-Period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel1]  =  3* PERIOD_PWM_20_KHZ/4 - 1;  // Select the quarter-Period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel2]  =  3* PERIOD_PWM_20_KHZ/4 - 1;  // Select the quarter-Period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel3]  =  3* PERIOD_PWM_20_KHZ/4 - 1;  // Select the quarter-Period to overflow
 
       // Force update event (if preload enabled)
       (&PWMD1)->tim->EGR |= STM32_TIM_EGR_UG;
 
       /* Configure the mode of each channel */
-      (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kPWMMode1);  // OC1 Mode : PWM Mode 1
-      (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(kPWMMode1);  // OC2 Mode : PWM Mode 1
-      (&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(kPWMMode1);  // OC3 Mode : PWM Mode 1
+      (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kPWMMode2);  // OC1 Mode : PWM Mode 2
+      (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(kPWMMode2);  // OC2 Mode : PWM Mode 2
+      (&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(kPWMMode2);  // OC3 Mode : PWM Mode 2
 
       // Force update event (if preload enabled)
       (&PWMD1)->tim->EGR |= STM32_TIM_EGR_COMG;
 
       gBrushCfg.Mode = kInitRamp;
+      gBrushCfg.RampCurSpeed = gBrushCfg.RampMinSpeed;
       break;
     }
     case kInitRamp:
     {
 
-      palSetLine(DEBUG_INT_LINE);
-      palClearLine(DEBUG_INT_LINE2);
       // Set the speed to the ramp speed
-      gBrushCfg.kMaxStepCount = gBrushCfg.RampStepSpeed[gBrushCfg.RampIter];
+      gBrushCfg.kMaxStepCount = gBrushCfg.RampCurSpeed;
 
       lOldCycle = gBrushCfg.CycleCount;
       tim_1_oc_cmd(kTimChannel1 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][0]);
@@ -397,10 +403,11 @@ void commutation_cb(PWMDriver *pwmp)
         if(gBrushCfg.RampTime >= gBrushCfg.kMaxRampTime)
         {
           gBrushCfg.RampTime = 0;
-          gBrushCfg.RampIter++;
+          gBrushCfg.RampCurSpeed -= gBrushCfg.RampStep;
+
         }
         // Check if we have done all the ramp speeds
-        if(NB_RAMP_STEPS <= gBrushCfg.RampIter)
+        if(gBrushCfg.RampMaxSpeed >= gBrushCfg.RampCurSpeed)
         {
           gBrushCfg.Mode = kEndless;
         }
@@ -410,8 +417,6 @@ void commutation_cb(PWMDriver *pwmp)
     }
     case kEndless:
     {
-      palSetLine(DEBUG_INT_LINE);
-      palSetLine(DEBUG_INT_LINE2);
       tim_1_oc_cmd(kTimChannel1 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][0]);
       tim_1_ocn_cmd(kTimChannel1,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][1]);
       tim_1_oc_cmd(kTimChannel2 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][2]);
@@ -427,7 +432,7 @@ void commutation_cb(PWMDriver *pwmp)
       break;
   }
   palClearLine(LD2_LINE);
-
+  palClearLine(DEBUG_INT_LINE2);
   // Force update event (if preload enabled) for CxE,CxNE and OCxM
   (&PWMD1)->tim->EGR |= STM32_TIM_EGR_COMG;
 }
