@@ -182,8 +182,9 @@ static const ADCConversionGroup ADC3group = {
     .error_cb = adc_3_err_cb,
     .cr1 = 0,	/*No OVR int,12 bit resolution,no AWDG/JAWDG,*/
     .cr2 = //ADC_CR2_SWSTART      | /* manual start of regular channels,EOC is set at end of each sequence^,no OVR detect */
-           ADC_CR2_EXTEN_RISING | /* Rising edge trigger detection */
-           ADC_CR2_EXTSEL_SRC(kTimer1_TRGO2),
+           ADC_CR2_EXTEN_RISING             |  /* Rising edge trigger detection */
+           ADC_CR2_EXTSEL_SRC(kTimer1_TRGO2)|  /* External trigger is from Timer 1 TRGO 2*/
+           0,                       /**/
     .htr = 0,
 	.ltr = 0,
 	.smpr1 = 0,
@@ -261,7 +262,7 @@ static void pwm_p_cb(PWMDriver *pwmp)
 static PWMConfig tim_1_cfg = {
   .frequency = 10000,                        /* PWM clock frequency.   */
   .period    = 4096,                         /* PWM period in ticks  (here 0.4096 second)  */
-  pwm_p_cb,									 /* Callback called when UIF is set*/
+  commutation_cb,						     /* Callback called when UIF is set*/
   	  	  	  	  	  	  	  	  	  	  	 /* PWM Channels configuration */
   // Complete configuration is done after the call of PWmStart
   // Channels Callback are called when the counter matches the compare value (CCxIF)
@@ -269,7 +270,7 @@ static PWMConfig tim_1_cfg = {
    {PWM_OUTPUT_DISABLED, NULL},
    {PWM_OUTPUT_DISABLED, NULL},
    {PWM_OUTPUT_DISABLED, NULL},
-   {PWM_OUTPUT_DISABLED, commutation_cb}
+   {PWM_OUTPUT_DISABLED, pwm_cb_ch4}
   },
   .cr2  = 0,
   .bdtr = 0,
