@@ -60,11 +60,8 @@ typedef enum
 /*===========================================================================*/
 /* Variables				                                                 */
 /*===========================================================================*/
-// ADC1
-static adcsample_t adc_samples[ADC_GRP1_NUM_CHANNELS * ADC_GRP1_BUF_DEPTH];
-static uint32_t adc_value;
 // ADC 3
-static adcsample_t adc_sample_3[ADC_GRP3_NUM_CHANNELS * ADC_GRP3_BUF_DEPTH];
+static adcsample_t adc_sample_3[ADC_GRP3_NUM_CHANNELS * ADC_GRP3_BUF_DEPTH * 2];
 static uint32_t adc_grp_3[ADC_GRP3_NUM_CHANNELS] = {0};
 static uint8_t acq_done = 0;
 
@@ -72,9 +69,6 @@ static uint8_t acq_done = 0;
 /*===========================================================================*/
 /* Prototypes				                                                 */
 /*===========================================================================*/
-// ADC 1
-static void adc_1_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
-static void adc_1_err(ADCDriver *adcp, adcerror_t err);
 // ADC 3
 static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
 static void adc_3_err_cb(ADCDriver *adcp, adcerror_t err);
@@ -180,9 +174,9 @@ static const ADCConversionGroup ADC3group = {
     .num_channels = ADC_GRP3_NUM_CHANNELS,
     .end_cb = adc_3_cb,
     .error_cb = adc_3_err_cb,
-    .cr1 = 0,	/*No OVR int,12 bit resolution,no AWDG/JAWDG,*/
+    .cr1 = ADC_CR1_EOCIE,	/*End of Conversion interruption ,No OVR int,12 bit resolution,no AWDG/JAWDG,*/
     .cr2 = //ADC_CR2_SWSTART      | /* manual start of regular channels,EOC is set at end of each sequence^,no OVR detect */
-           ADC_CR2_EXTEN_RISING             |  /* Rising edge trigger detection */
+           ADC_CR2_EXTEN_BOTH             |  /* We need both as OCxREF don't behave as expected */
            ADC_CR2_EXTSEL_SRC(kTimer1_TRGO2)|  /* External trigger is from Timer 1 TRGO 2*/
            0,                       /**/
     .htr = 0,
@@ -228,13 +222,7 @@ static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
     }
     acq_done = 1;
     palClearLine(DEBUG_INT_LINE);
-    /*
-	 * reLaunch the conversion
-	 */
 
-    /* chSysLockFromISR();
-    adcStartConversionI(&ADCD3, &ADC3group, adc_sample_3,ADC_GRP3_BUF_DEPTH);
-    chSysUnlockFromISR();*/
 }
 
 static void adc_3_err_cb(ADCDriver *adcp, adcerror_t err)
@@ -323,7 +311,10 @@ int main(void) {
 	palClearLine(DEBUG_INT_LINE);
     palSetLineMode(DEBUG_INT_LINE2,PAL_MODE_OUTPUT_PUSHPULL);
     palClearLine(DEBUG_INT_LINE2);
-
+    palSetLineMode(DEBUG_INT_LINE3,PAL_MODE_OUTPUT_PUSHPULL);
+    palClearLine(DEBUG_INT_LINE3);
+    palSetLineMode(DEBUG_INT_LINE4,PAL_MODE_OUTPUT_PUSHPULL);
+    palClearLine(DEBUG_INT_LINE4);
 
     /* Motor 1 IO configuration when High-Impedance due to TIM 1
      * Phase 1 P : PA8  AF : 1

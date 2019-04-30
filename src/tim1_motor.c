@@ -274,7 +274,7 @@ void timer_1_pwm_config (void)
     // ChibiOS - Style
     pwmEnableChannel(&PWMD1, kTimChannel4 , 1);                 // Enabled to allow HAL support
     pwmEnableChannelNotification(&PWMD1, kTimChannel4);         // Enable the callback to be called for the specific channel
-    (&PWMD1)->tim->CCR[kTimChannel4]  =  3* PERIOD_PWM_20_KHZ/4 - 10;   // Select the quarter-Period to overflow : (less than 25% on)
+    (&PWMD1)->tim->CCR[kTimChannel4]  =  3* PERIOD_PWM_20_KHZ/4 - 30;   // Select the quarter-Period to overflow : (less than 25% on)
 
     // Break stage configuration
 
@@ -292,13 +292,13 @@ void timer_1_pwm_config (void)
 
 
     // Start signal generation
-    tim_1_oc_start(kTimChannel1);  // Channel 1 OC
-    tim_1_ocn_start(kTimChannel1); // Channel 1 OC Complementary
-    tim_1_oc_start(kTimChannel2);  // Channel 2 OC
-    tim_1_ocn_start(kTimChannel2); // Channel 2 OC Complementary
-    tim_1_oc_start(kTimChannel3);  // Channel 3 OC
-    tim_1_ocn_start(kTimChannel3); // Channel 3 OC Complementary
-    tim_1_oc_start(kTimChannel4);  // Channel 4 OC
+    // tim_1_oc_start(kTimChannel1);  // Channel 1 OC
+    // tim_1_ocn_start(kTimChannel1); // Channel 1 OC Complementary
+    // tim_1_oc_start(kTimChannel2);  // Channel 2 OC
+    // tim_1_ocn_start(kTimChannel2); // Channel 2 OC Complementary
+    // tim_1_oc_start(kTimChannel3);  // Channel 3 OC
+    // tim_1_ocn_start(kTimChannel3); // Channel 3 OC Complementary
+    // tim_1_oc_start(kTimChannel4);  // Channel 4 OC
 
 
     // Force update event (if preload enabled)
@@ -357,13 +357,13 @@ static void ramp_cb(void* arg)
 
 void pwm_cb_ch4(PWMDriver *pwmp)
 {
-  palToggleLine(DEBUG_INT_LINE2);
+  palSetLine(DEBUG_INT_LINE2);
 }
 
 
 void commutation_cb(PWMDriver *pwmp)
 {
-
+  palClearLine(DEBUG_INT_LINE2);
   palSetLine(LD2_LINE);
 
   switch (gBrushCfg.Mode)
