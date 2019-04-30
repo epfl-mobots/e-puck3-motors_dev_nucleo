@@ -32,6 +32,13 @@
 
 #define DELAY_DEMO				1000
 
+/*  DATA TX  */
+#define DTX_SIZE_1K                 1024
+#define DTX_NB_POINTS               6 * DTX_SIZE_1K
+
+static BSEMAPHORE_DECL(dtx_ready, true);
+
+
 /*===========================================================================*/
 /* Enumeration                                                               */
 /*===========================================================================*/
@@ -57,18 +64,53 @@ typedef enum
 
 
 
+
+/*===========================================================================*/
+/* Structure                                                                 */
+/*===========================================================================*/
+typedef struct
+{
+  // DATA
+  uint16_t data [ADC_GRP3_NUM_CHANNELS][DTX_NB_POINTS];
+  // MGT
+  const uint16_t nb_channels;
+  const uint16_t nb_points;
+  uint16_t data_left;
+  uint16_t data_idx;
+  uint8_t data_full;
+}AdcDataTx;
+
 /*===========================================================================*/
 /* Variables				                                                 */
 /*===========================================================================*/
+static AdcDataTx gADT= {
+   // VAR
+   .data_full = 0,
+   .data_idx  = 0,
+   .data_left = DTX_NB_POINTS,
+   // CST
+   .nb_channels = ADC_GRP3_NUM_CHANNELS,
+   .nb_points   = DTX_NB_POINTS,
+};
+
+static uint16_t test_array [12] = {
+                                    2,2,2,
+                                    2,2,2,
+                                    2,2,2,
+                                    2,2,2
+                                  };
+
 // ADC 3
 static adcsample_t adc_sample_3[ADC_GRP3_NUM_CHANNELS * ADC_GRP3_BUF_DEPTH * 2];
 static uint32_t adc_grp_3[ADC_GRP3_NUM_CHANNELS] = {0};
 static uint8_t acq_done = 0;
 
-
 /*===========================================================================*/
 /* Prototypes				                                                 */
 /*===========================================================================*/
+void Adt_Reset_Struct(AdcDataTx* adt);
+void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size);
+
 // ADC 3
 static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
 static void adc_3_err_cb(ADCDriver *adcp, adcerror_t err);
@@ -76,6 +118,7 @@ static void adc_3_err_cb(ADCDriver *adcp, adcerror_t err);
 // UART
 static void Send_UINT16_Uart(uint16_t* data, uint16_t size);
 static void Send_UINT32_Uart(uint32_t* data, uint16_t size);
+void Send_ADT_Uart(AdcDataTx* adt);
 
 /*===========================================================================*/
 /* Threads				                                                 */
@@ -130,12 +173,10 @@ static THD_FUNCTION(Thread2,arg) {
   chRegSetThreadName("sender");
   while(true){
 
-    if(1==acq_done)
-    {
-      Send_UINT32_Uart(adc_grp_3,4);
-      acq_done = 0;
-    }
-    chThdSleepMilliseconds(500);
+    chBSemWait(&dtx_ready);
+    Send_ADT_Uart(&gADT);
+    Adt_Reset_Struct(&gADT);
+    chprintf((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"CHC", 3);
   }
 }
 
@@ -143,7 +184,6 @@ static THD_FUNCTION(Thread2,arg) {
 /*===========================================================================*/
 /* UART Communication                                                        */
 /*===========================================================================*/
-
 
 void Send_UINT16_Uart(uint16_t* data, uint16_t size)
 {
@@ -153,6 +193,29 @@ void Send_UINT16_Uart(uint16_t* data, uint16_t size)
     chprintf((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)data, sizeof(uint16_t) * size);
 }
 
+void Send_ADT_Uart(AdcDataTx* adt)
+{
+
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"START", 5);
+
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"CH0", 3);
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&(adt->nb_points), sizeof(uint16_t));
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&(adt->data[0]), sizeof(uint16_t) * adt->nb_points);
+
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"CH1", 3);
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->nb_points, sizeof(uint16_t));
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->data[1], sizeof(uint16_t) * adt->nb_points);
+
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"CH2", 3);
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->nb_points, sizeof(uint16_t));
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->data[2], sizeof(uint16_t) * adt->nb_points);
+
+    streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"CH3", 3);
+    streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->nb_points, sizeof(uint16_t));
+    streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->data[3], sizeof(uint16_t) * adt->nb_points);
+}
+
+
 
 void Send_UINT32_Uart(uint32_t* data, uint16_t size)
 {
@@ -161,6 +224,65 @@ void Send_UINT32_Uart(uint32_t* data, uint16_t size)
     chprintf((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)data, sizeof(uint32_t) * size);
 }
 
+
+
+/*===========================================================================*/
+/* Data management                                                           */
+/*===========================================================================*/
+void Adt_Reset_Struct(AdcDataTx* adt)
+{
+  adt->data_full = 0;
+  adt->data_idx  = 0;
+  adt->data_left = adt->nb_points;
+}
+
+void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
+{
+  size_t i,j;
+
+  //
+  if(0==adt->data_full)
+  {
+
+    // Enough space for all the data
+    if(adt->data_left >= size)
+    {
+        for(i = 0;i<size;i++)
+        {
+          adt->data[0][adt->data_idx] = input_data[ adt->nb_channels * i];
+          adt->data[1][adt->data_idx] = input_data[ adt->nb_channels * i +1];
+          adt->data[2][adt->data_idx] = input_data[ adt->nb_channels * i +2];
+          adt->data[3][adt->data_idx] = input_data[ adt->nb_channels * i +3];
+          adt->data_idx += 1;
+        }
+        adt->data_left -= size;
+    }
+    // Fill it until maximum capacity
+    else
+    {
+      for(i = 0;i<adt->data_left;i++)
+      {
+        adt->data[0][adt->data_idx] = input_data[ adt->nb_channels * i];
+        adt->data[1][adt->data_idx] = input_data[ adt->nb_channels * i +1];
+        adt->data[2][adt->data_idx] = input_data[ adt->nb_channels * i +2];
+        adt->data[3][adt->data_idx] = input_data[ adt->nb_channels * i +3];
+        adt->data_idx += 1;
+      }
+      adt->data_left -= adt->data_left;
+    }
+
+  }
+
+  // Check if full
+  if(0 == adt->data_left || 1 == adt->data_full)
+  {
+    adt->data_full = 1;
+    chSysLockFromISR();
+    chBSemSignalI(&dtx_ready);
+    chSysUnlockFromISR();
+  }
+
+}
 
 
 /*===========================================================================*/
@@ -201,7 +323,8 @@ static const ADCConversionGroup ADC3group = {
 static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 {
     palSetLine(DEBUG_INT_LINE);
-	size_t i = 0;
+
+    size_t i = 0;
 	//Reset the array
 	for(i = 0;i < ADC_GRP3_NUM_CHANNELS;i++)
 	{
@@ -218,9 +341,14 @@ static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 
 	// Averaging
     for (i = 0; i < ADC_GRP3_NUM_CHANNELS; i++) {
-    	adc_grp_3[i] /= ADC_GRP3_BUF_DEPTH;
+    	adc_grp_3[i] /= n;
     }
+
+    Adt_Insert_Data(&gADT,test_array,n);
+
+
     acq_done = 1;
+
     palClearLine(DEBUG_INT_LINE);
 
 }
