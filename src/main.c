@@ -94,10 +94,9 @@ static AdcDataTx gADT= {
 };
 
 static uint16_t test_array [12] = {
-                                    2,2,2,
-                                    2,2,2,
-                                    2,2,2,
-                                    2,2,2
+                                    2,3,4,5,
+                                    2,3,4,5,
+                                    2,3,4,5
                                   };
 
 // ADC 3
@@ -176,7 +175,7 @@ static THD_FUNCTION(Thread2,arg) {
     chBSemWait(&dtx_ready);
     Send_ADT_Uart(&gADT);
     Adt_Reset_Struct(&gADT);
-    chprintf((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"CHC", 3);
+    streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"CHC", 3);
   }
 }
 
@@ -187,10 +186,9 @@ static THD_FUNCTION(Thread2,arg) {
 
 void Send_UINT16_Uart(uint16_t* data, uint16_t size)
 {
-
-    chprintf((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"START", 5);
-    chprintf((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&size, sizeof(uint16_t));
-    chprintf((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)data, sizeof(uint16_t) * size);
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"START", 5);
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&size, sizeof(uint16_t));
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)data, sizeof(uint16_t) * size);
 }
 
 void Send_ADT_Uart(AdcDataTx* adt)
@@ -210,18 +208,18 @@ void Send_ADT_Uart(AdcDataTx* adt)
   streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->nb_points, sizeof(uint16_t));
   streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->data[2], sizeof(uint16_t) * adt->nb_points);
 
-    streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"CH3", 3);
-    streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->nb_points, sizeof(uint16_t));
-    streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->data[3], sizeof(uint16_t) * adt->nb_points);
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"CH3", 3);
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->nb_points, sizeof(uint16_t));
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->data[3], sizeof(uint16_t) * adt->nb_points);
 }
 
 
 
 void Send_UINT32_Uart(uint32_t* data, uint16_t size)
 {
-    chprintf((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"START", 5);
-    chprintf((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&size, sizeof(uint16_t));
-    chprintf((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)data, sizeof(uint32_t) * size);
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"START", 5);
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&size, sizeof(uint16_t));
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)data, sizeof(uint32_t) * size);
 }
 
 
