@@ -106,24 +106,30 @@ def update_fft_plot(port):
 
 def update_adc_plot(port):
     size,adc_data = readAdcSerial(port)
-    sample_linspace = np.linspace(0, size, num=size)
+    #sample_linspace = np.linspace(0, size, num=size)
     if(len(adc_data) > 0):
         # CH0
-        ch0_plot.set_xdata(sample_linspace)
+        #ch0_plot.set_xdata(sample_linspace)
         ch0_plot.set_ydata(adc_data[0])
+        #graph_ch0.relim()
         graph_ch0.autoscale()
         # CH1
-        ch1_plot.set_xdata(sample_linspace)
+        #ch1_plot.set_xdata(sample_linspace)
         ch1_plot.set_ydata(adc_data[1])
+        #graph_ch1.relim()
         graph_ch1.autoscale()
         # CH2
-        ch2_plot.set_xdata(sample_linspace)
+        #ch2_plot.set_xdata(sample_linspace)
         ch2_plot.set_ydata(adc_data[2])
+        #graph_ch2.relim()
         graph_ch2.autoscale()
         # CH3
-        ch3_plot.set_xdata(sample_linspace)
+        #ch3_plot.set_xdata(sample_linspace)
         ch3_plot.set_ydata(adc_data[3])
+        #graph_ch3.relim()
         graph_ch3.autoscale()
+
+        reader_thd.tell_to_update_plot()
 
 
 
@@ -203,6 +209,8 @@ def readAdcSerial(port):
     size = struct.unpack('<H',port.read(2)) 
     size = size[0]
     print(size)
+    if(size != 6144):
+        return 0,[]
     #reads the data (uint_16_t)
     byte_size = size*2
     rcv_buffer = port.read(byte_size)
@@ -220,7 +228,10 @@ def readAdcSerial(port):
     size = struct.unpack('<H',port.read(2))
     size = size[0]
     print(size)
+    if(size != 6144):
+        return 0,[]
     byte_size = size*2
+
     rcv_buffer = port.read(byte_size)
     #if we receive the good amount of data, we convert them in uint16
     data_ch1 = convert_buffer(rcv_buffer,byte_size,size)
@@ -232,6 +243,8 @@ def readAdcSerial(port):
     size = struct.unpack('<H',port.read(2))
     size = size[0]
     print(size)
+    if(size != 6144):
+        return 0,[]
     byte_size = size*2
     rcv_buffer = port.read(byte_size)
     #if we receive the good amount of data, we convert them in uint16
@@ -244,6 +257,8 @@ def readAdcSerial(port):
     size = struct.unpack('<H',port.read(2))
     size = size[0]
     print(size)
+    if(size != 6144):
+        return 0,[]
     byte_size = size*2
     rcv_buffer = port.read(byte_size)
     #if we receive the good amount of data, we convert them in uint16
@@ -330,7 +345,7 @@ plt.subplots_adjust(left=0.1, bottom=0.25)
 fig.canvas.mpl_connect('close_event', handle_close) #to detect when the window is closed and if we do a ctrl-c
 
 def_x = sample_linspace = np.linspace(0, 6144, num=6144)
-def_y = sample_linspace = np.linspace(0, 10, num=6144)
+def_y = sample_linspace = np.linspace(0, 4096, num=6144)
 
 # Channel 0 ADC mesurements
 graph_ch0 = plt.subplot(221)
