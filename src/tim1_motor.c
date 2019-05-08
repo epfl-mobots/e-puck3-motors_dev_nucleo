@@ -274,7 +274,7 @@ void timer_1_pwm_config (void)
     // ChibiOS - Style
     pwmEnableChannel(&PWMD1, kTimChannel4 , 1);                 // Enabled to allow HAL support
     pwmEnableChannelNotification(&PWMD1, kTimChannel4);         // Enable the callback to be called for the specific channel
-    (&PWMD1)->tim->CCR[kTimChannel4]  =  3* PERIOD_PWM_20_KHZ/4 - 30;   // Select the quarter-Period to overflow : (less than 25% on)
+    (&PWMD1)->tim->CCR[kTimChannel4]  =  4 * PERIOD_PWM_20_KHZ/5 ;   // Select the quarter-Period to overflow : (less than 25% on)
 
     // Break stage configuration
 
@@ -288,7 +288,7 @@ void timer_1_pwm_config (void)
     // Commutation event configuration (Not needed at the moment.)
 
     // Select OC4REF as TRGO2
-    (&PWMD1)->tim->CR2 |= STM32_TIM_CR2_MMS2(7); // Master Mode Selection 2 : OC4REF
+    (&PWMD1)->tim->CR2 |= STM32_TIM_CR2_MMS2(12); // Master Mode Selection 2 : OC4REF
 
 
     // Start signal generation

@@ -28,7 +28,7 @@
 #define ADC_GRP1_BUF_DEPTH      32
 
 #define ADC_GRP3_NUM_CHANNELS 	4
-#define ADC_GRP3_BUF_DEPTH		6
+#define ADC_GRP3_BUF_DEPTH		1
 
 #define DELAY_DEMO				1000
 
@@ -175,7 +175,6 @@ static THD_FUNCTION(Thread2,arg) {
     chBSemWait(&dtx_ready);
     Send_ADT_Uart(&gADT);
     Adt_Reset_Struct(&gADT);
-    streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"CHC", 3);
   }
 }
 
@@ -342,7 +341,7 @@ static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
     	adc_grp_3[i] /= n;
     }
 
-    Adt_Insert_Data(&gADT,test_array,n);
+    Adt_Insert_Data(&gADT,buffer,n);
 
 
     acq_done = 1;
