@@ -116,6 +116,26 @@ static void cmd_step_time(BaseSequentialStream *chp, int argc, char *argv[])
   }
 }
 
+static void cmd_sample_time(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  (void)argv;
+  if(argc == 1)
+  {
+  	char *endptr;
+    uint32_t width = strtol(argv[0], &endptr, 0);
+    if(width < 0){
+    	width = 0;
+    }else if (width > 100){
+    	width = 100;
+    }
+    PWMD1.tim->CCR[3] = (width * PERIOD_PWM_20_KHZ / 100) - 1;
+  }
+  else
+  {
+      chprintf(chp, "Sampling time: %d%" SHELL_NEWLINE_STR, (PWMD1.tim->CCR[3]+1)*100/PERIOD_PWM_20_KHZ);
+  }
+}
+
 static void cmd_dir(BaseSequentialStream *chp, int argc, char *argv[])
 {
   (void)argv;
@@ -147,6 +167,7 @@ static const ShellCommand commands[] = {
 	{"power_drivers", cmd_power_drivers},
 	{"set_step_time", cmd_step_time},
 	{"set_direction",cmd_dir},
+	{"set_sample_time",cmd_sample_time},
 	{NULL, NULL}
 };
 
