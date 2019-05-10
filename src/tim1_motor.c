@@ -277,6 +277,12 @@ void timer_1_pwm_config (void)
     (&PWMD1)->tim->CCMR2 |= STM32_TIM_CCMR2_OC4PE;    // Enable the Preload -> CCR is loaded in the active register at each update event
     (&PWMD1)->tim->CCMR2 &= (~STM32_TIM_CCMR2_OC4FE); // Disable the Fast Mode
 
+    (&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC6P);    // OC6  Polarity : Active High
+    (&PWMD1)->tim->CR2  &= (~STM32_TIM_CR2_OIS6);     // OC6 Idle State (when MOE=0): 0
+    (&PWMD1)->tim->CCMR3|=  STM32_TIM_CCMR3_OC6M(kPWMMode1);  // OC6 Mode : PWM Mode 1
+    (&PWMD1)->tim->CCMR3 |= STM32_TIM_CCMR3_OC6PE;    // Enable the Preload -> CCR is loaded in the active register at each update event
+    (&PWMD1)->tim->CCMR3 &= (~STM32_TIM_CCMR3_OC6FE); // Disable the Fast Mode
+
     // Configure the time and the interruption enable
 
     // BSP - Style
@@ -286,10 +292,11 @@ void timer_1_pwm_config (void)
 
 
     // ChibiOS - Style
-    pwmEnableChannel(&PWMD1, kTimChannel4 , 1);                 // Enabled to allow HAL support
+    pwmEnableChannel(&PWMD1, kTimChannel4 , 0.20 * PERIOD_PWM_20_KHZ - 1);                 // Enabled to allow HAL support
     pwmEnableChannelNotification(&PWMD1, kTimChannel4);         // Enable the callback to be called for the specific channel
-    (&PWMD1)->tim->CCR[kTimChannel4]  =  4 * PERIOD_PWM_20_KHZ/5 ;   // Select the quarter-Period to overflow : (less than 25% on)
-
+  
+    pwmEnableChannel(&PWMD1, kTimChannel6 , 0.50 * PERIOD_PWM_20_KHZ - 1);                 // Enabled to allow HAL support
+    
     // Break stage configuration
 
     (&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CKD(0);     // Modification of the CR1 CKD in order to have a bigger period for the dead times
@@ -302,7 +309,8 @@ void timer_1_pwm_config (void)
     // Commutation event configuration (Not needed at the moment.)
 
     // Select OC4REF as TRGO2
-    (&PWMD1)->tim->CR2 |= STM32_TIM_CR2_MMS2(12); // Master Mode Selection 2 : OC4REF
+    (&PWMD1)->tim->CR2 |= STM32_TIM_CR2_MMS2(7); // Master Mode Selection 2 : OC4REF
+    //(&PWMD1)->tim->CR2 |= STM32_TIM_CR2_MMS2(13); // Master Mode Selection 2 : OC44REF Rising or OC6REF falling
 
 
     // Start signal generation
