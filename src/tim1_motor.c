@@ -31,32 +31,32 @@ BrushlessConfig gBrushCfg = {
     /* Channel 1 - Channel 1 Comp - Channel 2 - Channel 2 Comp - Channel 3 - Channel 3 Comp */
 
     /* ALL CHANNELS OFF */
-    .kChannelStateArray[kStop] = {kTimCh_Disable,kTimCh_Disable,kTimCh_Disable,kTimCh_Disable,kTimCh_Disable,kTimCh_Disable},
+    .kChannelStateArray[kStop] =    {kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_Low},
 
     /* C1 : ENABLE - C1C - C2 - C2C : ENABLE - C3 - C3C */
-    .kChannelStateArray[kPhaseUV] = {kTimCh_Enable,kTimCh_Disable,kTimCh_Disable,kTimCh_Enable,kTimCh_Disable,kTimCh_Disable},
+    .kChannelStateArray[kPhaseUV] = {kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_High},
 
     /* C1 : ENABLE - C1C - C2 - C2C - C3 - C3C : ENABLE */
-    .kChannelStateArray[kPhaseUW] = {kTimCh_Enable,kTimCh_Disable,kTimCh_Disable,kTimCh_Disable,kTimCh_Disable,kTimCh_Enable},
+    .kChannelStateArray[kPhaseUW] = {kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_High,kTimCh_Low,kTimCh_Low},
 
     /* C1 - C1C - C2 : ENABLE - C2C - C3 - C3C : ENABLE */
-    .kChannelStateArray[kPhaseVW] = {kTimCh_Disable,kTimCh_Disable,kTimCh_Enable,kTimCh_Disable,kTimCh_Disable,kTimCh_Enable},
+    .kChannelStateArray[kPhaseVW] = {kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_High,kTimCh_PWM,kTimCh_PWM},
 
     /* C1 - C1C : ENABLE - C2 : ENABLE - C2C - C3 - C3C */
-    .kChannelStateArray[kPhaseVU] = {kTimCh_Disable,kTimCh_Enable,kTimCh_Enable,kTimCh_Disable,kTimCh_Disable,kTimCh_Disable},
+    .kChannelStateArray[kPhaseVU] = {kTimCh_Low,kTimCh_High,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_PWM},
 
     /* C1 - C1C : ENABLE - C2 - C2C - C3 : ENABLE - C3C */
-    .kChannelStateArray[kPhaseWU] = {kTimCh_Disable,kTimCh_Enable,kTimCh_Disable,kTimCh_Disable,kTimCh_Enable,kTimCh_Disable},
+    .kChannelStateArray[kPhaseWU] = {kTimCh_Low,kTimCh_High,kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_Low},
 
     /* C1 - C1C - C2 - C2C : ENABLE - C3 : ENABLE - C3C */
-    .kChannelStateArray[kPhaseWV] = {kTimCh_Disable,kTimCh_Disable,kTimCh_Disable,kTimCh_Enable,kTimCh_Enable,kTimCh_Disable},
+    .kChannelStateArray[kPhaseWV] = {kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_High},
 
     /** Ramp speed **/
 
-    .RampInterval = TIME_MS2I(50),
+    .RampInterval = TIME_MS2I(10),
     .RampTimeout  = 0,
     .RampMinSpeed = 100,
-    .RampMaxSpeed = 55,
+    .RampMaxSpeed = 26,
     .RampCurSpeed = 0,
     .RampStep = 1,
     .RampTime = 0,
@@ -118,14 +118,21 @@ static void tim_1_oc_cmd(TimChannel aChannel,TimChannelState aState)
 
   switch(aState)
   {
-    case kTimCh_Disable:
+    case kTimCh_Low:
     {
       palSetLineMode(gBrushCfg.P_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
       palClearLine(gBrushCfg.P_Channels[aChannel]);
       (&PWMD1)->tim->CCER &= (~lCCEnable);
       break;
     }
-    case kTimCh_Enable:
+    case kTimCh_High:
+    {
+      palSetLineMode(gBrushCfg.P_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
+      palSetLine(gBrushCfg.P_Channels[aChannel]);
+      (&PWMD1)->tim->CCER &= (~lCCEnable);
+      break;
+    }
+    case kTimCh_PWM:
     {
       palSetLineMode(gBrushCfg.P_Channels[aChannel],gBrushCfg.kDefaultIOConfig);
       (&PWMD1)->tim->CCER |= lCCEnable;
@@ -168,14 +175,21 @@ static void tim_1_ocn_cmd(TimChannel aChannel,TimChannelState aState)
 
   switch(aState)
   {
-    case kTimCh_Disable:
+    case kTimCh_Low:
     {
       palSetLineMode(gBrushCfg.N_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
       palClearLine(gBrushCfg.N_Channels[aChannel]);
       (&PWMD1)->tim->CCER &= (~lCCNEnable);
       break;
     }
-    case kTimCh_Enable:
+    case kTimCh_High:
+    {
+      palSetLineMode(gBrushCfg.N_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
+      palSetLine(gBrushCfg.N_Channels[aChannel]);
+      (&PWMD1)->tim->CCER &= (~lCCNEnable);
+      break;
+    }
+    case kTimCh_PWM:
     {
       palSetLineMode(gBrushCfg.N_Channels[aChannel],gBrushCfg.kDefaultIOConfig);
       (&PWMD1)->tim->CCER |= lCCNEnable;
@@ -186,22 +200,22 @@ static void tim_1_ocn_cmd(TimChannel aChannel,TimChannelState aState)
 
 static void tim_1_oc_start(TimChannel aChannel)
 {
-  tim_1_oc_cmd(aChannel,kTimCh_Enable);
+  tim_1_oc_cmd(aChannel,kTimCh_PWM);
 }
 
 static void tim_1_oc_stop(TimChannel aChannel)
 {
-  tim_1_oc_cmd(aChannel,kTimCh_Disable);
+  tim_1_oc_cmd(aChannel,kTimCh_Low);
 }
 
 static void tim_1_ocn_start(TimChannel aChannel)
 {
-  tim_1_ocn_cmd(aChannel,kTimCh_Enable);
+  tim_1_ocn_cmd(aChannel,kTimCh_PWM);
 }
 
 static void tim_1_ocn_stop(TimChannel aChannel)
 {
-  tim_1_ocn_cmd(aChannel,kTimCh_Disable);
+  tim_1_ocn_cmd(aChannel,kTimCh_Low);
 }
 
 
@@ -383,9 +397,9 @@ void commutation_cb(PWMDriver *pwmp)
       tim_1_ocn_stop(kTimChannel3);
 
       /* Set all the OC output to same PWM */
-      (&PWMD1)->tim->CCR[kTimChannel1]  =  3* PERIOD_PWM_20_KHZ/4 - 1;  // Select the quarter-Period to overflow
-      (&PWMD1)->tim->CCR[kTimChannel2]  =  3* PERIOD_PWM_20_KHZ/4 - 1;  // Select the quarter-Period to overflow
-      (&PWMD1)->tim->CCR[kTimChannel3]  =  3* PERIOD_PWM_20_KHZ/4 - 1;  // Select the quarter-Period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel1]  =  0.9 * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel2]  =  0.9 * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel3]  =  0.9 * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
 
       // Force update event (if preload enabled)
       (&PWMD1)->tim->EGR |= STM32_TIM_EGR_UG;

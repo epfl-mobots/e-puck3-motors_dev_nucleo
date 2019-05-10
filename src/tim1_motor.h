@@ -95,8 +95,9 @@ typedef enum
 
 typedef enum
 {
-    kTimCh_Disable = 0,
-    kTimCh_Enable  = 1
+    kTimCh_Low = 0,
+    kTimCh_High  = 1,
+    kTimCh_PWM = 2
 }TimChannelState;
 
 
