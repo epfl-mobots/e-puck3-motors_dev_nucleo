@@ -2,12 +2,14 @@ import numpy as np
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
-from matplotlib.widgets import Slider, Button, RadioButtons
+from matplotlib.text import Text
+from matplotlib.widgets import Slider, Button, RadioButtons,TextBox
 import serial
 import struct
 import sys
 import signal
 import time
+import csv
 from threading import Thread
 
 #Can be converted into a portable package by using the PyInstaller module
@@ -61,48 +63,6 @@ def update_plot():
         fig.canvas.draw_idle()
         reader_thd.plot_updated()
 
-#returns a sinus in an np.array of float64
-def do_sinus(freq, amp): 
-    m = np.linspace(0, n, num=(fs*n))
-    sinus = amp*np.sin(2*np.pi*freq*m)
-    sinus = sinus[0:n]
-    return sinus
-
-#returns the norm of the values of the FFT performed on the dataset given 
-#an n.array of float64
-def do_fft(array): 
-    FFT = np.fft.fft(array)
-    FFT_norme = np.sqrt(np.add(np.multiply(np.real(FFT),np.real(FFT)),(np.multiply(np.imag(FFT),np.imag(FFT)))))
-    return FFT_norme
-
-#function used to update the plot of the sinus
-def update_sinus_plot(val):
-    amp = samp.val
-    freq = sfreq.val
-    
-    sinus = do_sinus(freq,amp)
-    
-    sinus_plot.set_ydata(sinus)
-                       
-    graph_sinus.relim()
-    graph_sinus.autoscale()
-
-    reader_thd.tell_to_update_plot()
-    
-
-#function used to update the plot of the FFT
-def update_fft_plot(port):
-
-    fft_data = readFloatSerial(port)
-    
-    if(len(fft_data)>0):
-        fft_plot.set_ydata(fft_data)
-        
-        graph_fft.relim()
-        graph_fft.autoscale()
-        reader_thd.tell_to_update_plot()
-
-
 
 def update_adc_plot(port):
     size,adc_data = readAdcSerial(port)
@@ -130,13 +90,85 @@ def update_adc_plot(port):
         graph_ch3.autoscale()
 
         reader_thd.tell_to_update_plot()
+        return adc_data
+    return None
 
+def update_gen_plot(data):
+    if(len(data) > 0):
+        # CH0
+        #ch0_plot.set_xdata(sample_linspace)
+        ch0_plot.set_ydata(data[0])
+        graph_ch0.autoscale()
+        # CH1
+        #ch1_plot.set_xdata(sample_linspace)
+        ch1_plot.set_ydata(data[1])
+        graph_ch1.autoscale()
+        # CH2
+        #ch2_plot.set_xdata(sample_linspace)
+        ch2_plot.set_ydata(data[2])
+        graph_ch2.autoscale()
+        # CH3
+        #ch3_plot.set_xdata(sample_linspace)
+        ch3_plot.set_ydata(data[3])
+        graph_ch3.autoscale()
+        print('boom')
+        reader_thd.tell_to_update_plot()
+        print('bam')
 
 
 #reset the sinus plot
 def reset(event):
     sfreq.reset()
     samp.reset()
+
+# If new namefile hs been submitted
+def submit(text):
+    global g_filename
+    g_filename = text
+    print(g_filename)
+
+# Save the data in a csv file
+def save(event):
+    print(g_filename)
+    global g_adc_data
+    if g_adc_data is not None:
+        # Write the data in CSV format
+        with open(g_filename, 'w+',newline='') as f:
+            wr = csv.writer(f,dialect=csv.excel,delimiter=';')
+            # wr.writerow(['sep=,']) # To allow excel to understand what is the separator of this csv file
+            wr.writerow(['CH0','CH1','CH2','CH3']) # Title row
+            
+            for idx in range(0,number_of_points):
+                wr.writerow([   g_adc_data[0][idx],
+                                g_adc_data[1][idx],
+                                g_adc_data[2][idx],
+                                g_adc_data[3][idx],
+                            ])
+       
+
+# Load the data and plot it 
+def load(event):
+    global g_filename
+    # Read and process data
+    with open(g_filename,'r',newline='') as f:
+        list_ch0 = []
+        list_ch1 = []
+        list_ch2 = []
+        list_ch3 = []
+        rd = csv.reader(f,delimiter=';')
+        for idx,row in enumerate(rd):
+            if 0 == idx:
+                pass
+            else:
+                list_ch0.append(float(row[0]))
+                list_ch1.append(float(row[1]))
+                list_ch2.append(float(row[2]))
+                list_ch3.append(float(row[3]))
+                print(row)
+
+    csv_data = [list_ch0,list_ch1,list_ch2,list_ch3]
+    # Plot the data
+    update_gen_plot(csv_data)
 
 def Wait_Serial_Start(port):
     state = 0
@@ -282,14 +314,14 @@ class serial_thread(Thread):
             self.port = serial.Serial(port, timeout=0.5)
         except:
             print('Cannot connect to the Nucleo')
-            sys.exit(0)
+            sys.exit(0) #TODO: Allow mode without com port ?
     #function called after the init
     def run(self):
         
         while(self.alive):
             if(self.contReceive):
-                update_adc_plot(self.port)
-                #update_fft_plot(self.port)
+                size,g_adc_data = readAdcSerial(self.port)
+                update_gen_plot(g_adc_data)
             else:
                 #flush the serial
                 self.port.read(self.port.inWaiting())
@@ -315,7 +347,7 @@ class serial_thread(Thread):
 
     #tell if the plot need to be updated
     def need_to_update_plot(self):
-        return self.need_to_update
+        return self.need_to_update        
 
     #clean exit of the thread if we need to stop it
     def stop(self):
@@ -333,6 +365,9 @@ if len(sys.argv) == 1:
     print('Please give the serial port to use as argument')
     sys.exit(0)
     
+# global variable 
+g_adc_data = None # List that stores the adc data
+
 #serial reader thread config
 #begins the serial thread
 reader_thd = serial_thread(sys.argv[1])
@@ -344,8 +379,9 @@ fig.canvas.set_window_title('ADC measurements')
 plt.subplots_adjust(left=0.1, bottom=0.25)
 fig.canvas.mpl_connect('close_event', handle_close) #to detect when the window is closed and if we do a ctrl-c
 
-def_x = sample_linspace = np.linspace(0, 6144, num=6144)
-def_y = sample_linspace = np.linspace(0, 4096, num=6144)
+number_of_points = 6144
+def_x = sample_linspace = np.linspace(0, number_of_points, num=number_of_points)
+def_y = sample_linspace = np.linspace(0, 4096, num=number_of_points)
 
 # Channel 0 ADC mesurements
 graph_ch0 = plt.subplot(221)
@@ -367,6 +403,9 @@ graph_ch3 = plt.subplot(224)
 ch3_plot, = plt.plot(def_x,def_y, lw=1, color='red')
 plt.title("Ch3")
 
+# Global variables
+g_adc_data = [def_y for x in range(0,4)]
+g_filename = "measure.csv"
 
 #timer to update the plot from within the state machine of matplotlib
 #because matplotlib is not thread safe...
@@ -378,20 +417,29 @@ timer.start()
 colorAx             = 'lightgoldenrodyellow'
 freqAx              = plt.axes([0.1, 0.1, 0.8, 0.03], facecolor=colorAx)
 ampAx               = plt.axes([0.1, 0.15, 0.8, 0.03], facecolor=colorAx)
-resetAx             = plt.axes([0.8, 0.025, 0.1, 0.04])
-sendAndReceiveAx    = plt.axes([0.1, 0.025, 0.15, 0.04])
+resetAx             = plt.axes([0.8,  0.025, 0.1, 0.04])
 receiveAx           = plt.axes([0.25, 0.025, 0.1, 0.04])
 stopAx              = plt.axes([0.35, 0.025, 0.1, 0.04])
+saveAx              = plt.axes([0.45, 0.025, 0.1, 0.04])
+loadAx              = plt.axes([0.55, 0.025, 0.1, 0.04])
 
-#config of the buttons, sliders and radio buttons
-resetButton             = Button(resetAx, 'Reset sinus', color=colorAx, hovercolor='0.975')
-receiveButton           = Button(receiveAx, 'Only read', color=colorAx, hovercolor='0.975')
-stop                    = Button(stopAx, 'Stop', color=colorAx, hovercolor='0.975')
+ftxtAx              = plt.axes([0.1,  0.025, 0.1, 0.04])
 
-#callback config of the buttons, sliders and radio buttons
+#config of the buttons, sliders and radio and textboxes
+resetButton             = Button(resetAx,'Reset sinus', color=colorAx, hovercolor='0.975')
+receiveButton           = Button(receiveAx,'Only read', color=colorAx, hovercolor='0.975')
+stop                    = Button(stopAx,'Stop', color=colorAx, hovercolor='0.975')
+saveButton              = Button(saveAx,'Save',color=colorAx,hovercolor='0.975')
+loadButton              = Button(loadAx,'Load',color=colorAx,hovercolor='0.975')
+fileTextBox             = TextBox(ftxtAx,'File name',hovercolor='0.975',label_pad=0.1,initial=g_filename)
+
+#callback config of the buttons, sliders,radio buttons and textboxes
 resetButton.on_clicked(reset)
 receiveButton.on_clicked(reader_thd.setContReceive)
 stop.on_clicked(reader_thd.stop_reading)
+saveButton.on_clicked(save)
+loadButton.on_clicked(load)
+fileTextBox.on_submit(submit)
 
 #starts the matplotlib main
 plt.show()
