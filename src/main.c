@@ -30,6 +30,7 @@
 #define ADC_GRP3_NUM_CHANNELS 	4
 #define ADC_GRP3_BUF_DEPTH		1
 
+#define BACK_EMF_THRES          250
 #define DELAY_DEMO				1000
 
 /*  DATA TX  */
@@ -38,6 +39,11 @@
 
 static BSEMAPHORE_DECL(dtx_ready, true);
 
+
+/*===========================================================================*/
+/* Macro                                                                     */
+/*===========================================================================*/
+#define ABS(x)  ( (x<0) ? -x : x )
 
 /*===========================================================================*/
 /* Enumeration                                                               */
@@ -71,7 +77,7 @@ typedef enum
 typedef struct
 {
   // DATA
-  uint16_t data [ADC_GRP3_NUM_CHANNELS][DTX_NB_POINTS];
+  uint16_t data [ADC_GRP3_NUM_CHANNELS+1][DTX_NB_POINTS];
   // MGT
   const uint16_t nb_channels;
   const uint16_t nb_points;
@@ -103,6 +109,7 @@ static uint16_t test_array [12] = {
 static adcsample_t adc_sample_3[ADC_GRP3_NUM_CHANNELS * ADC_GRP3_BUF_DEPTH * 2];
 static uint32_t adc_grp_3[ADC_GRP3_NUM_CHANNELS] = {0};
 static uint8_t acq_done = 0;
+static uint16_t gValue=0;
 
 /*===========================================================================*/
 /* Prototypes				                                                 */
@@ -207,9 +214,16 @@ void Send_ADT_Uart(AdcDataTx* adt)
   streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->nb_points, sizeof(uint16_t));
   streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->data[2], sizeof(uint16_t) * adt->nb_points);
 
-  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"CH3", 3);
+  /*streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"CH3", 3);
   streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->nb_points, sizeof(uint16_t));
   streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->data[3], sizeof(uint16_t) * adt->nb_points);
+*/
+  // B: TO REMOVE
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"EMF", 3);
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->nb_points, sizeof(uint16_t));
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->data[4], sizeof(uint16_t) * adt->nb_points);
+  // E: TO REMOVE
+
 }
 
 
@@ -228,14 +242,24 @@ void Send_UINT32_Uart(uint32_t* data, uint16_t size)
 /*===========================================================================*/
 void Adt_Reset_Struct(AdcDataTx* adt)
 {
+  size_t i,j;
   adt->data_full = 0;
   adt->data_idx  = 0;
   adt->data_left = adt->nb_points;
+  for(i=0;i<5;i++)
+  {
+    for(j=0;j<adt->nb_points;j++)
+    {
+      adt->data[i][j] = 0;
+    }
+  }
 }
 
 void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
 {
   size_t i,j;
+  int32_t old_mean;
+
 
   //
   if(0==adt->data_full)
@@ -250,6 +274,24 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
           adt->data[1][adt->data_idx] = input_data[ adt->nb_channels * i +1];
           adt->data[2][adt->data_idx] = input_data[ adt->nb_channels * i +2];
           adt->data[3][adt->data_idx] = input_data[ adt->nb_channels * i +3];
+
+          // B: ADD BACK EMF Detection
+          if (3 < adt->data_idx )
+          {
+            old_mean =  (int32_t)(adt->data[0][adt->data_idx-1] + adt->data[0][adt->data_idx-2] + adt->data[0][adt->data_idx-3])/ 3;
+
+            if(ABS(old_mean-(int32_t)adt->data[0][adt->data_idx]) >= BACK_EMF_THRES)
+            {
+              gValue += 1;
+              if(4096 <= gValue){
+                gValue=0;
+              }
+            }
+            adt->data[4][adt->data_idx] = gValue;
+
+          }
+          // E: ADD BACK EMF Detection
+
           adt->data_idx += 1;
         }
         adt->data_left -= size;
@@ -263,6 +305,22 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
         adt->data[1][adt->data_idx] = input_data[ adt->nb_channels * i +1];
         adt->data[2][adt->data_idx] = input_data[ adt->nb_channels * i +2];
         adt->data[3][adt->data_idx] = input_data[ adt->nb_channels * i +3];
+        // B: ADD BACK EMF Detection
+        if (3 < adt->data_idx )
+        {
+          old_mean =  (int32_t)(adt->data[0][adt->data_idx-1] + adt->data[0][adt->data_idx-2] + adt->data[0][adt->data_idx-3])/ 3;
+
+          if(ABS(old_mean-(int32_t)adt->data[0][adt->data_idx]) >= BACK_EMF_THRES)
+          {
+            gValue += 1;
+            if(4096 <= gValue){
+              gValue=0;
+            }
+          }
+          adt->data[4][adt->data_idx] = gValue;
+
+        }
+        // E: ADD BACK EMF Detection
         adt->data_idx += 1;
       }
       adt->data_left -= adt->data_left;
@@ -422,6 +480,7 @@ int main(void) {
 	// Debug MCU Config
 	DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM1_STOP; // Clock and outputs of TIM 1 are disabled when the core is halted
 
+	Adt_Reset_Struct(&gADT);
 
 	/* Configure the IO mode */
 	palSetLineMode(LD1_LINE,PAL_MODE_OUTPUT_PUSHPULL);
