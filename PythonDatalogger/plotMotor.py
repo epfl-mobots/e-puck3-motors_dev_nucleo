@@ -320,6 +320,7 @@ class serial_thread(Thread):
         
         while(self.alive):
             if(self.contReceive):
+                global g_adc_data
                 size,g_adc_data = readAdcSerial(self.port)
                 update_gen_plot(g_adc_data)
             else:
