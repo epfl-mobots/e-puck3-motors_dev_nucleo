@@ -386,6 +386,7 @@ def_y = sample_linspace = np.linspace(0, 4096, num=number_of_points)
 
 # Channel 0 ADC mesurements
 graph_ch0 = plt.subplot(221)
+# markerline, stemlines, baseline = plt.stem(def_y, linefmt='-.')
 ch0_plot, = plt.plot(def_x,def_y, lw=1, color='red')
 plt.title("Ch0")
 
