@@ -136,6 +136,9 @@ typedef struct
   uint32_t RampCurSpeed;
   uint32_t RampStep;
 
+  /* Zero-crossing */
+  uint8_t ZeroCrossFlag;
+
 }BrushlessConfig;
 
 /*===========================================================================*/

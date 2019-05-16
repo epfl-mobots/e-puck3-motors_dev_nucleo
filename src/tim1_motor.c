@@ -62,6 +62,9 @@ BrushlessConfig gBrushCfg = {
     .RampTime = 0,
     .kMaxRampTime = 2,
 
+    /* Zero-crossing conf */
+    .ZeroCrossFlag = 0,
+
     /** IO Configuration **/
     .P_Channels = {LINE_OUT_MOT1_PH1_P,LINE_OUT_MOT1_PH2_P,LINE_OUT_MOT1_PH3_P},
     .N_Channels = {LINE_OUT_MOT1_PH1_N,LINE_OUT_MOT1_PH2_N,LINE_OUT_MOT1_PH3_N}
@@ -292,7 +295,7 @@ void timer_1_pwm_config (void)
 
 
     // ChibiOS - Style
-    pwmEnableChannel(&PWMD1, kTimChannel4 , 0.20 * PERIOD_PWM_20_KHZ - 1);                 // Enabled to allow HAL support
+    pwmEnableChannel(&PWMD1, kTimChannel4 , 0.95 * PERIOD_PWM_20_KHZ - 1);                 // Enabled to allow HAL support
     pwmEnableChannelNotification(&PWMD1, kTimChannel4);         // Enable the callback to be called for the specific channel
   
     pwmEnableChannel(&PWMD1, kTimChannel6 , 0.50 * PERIOD_PWM_20_KHZ - 1);                 // Enabled to allow HAL support
