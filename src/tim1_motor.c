@@ -345,8 +345,10 @@ void timer_1_pwm_config (void)
 void commutation_nextstep(BrushlessConfig *pBrushCfg)
 {
   pBrushCfg->InStepCount++;
-  if (pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount)
+  if ((pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount  && kInitRamp == pBrushCfg->Mode) || (1 == pBrushCfg->ZeroCrossFlag && kEndless == pBrushCfg->Mode))
   {
+
+
     if(pBrushCfg->RotationDir==kCCW)
     {
       pBrushCfg->StateIterator++;
@@ -364,6 +366,8 @@ void commutation_nextstep(BrushlessConfig *pBrushCfg)
         pBrushCfg->StateIterator=kPhaseWV;
       }
     }
+
+    pBrushCfg->ZeroCrossFlag=0; // Reset zero-crossing flag
 
     pBrushCfg->InStepCount = 0;
   }
