@@ -322,6 +322,7 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
               if(diff_sum < 0)
               {
                 adt->data[4][adt->data_idx] = meas_value[0][MeasureChannel];
+                gBrushCfg.ZeroCrossFlag = 1;
                 /*if(adt->data[MeasureChannel][adt->data_idx] <  ZC_THRESHOLD)
                 {
                   adt->data[4][adt->data_idx] = 2048;
@@ -331,6 +332,7 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
               else if (diff_sum > 0)
               {
                 adt->data[4][adt->data_idx] = meas_value[1][MeasureChannel];
+                gBrushCfg.ZeroCrossFlag = 1;
                 /*if(adt->data[MeasureChannel][adt->data_idx] >  ZC_THRESHOLD)
                 {
                   adt->data[4][adt->data_idx] = 1024;
@@ -372,6 +374,7 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
              if(diff_sum < 0)
              {
                adt->data[4][adt->data_idx] = meas_value[0][MeasureChannel];
+               gBrushCfg.ZeroCrossFlag = 1;
                /*if(adt->data[MeasureChannel][adt->data_idx] <  ZC_THRESHOLD)
                {
                  adt->data[4][adt->data_idx] = 2048;
@@ -381,6 +384,7 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
              else if (diff_sum > 0)
              {
                adt->data[4][adt->data_idx] = meas_value[1][MeasureChannel];
+               gBrushCfg.ZeroCrossFlag = 1;
                /*if(adt->data[MeasureChannel][adt->data_idx] >  ZC_THRESHOLD)
                {
                  adt->data[4][adt->data_idx] = 1024;
@@ -403,6 +407,7 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
     chSysLockFromISR();
     chBSemSignalI(&dtx_ready);
     chSysUnlockFromISR();
+    Adt_Reset_Struct(adt);//TODO : Remove it !!
   }
 
 }
@@ -472,10 +477,10 @@ static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 
 
     // Data transmission
-    if(0 == gADT.data_lock)
-    {
+    /*if(0 == gADT.data_lock)
+    {*/
       Adt_Insert_Data(&gADT,buffer,n);
-    }
+    //}
 
 
 
