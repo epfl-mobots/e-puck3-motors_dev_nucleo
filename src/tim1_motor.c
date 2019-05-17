@@ -33,34 +33,45 @@ BrushlessConfig gBrushCfg = {
     /* ALL CHANNELS OFF */
     .kChannelStateArray[kStop] =    {kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_Low},
 
+    /* PWM Simple from DRV 8323 */
     /* C1 : ENABLE - C1C - C2 - C2C : ENABLE - C3 - C3C */
     .kChannelStateArray[kPhaseUV] = {kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_High},
-
     /* C1 : ENABLE - C1C - C2 - C2C - C3 - C3C : ENABLE */
     .kChannelStateArray[kPhaseUW] = {kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_High,kTimCh_Low,kTimCh_Low},
-
     /* C1 - C1C - C2 : ENABLE - C2C - C3 - C3C : ENABLE */
     .kChannelStateArray[kPhaseVW] = {kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_High,kTimCh_PWM,kTimCh_PWM},
-
     /* C1 - C1C : ENABLE - C2 : ENABLE - C2C - C3 - C3C */
     .kChannelStateArray[kPhaseVU] = {kTimCh_Low,kTimCh_High,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_PWM},
-
     /* C1 - C1C : ENABLE - C2 - C2C - C3 : ENABLE - C3C */
     .kChannelStateArray[kPhaseWU] = {kTimCh_Low,kTimCh_High,kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_Low},
-
     /* C1 - C1C - C2 - C2C : ENABLE - C3 : ENABLE - C3C */
     .kChannelStateArray[kPhaseWV] = {kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_High},
 
+    /* PWM Double from scratch */
+/*    .kChannelStateArray[kPhaseUV] = {kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_Low,kTimCh_Low},
+    .kChannelStateArray[kPhaseUW] = {kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_PWM},
+    .kChannelStateArray[kPhaseVW] = {kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_PWM},
+    .kChannelStateArray[kPhaseVU] = {kTimCh_Low,kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_Low},
+    .kChannelStateArray[kPhaseWU] = {kTimCh_Low,kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_Low},
+    .kChannelStateArray[kPhaseWV] = {kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_PWM,kTimCh_Low},*/
+
     /** Ramp speed **/
 
-    .RampInterval = TIME_MS2I(10),
+    /*.RampInterval = TIME_MS2I(10),
+    .RampMaxSpeed = 26,*/
+    .RampInterval = TIME_MS2I(50),
+    .RampMaxSpeed = 55,
     .RampTimeout  = 0,
     .RampMinSpeed = 100,
-    .RampMaxSpeed = 26,
     .RampCurSpeed = 0,
     .RampStep = 1,
     .RampTime = 0,
     .kMaxRampTime = 2,
+
+    /** Alignement **/
+    .AlignInterval   = TIME_MS2I(10),
+    .AlignTimeout    = 0,
+    .AlignInProgress = 0,
 
     /* Zero-crossing conf */
     .ZeroCrossFlag = 0,
@@ -315,17 +326,6 @@ void timer_1_pwm_config (void)
     (&PWMD1)->tim->CR2 |= STM32_TIM_CR2_MMS2(7); // Master Mode Selection 2 : OC4REF
     //(&PWMD1)->tim->CR2 |= STM32_TIM_CR2_MMS2(13); // Master Mode Selection 2 : OC44REF Rising or OC6REF falling
 
-
-    // Start signal generation
-    // tim_1_oc_start(kTimChannel1);  // Channel 1 OC
-    // tim_1_ocn_start(kTimChannel1); // Channel 1 OC Complementary
-    // tim_1_oc_start(kTimChannel2);  // Channel 2 OC
-    // tim_1_ocn_start(kTimChannel2); // Channel 2 OC Complementary
-    // tim_1_oc_start(kTimChannel3);  // Channel 3 OC
-    // tim_1_ocn_start(kTimChannel3); // Channel 3 OC Complementary
-    // tim_1_oc_start(kTimChannel4);  // Channel 4 OC
-
-
     // Force update event (if preload enabled)
     (&PWMD1)->tim->EGR |= STM32_TIM_EGR_UG;
 
@@ -336,7 +336,7 @@ void timer_1_pwm_config (void)
     (&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CEN;     // Enable the counter in correct configuration
 
     chVTObjectInit(&gBrushCfg.ramp_vt); // Init the virtual timer
-
+    chVTObjectInit(&gBrushCfg.align_vt); // Init the virtual timer
 }
 
 
@@ -345,7 +345,9 @@ void timer_1_pwm_config (void)
 void commutation_nextstep(BrushlessConfig *pBrushCfg)
 {
   pBrushCfg->InStepCount++;
-  if ((pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount  && kInitRamp == pBrushCfg->Mode) || (1 == pBrushCfg->ZeroCrossFlag && kEndless == pBrushCfg->Mode))
+  // if ((pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount  && kInitRamp == pBrushCfg->Mode) || (1 == pBrushCfg->ZeroCrossFlag && kEndless == pBrushCfg->Mode))
+
+  if (pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount)
   {
 
 
@@ -373,11 +375,15 @@ void commutation_nextstep(BrushlessConfig *pBrushCfg)
   }
 }
 
-static void ramp_cb(void* arg)
+static void vt_cb(void* arg)
 {
   if(kInitRamp == gBrushCfg.Mode)
   {
     gBrushCfg.RampTimeout = 1;
+  }
+  else if(kAlign == gBrushCfg.Mode)
+  {
+    gBrushCfg.AlignTimeout = 1;
   }
 
 }
@@ -427,15 +433,50 @@ void commutation_cb(PWMDriver *pwmp)
       // Force update event (if preload enabled)
       (&PWMD1)->tim->EGR |= STM32_TIM_EGR_COMG;
 
-      /* Virtual timer config*/
-      chSysLockFromISR();
-      chVTSetI(&gBrushCfg.ramp_vt, gBrushCfg.RampInterval, ramp_cb, NULL); // Start the virtual timer
+      /* Virtual timers config*/
+/*      chSysLockFromISR();
+      chVTSetI(&gBrushCfg.ramp_vt, gBrushCfg.RampInterval, vt_cb, NULL); // Start the virtual timer
       chSysUnlockFromISR();
 
       gBrushCfg.Mode = kInitRamp;
-      gBrushCfg.RampCurSpeed = gBrushCfg.RampMinSpeed;
+      gBrushCfg.RampCurSpeed = gBrushCfg.RampMinSpeed; */
+      gBrushCfg.Mode = kAlign;
       break;
     }
+
+    case kAlign:
+    {
+
+      if(0 == gBrushCfg.AlignInProgress)
+      {
+        gBrushCfg.AlignInProgress = 1;
+
+        // Set to UV phase
+        tim_1_oc_cmd(kTimChannel1,kTimCh_High);
+        tim_1_ocn_cmd(kTimChannel2,kTimCh_High);
+
+        chSysLockFromISR();
+        chVTSetI(&gBrushCfg.align_vt, gBrushCfg.AlignInterval, vt_cb, NULL); // Start the virtual timer
+        chSysUnlockFromISR();
+      }
+
+      if(1==gBrushCfg.AlignTimeout)
+      {
+        // Disconnect the selected path
+        tim_1_oc_cmd(kTimChannel1,kTimCh_Low);
+        tim_1_ocn_cmd(kTimChannel2,kTimCh_Low);
+
+        chSysLockFromISR();
+        chVTSetI(&gBrushCfg.ramp_vt, gBrushCfg.RampInterval, vt_cb, NULL); // Start the virtual timer
+        chSysUnlockFromISR();
+
+        gBrushCfg.Mode = kInitRamp;
+        gBrushCfg.RampCurSpeed = gBrushCfg.RampMinSpeed;
+      }
+
+     break;
+    }
+
     case kInitRamp:
     {
 
@@ -465,7 +506,7 @@ void commutation_cb(PWMDriver *pwmp)
         }
 
         chSysLockFromISR();
-        chVTSetI(&gBrushCfg.ramp_vt, gBrushCfg.RampInterval, ramp_cb, NULL); // Restart the virtual timer
+        chVTSetI(&gBrushCfg.ramp_vt, gBrushCfg.RampInterval, vt_cb, NULL); // Restart the virtual timer
         chSysUnlockFromISR();
 
         // Check if we have done all the ramp speeds

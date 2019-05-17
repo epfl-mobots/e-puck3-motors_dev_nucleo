@@ -47,7 +47,8 @@ typedef enum
 typedef enum
 {
   kInitCfg  = 0,
-  kInitRamp = 1,
+  kAlign    = 1,
+  kInitRamp = 2,
   kEndless  = 255
 }CmdMode;
 
@@ -135,6 +136,12 @@ typedef struct
   uint32_t RampMaxSpeed;
   uint32_t RampCurSpeed;
   uint32_t RampStep;
+
+  /* Startup alignement */
+  virtual_timer_t align_vt;
+  sysinterval_t   AlignInterval;
+  uint8_t         AlignInProgress;
+  uint8_t         AlignTimeout;
 
   /* Zero-crossing */
   uint8_t ZeroCrossFlag;
