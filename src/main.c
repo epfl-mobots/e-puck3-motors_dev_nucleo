@@ -240,14 +240,14 @@ void Send_ADT_Uart(AdcDataTx* adt)
   streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->nb_points, sizeof(uint16_t));
   streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->data[2], sizeof(uint16_t) * adt->nb_points);
 
-  /*streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"CH3", 3);
+  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"CH3", 3);
   streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->nb_points, sizeof(uint16_t));
   streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->data[3], sizeof(uint16_t) * adt->nb_points);
-*/
+
   // B: TO REMOVE
-  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"EMF", 3);
-  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->nb_points, sizeof(uint16_t));
-  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->data[4], sizeof(uint16_t) * adt->nb_points);
+  // streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"EMF", 3);
+  // streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->nb_points, sizeof(uint16_t));
+  // streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->data[4], sizeof(uint16_t) * adt->nb_points);
   // E: TO REMOVE
 
 }
@@ -283,11 +283,7 @@ void Adt_Reset_Struct(AdcDataTx* adt)
 void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
 {
   size_t i,j,k;
-  int32_t old_mean;
-  int32_t diff_sum;
-  uint8_t  MeasurementArray[NB_STATE] = {0,1,2,0,1,2,0};
-  static volatile uint8_t  MeasureChannel = 0;
-  uint16_t meas_value [2][3] = {{1536,1664,1792},{512,640,768}};
+
   //
   if(0==adt->data_full)
   {
@@ -301,47 +297,6 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
           adt->data[1][adt->data_idx] = input_data[ adt->nb_channels * i +1];
           adt->data[2][adt->data_idx] = input_data[ adt->nb_channels * i +2];
           adt->data[3][adt->data_idx] = input_data[ adt->nb_channels * i +3];
-
-          // B: ADD BACK EMF Detection
-
-          if (3 < adt->data_idx )
-          {
-            MeasureChannel = MeasurementArray[gBrushCfg.StateIterator];
-
-            // Zone of interest check
-            if( ZC_LOW_BOUND <= adt->data[MeasureChannel][adt->data_idx] && ZC_HIGH_BOUND >= adt->data[MeasureChannel][adt->data_idx])
-            {
-              diff_sum = 0;
-              // Slope detection
-              for(k = 0;k<2;k++)
-              {
-                diff_sum +=  ((int32_t) adt->data[MeasureChannel][adt->data_idx-k] - (int32_t) adt->data[MeasureChannel][adt->data_idx-k-1]);
-              }
-
-              // Negative slope
-              if(diff_sum < 0)
-              {
-                adt->data[4][adt->data_idx] = meas_value[0][MeasureChannel];
-                gBrushCfg.ZeroCrossFlag = 1;
-                /*if(adt->data[MeasureChannel][adt->data_idx] <  ZC_THRESHOLD)
-                {
-                  adt->data[4][adt->data_idx] = 2048;
-                }*/
-              }
-              // Positive slope
-              else if (diff_sum > 0)
-              {
-                adt->data[4][adt->data_idx] = meas_value[1][MeasureChannel];
-                gBrushCfg.ZeroCrossFlag = 1;
-                /*if(adt->data[MeasureChannel][adt->data_idx] >  ZC_THRESHOLD)
-                {
-                  adt->data[4][adt->data_idx] = 1024;
-                }*/
-              }
-            }
-          }
-          // E: ADD BACK EMF Detection
-
           adt->data_idx += 1;
         }
         adt->data_left -= size;
@@ -355,44 +310,6 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
         adt->data[1][adt->data_idx] = input_data[ adt->nb_channels * i +1];
         adt->data[2][adt->data_idx] = input_data[ adt->nb_channels * i +2];
         adt->data[3][adt->data_idx] = input_data[ adt->nb_channels * i +3];
-        // B: ADD BACK EMF Detection
-        if (3 < adt->data_idx )
-         {
-           MeasureChannel = MeasurementArray[gBrushCfg.StateIterator];
-
-           // Zone of interest check
-           if( ZC_LOW_BOUND <= adt->data[MeasureChannel][adt->data_idx] && ZC_HIGH_BOUND >= adt->data[MeasureChannel][adt->data_idx])
-           {
-             diff_sum = 0;
-             // Slope detection
-             for(k = 0;k<2;k++)
-             {
-               diff_sum +=  ((int32_t) adt->data[MeasureChannel][adt->data_idx-k] - (int32_t) adt->data[MeasureChannel][adt->data_idx-k-1]);
-             }
-
-             // Negative slope
-             if(diff_sum < 0)
-             {
-               adt->data[4][adt->data_idx] = meas_value[0][MeasureChannel];
-               gBrushCfg.ZeroCrossFlag = 1;
-               /*if(adt->data[MeasureChannel][adt->data_idx] <  ZC_THRESHOLD)
-               {
-                 adt->data[4][adt->data_idx] = 2048;
-               }*/
-             }
-             // Positive slope
-             else if (diff_sum > 0)
-             {
-               adt->data[4][adt->data_idx] = meas_value[1][MeasureChannel];
-               gBrushCfg.ZeroCrossFlag = 1;
-               /*if(adt->data[MeasureChannel][adt->data_idx] >  ZC_THRESHOLD)
-               {
-                 adt->data[4][adt->data_idx] = 1024;
-               }*/
-             }
-           }
-         }
-        // E: ADD BACK EMF Detection
         adt->data_idx += 1;
       }
       adt->data_left -= adt->data_left;
@@ -407,7 +324,7 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
     chSysLockFromISR();
     chBSemSignalI(&dtx_ready);
     chSysUnlockFromISR();
-    Adt_Reset_Struct(adt);//TODO : Remove it !!
+    // Adt_Reset_Struct(adt);//TODO : Remove it !!
   }
 
 }
@@ -416,7 +333,54 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
 /*===========================================================================*/
 /* Zero-crossing detection                                                   */
 /*===========================================================================*/
+void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size)
+{
+  int16_t l = 1;
+  l = 2;
+ /* int32_t old_mean;
+  int32_t diff_sum;
+  uint8_t  MeasurementArray[NB_STATE] = {0,1,2,0,1,2,0};
+  static volatile uint8_t  MeasureChannel = 0;
+  uint16_t meas_value [2][3] = {{1536,1664,1792},{512,640,768}};
 
+  if (3 < adt->data_idx )
+  {
+    MeasureChannel = MeasurementArray[gBrushCfg.StateIterator];
+
+    // Zone of interest check
+    if( ZC_LOW_BOUND <= adt->data[MeasureChannel][adt->data_idx] && ZC_HIGH_BOUND >= adt->data[MeasureChannel][adt->data_idx])
+    {
+      diff_sum = 0;
+      // Slope detection
+      for(k = 0;k<2;k++)
+      {
+        diff_sum +=  ((int32_t) adt->data[MeasureChannel][adt->data_idx-k] - (int32_t) adt->data[MeasureChannel][adt->data_idx-k-1]);
+      }
+
+      // Negative slope
+      if(diff_sum < 0)
+      {
+        adt->data[4][adt->data_idx] = meas_value[0][MeasureChannel];
+        gBrushCfg.ZeroCrossFlag = 1;
+        /*if(adt->data[MeasureChannel][adt->data_idx] <  ZC_THRESHOLD)
+        {
+          adt->data[4][adt->data_idx] = 2048;
+        }*/
+      //}
+      // Positive slope
+      /*else if (diff_sum > 0)
+      {
+        adt->data[4][adt->data_idx] = meas_value[1][MeasureChannel];
+        gBrushCfg.ZeroCrossFlag = 1;
+        /*if(adt->data[MeasureChannel][adt->data_idx] >  ZC_THRESHOLD)
+        {
+          adt->data[4][adt->data_idx] = 1024;
+        }*/
+      /*}
+    }
+  }*/
+
+}
 
 /*===========================================================================*/
 /* ADC Configuration with DMA.                                               */
@@ -477,12 +441,10 @@ static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 
 
     // Data transmission
-    /*if(0 == gADT.data_lock)
-    {*/
+    if(0 == gADT.data_lock)
+    {
       Adt_Insert_Data(&gADT,buffer,n);
-    //}
-
-
+    }
 
     acq_done = 1;
 
