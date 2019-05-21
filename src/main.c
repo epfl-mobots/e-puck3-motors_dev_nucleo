@@ -287,13 +287,6 @@ void Adt_Reset_Struct(AdcDataTx* adt)
   adt->data_full = 0;
   adt->data_idx  = 0;
   adt->data_left = adt->nb_points;
-  for(i=0;i<5;i++)
-  {
-    for(j=0;j<adt->nb_points;j++)
-    {
-      adt->data[i][j] = 0;
-    }
-  }
   adt->data_lock = 0;
 }
 
@@ -415,13 +408,11 @@ void Zcs_Detect(ZCSDetect* zcs)
     MeasureChannel = MeasurementArray[gBrushCfg.StateIterator];
 
     // Zone of interest check
-    if( ZC_LOW_BOUND <= zcs->data[MeasureChannel][zcs->data_idx]  &&
-        ZC_HIGH_BOUND >= zcs->data[MeasureChannel][zcs->data_idx] &&
-        OldMeasureChannel != MeasureChannel)
+    if( ZC_LOW_BOUND <= zcs->data[MeasureChannel][zcs->data_idx]  && ZC_HIGH_BOUND >= zcs->data[MeasureChannel][zcs->data_idx] )
     {
       diff_sum = 0;
       // Slope detection
-      for(i = 0;i<ZC_SLOPE_PTS;i++)
+      for(i = 0;i<ZC_SLOPE_PTS-1;i++)
       {
         diff_sum +=  ((int32_t) zcs->data[MeasureChannel][zcs->data_idx-i] - (int32_t) zcs->data[MeasureChannel][zcs->data_idx-i-1]);
       }
@@ -599,7 +590,7 @@ int main(void) {
 	DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM1_STOP; // Clock and outputs of TIM 1 are disabled when the core is halted
 
 	Adt_Reset_Struct(&gADT);
-	Zcs_Reset_Struct(&gZCS);
+	//Zcs_Reset_Struct(&gZCS);
 
 	/* Configure the IO mode */
 	palSetLineMode(LD1_LINE,PAL_MODE_OUTPUT_PUSHPULL);
