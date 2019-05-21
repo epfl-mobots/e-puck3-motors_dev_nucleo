@@ -75,6 +75,9 @@ BrushlessConfig gBrushCfg = {
 
     /* Zero-crossing conf */
     .ZeroCrossFlag = 0,
+    .ZeroCrossCnt  = 0,
+    .ZeroCrossTime = 0,
+    .ZeroCrossThreshold = 0,
 
     /** IO Configuration **/
     .P_Channels = {LINE_OUT_MOT1_PH1_P,LINE_OUT_MOT1_PH2_P,LINE_OUT_MOT1_PH3_P},
@@ -345,9 +348,8 @@ void timer_1_pwm_config (void)
 void commutation_nextstep(BrushlessConfig *pBrushCfg)
 {
   pBrushCfg->InStepCount++;
-  // if ((pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount  && kInitRamp == pBrushCfg->Mode) || (1 == pBrushCfg->ZeroCrossFlag && kEndless == pBrushCfg->Mode))
-
-  if (pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount)
+  if ((pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount  && kInitRamp == pBrushCfg->Mode) ||
+      (1 == pBrushCfg->ZeroCrossFlag && kEndless == pBrushCfg->Mode && pBrushCfg->ZeroCrossCnt >= pBrushCfg->ZeroCrossThreshold))
   {
 
 
@@ -433,13 +435,6 @@ void commutation_cb(PWMDriver *pwmp)
       // Force update event (if preload enabled)
       (&PWMD1)->tim->EGR |= STM32_TIM_EGR_COMG;
 
-      /* Virtual timers config*/
-/*      chSysLockFromISR();
-      chVTSetI(&gBrushCfg.ramp_vt, gBrushCfg.RampInterval, vt_cb, NULL); // Start the virtual timer
-      chSysUnlockFromISR();
-
-      gBrushCfg.Mode = kInitRamp;
-      gBrushCfg.RampCurSpeed = gBrushCfg.RampMinSpeed; */
       gBrushCfg.Mode = kAlign;
       break;
     }
@@ -524,6 +519,8 @@ void commutation_cb(PWMDriver *pwmp)
     }
     case kEndless:
     {
+      gBrushCfg.ZeroCrossCnt++;
+
       tim_1_oc_cmd(kTimChannel1 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][0]);
       tim_1_ocn_cmd(kTimChannel1,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][1]);
       tim_1_oc_cmd(kTimChannel2 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][2]);

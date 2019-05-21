@@ -144,7 +144,10 @@ typedef struct
   uint8_t         AlignTimeout;
 
   /* Zero-crossing */
-  uint8_t ZeroCrossFlag;
+  uint32_t ZeroCrossThreshold;
+  uint32_t ZeroCrossTime;
+  uint32_t ZeroCrossCnt;
+  uint8_t  ZeroCrossFlag;
 
 }BrushlessConfig;
 
