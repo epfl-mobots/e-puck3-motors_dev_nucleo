@@ -420,20 +420,20 @@ void Zcs_Detect(ZCSDetect* zcs)
       // Negative slope
       if(diff_sum < 0)
       {
+        gBrushCfg.ZeroCrossFlag = 1;
         if(zcs->data[MeasureChannel][zcs->data_idx] <  ZC_THRESHOLD)
         {
           zcs->slope[MeasureChannel][zcs->data_idx] = meas_value[0][MeasureChannel];
-          gBrushCfg.ZeroCrossFlag = 1;
           OldMeasureChannel = MeasureChannel;
         }
       }
       // Positive slope
       else if (diff_sum > 0)
       {
+        gBrushCfg.ZeroCrossFlag = 1;
         if(zcs->data[MeasureChannel][zcs->data_idx] >  ZC_THRESHOLD)
         {
           zcs->slope[MeasureChannel][zcs->data_idx] = meas_value[1][MeasureChannel];
-          gBrushCfg.ZeroCrossFlag = 1;
           OldMeasureChannel = MeasureChannel;
         }
       }
@@ -590,7 +590,7 @@ int main(void) {
 	DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM1_STOP; // Clock and outputs of TIM 1 are disabled when the core is halted
 
 	Adt_Reset_Struct(&gADT);
-	//Zcs_Reset_Struct(&gZCS);
+	Zcs_Reset_Struct(&gZCS);
 
 	/* Configure the IO mode */
 	palSetLineMode(LD1_LINE,PAL_MODE_OUTPUT_PUSHPULL);

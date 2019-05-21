@@ -57,10 +57,8 @@ BrushlessConfig gBrushCfg = {
 
     /** Ramp speed **/
 
-    /*.RampInterval = TIME_MS2I(10),
-    .RampMaxSpeed = 26,*/
-    .RampInterval = TIME_MS2I(50),
-    .RampMaxSpeed = 55,
+    .RampInterval = TIME_MS2I(10),
+    .RampMaxSpeed = 26,
     .RampTimeout  = 0,
     .RampMinSpeed = 100,
     .RampCurSpeed = 0,
@@ -511,6 +509,10 @@ void commutation_cb(PWMDriver *pwmp)
           chVTResetI(&gBrushCfg.ramp_vt);
           chSysUnlockFromISR();
           gBrushCfg.Mode = kEndless;
+          /* Reset all the zero-crossing variables */
+           gBrushCfg.ZeroCrossCnt = 0;
+           gBrushCfg.ZeroCrossThreshold = 0;
+           gBrushCfg.ZeroCrossTime = 0;
         }
 
       }
