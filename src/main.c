@@ -39,6 +39,7 @@
 #define ZC_DELTA                100
 #define ZC_LOW_BOUND            ZC_THRESHOLD - ZC_DELTA
 #define ZC_HIGH_BOUND           ZC_THRESHOLD + ZC_DELTA
+#define ZC_SLOPE_PTS            4
 
 /*  DATA TX  */
 #define DTX_SIZE_1K             1024
@@ -81,16 +82,23 @@ typedef enum
 typedef struct
 {
   uint16_t data         [ADC_GRP3_NUM_CHANNELS][ZC_NB_POINTS];
-  uint8_t  slope        [ADC_GRP3_NUM_CHANNELS];
+  uint8_t  slope        [ADC_GRP3_NUM_CHANNELS][ZC_NB_POINTS];
   uint8_t  zero_crossing[ADC_GRP3_NUM_CHANNELS];
+
+  // DATA MGT
+  const uint16_t nb_channels;
+  const uint16_t nb_points;
+  uint16_t data_left;
   uint16_t data_idx;
+  uint8_t  data_full;
+
 }ZCSDetect;
 
 
 typedef struct
 {
   // DATA
-  uint16_t data [ADC_GRP3_NUM_CHANNELS+1][DTX_NB_POINTS];
+  uint16_t data [ADC_GRP3_NUM_CHANNELS][DTX_NB_POINTS];
   // MGT
   const uint16_t nb_channels;
   const uint16_t nb_points;
@@ -116,6 +124,15 @@ static AdcDataTx gADT= {
    // CST
    .nb_channels = ADC_GRP3_NUM_CHANNELS,
    .nb_points   = DTX_NB_POINTS,
+};
+
+static ZCSDetect gZCS = {
+    .data_full = 0,
+    .data_idx  = 0,
+    .data_left = ZC_NB_POINTS,
+    // CST
+    .nb_channels = ADC_GRP3_NUM_CHANNELS,
+    .nb_points = ZC_NB_POINTS
 };
 
 static uint16_t test_array [12] = {
@@ -324,7 +341,6 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
     chSysLockFromISR();
     chBSemSignalI(&dtx_ready);
     chSysUnlockFromISR();
-    // Adt_Reset_Struct(adt);//TODO : Remove it !!
   }
 
 }
@@ -333,52 +349,125 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
 /*===========================================================================*/
 /* Zero-crossing detection                                                   */
 /*===========================================================================*/
+void Zcs_Reset_Struct(ZCSDetect* zcs)
+{
+  zcs->data_idx  = 0;
+  zcs->data_full = 0;
+  zcs->data_left = zcs->nb_points;
+}
+
 void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size)
 {
-  int16_t l = 1;
-  l = 2;
- /* int32_t old_mean;
+  size_t i;
+
+  //
+  if(0==zcs->data_full)
+  {
+
+    // Enough space for all the data
+    if(zcs->data_left >= size)
+    {
+        for(i = 0;i<size;i++)
+        {
+          zcs->data[0][zcs->data_idx] = input_data[ zcs->nb_channels * i];
+          zcs->data[1][zcs->data_idx] = input_data[ zcs->nb_channels * i +1];
+          zcs->data[2][zcs->data_idx] = input_data[ zcs->nb_channels * i +2];
+          zcs->data[3][zcs->data_idx] = input_data[ zcs->nb_channels * i +3];
+          zcs->data_idx += 1;
+        }
+        zcs->data_left -= size;
+    }
+    // Fill it until maximum capacity
+    else
+    {
+      for(i = 0;i<zcs->data_left;i++)
+      {
+        zcs->data[0][zcs->data_idx] = input_data[ zcs->nb_channels * i];
+        zcs->data[1][zcs->data_idx] = input_data[ zcs->nb_channels * i +1];
+        zcs->data[2][zcs->data_idx] = input_data[ zcs->nb_channels * i +2];
+        zcs->data[3][zcs->data_idx] = input_data[ zcs->nb_channels * i +3];
+        zcs->data_idx += 1;
+      }
+      zcs->data_left -= zcs->data_left;
+    }
+
+  }
+
+  // Check if full
+  if(0 == zcs->data_left || 1 == zcs->data_full)
+  {
+    zcs->data_full = 1;
+  }
+}
+
+
+void Zcs_Detect(ZCSDetect* zcs)
+{
+  size_t i;
   int32_t diff_sum;
-  uint8_t  MeasurementArray[NB_STATE] = {0,1,2,0,1,2,0};
+  static volatile uint8_t  MeasurementArray[NB_STATE] = {0,1,2,0,1,2,0};
   static volatile uint8_t  MeasureChannel = 0;
+  static volatile uint8_t  OldMeasureChannel = 3;
   uint16_t meas_value [2][3] = {{1536,1664,1792},{512,640,768}};
 
-  if (3 < adt->data_idx )
+  if (ZC_SLOPE_PTS < zcs->data_idx )
   {
     MeasureChannel = MeasurementArray[gBrushCfg.StateIterator];
 
     // Zone of interest check
-    if( ZC_LOW_BOUND <= adt->data[MeasureChannel][adt->data_idx] && ZC_HIGH_BOUND >= adt->data[MeasureChannel][adt->data_idx])
+    if( ZC_LOW_BOUND <= zcs->data[MeasureChannel][zcs->data_idx]  &&
+        ZC_HIGH_BOUND >= zcs->data[MeasureChannel][zcs->data_idx] &&
+        OldMeasureChannel != MeasureChannel)
     {
       diff_sum = 0;
       // Slope detection
-      for(k = 0;k<2;k++)
+      for(i = 0;i<ZC_SLOPE_PTS;i++)
       {
-        diff_sum +=  ((int32_t) adt->data[MeasureChannel][adt->data_idx-k] - (int32_t) adt->data[MeasureChannel][adt->data_idx-k-1]);
+        diff_sum +=  ((int32_t) zcs->data[MeasureChannel][zcs->data_idx-i] - (int32_t) zcs->data[MeasureChannel][zcs->data_idx-i-1]);
       }
 
       // Negative slope
       if(diff_sum < 0)
       {
-        adt->data[4][adt->data_idx] = meas_value[0][MeasureChannel];
-        gBrushCfg.ZeroCrossFlag = 1;
-        /*if(adt->data[MeasureChannel][adt->data_idx] <  ZC_THRESHOLD)
+        if(zcs->data[MeasureChannel][zcs->data_idx] <  ZC_THRESHOLD)
         {
-          adt->data[4][adt->data_idx] = 2048;
-        }*/
-      //}
+          zcs->slope[MeasureChannel][zcs->data_idx] = meas_value[0][MeasureChannel];
+          gBrushCfg.ZeroCrossFlag = 1;
+          OldMeasureChannel = MeasureChannel;
+        }
+      }
       // Positive slope
-      /*else if (diff_sum > 0)
+      else if (diff_sum > 0)
       {
-        adt->data[4][adt->data_idx] = meas_value[1][MeasureChannel];
-        gBrushCfg.ZeroCrossFlag = 1;
-        /*if(adt->data[MeasureChannel][adt->data_idx] >  ZC_THRESHOLD)
+        if(zcs->data[MeasureChannel][zcs->data_idx] >  ZC_THRESHOLD)
         {
-          adt->data[4][adt->data_idx] = 1024;
-        }*/
-      /*}
+          zcs->slope[MeasureChannel][zcs->data_idx] = meas_value[1][MeasureChannel];
+          gBrushCfg.ZeroCrossFlag = 1;
+          OldMeasureChannel = MeasureChannel;
+        }
+      }
+      else
+      {
+        zcs->data[MeasureChannel][zcs->data_idx] = 0;
+      }
     }
-  }*/
+  }
+
+  if(1==gBrushCfg.ZeroCrossFlag)
+  {
+    /*Zero crossing*/
+    if(0==gBrushCfg.ZeroCrossThreshold)
+    {
+      gBrushCfg.ZeroCrossThreshold =  gBrushCfg.RampMaxSpeed;
+    }
+    else
+    {
+      gBrushCfg.ZeroCrossThreshold = ( gBrushCfg.ZeroCrossCnt- gBrushCfg.ZeroCrossTime)/2;
+      gBrushCfg.ZeroCrossThreshold +=  gBrushCfg.ZeroCrossCnt;
+    }
+    gBrushCfg.ZeroCrossTime = gBrushCfg.ZeroCrossCnt;
+    Zcs_Reset_Struct(zcs);
+  }
 
 }
 
@@ -421,24 +510,9 @@ static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 {
     palSetLine(DEBUG_INT_LINE);
 
-    size_t i = 0;
-	//Reset the array
-	for(i = 0;i < ADC_GRP3_NUM_CHANNELS;i++)
-	{
-		adc_grp_3[i] = 0;
-	}
-	// Getting the values from the differents channels
-	for(i = 0; i < n ;i++)
-	{
-	  adc_grp_3[0] += buffer[ADC_GRP3_NUM_CHANNELS * i];     // CH3_IN0
-	  adc_grp_3[1] += buffer[ADC_GRP3_NUM_CHANNELS * i + 1]; // CH3_IN1
-	  adc_grp_3[2] += buffer[ADC_GRP3_NUM_CHANNELS * i + 2]; // CH3_IN2
-	  adc_grp_3[3] += buffer[ADC_GRP3_NUM_CHANNELS * i + 3]; // CH3_IN3
-	}
-
-
     // Zero-crossing and slope detection
-
+	Zcs_Insert_Data(&gZCS,buffer,n);
+	Zcs_Detect(&gZCS);
 
     // Data transmission
     if(0 == gADT.data_lock)
@@ -525,6 +599,7 @@ int main(void) {
 	DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM1_STOP; // Clock and outputs of TIM 1 are disabled when the core is halted
 
 	Adt_Reset_Struct(&gADT);
+	Zcs_Reset_Struct(&gZCS);
 
 	/* Configure the IO mode */
 	palSetLineMode(LD1_LINE,PAL_MODE_OUTPUT_PUSHPULL);
