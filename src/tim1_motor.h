@@ -23,6 +23,8 @@
 #define NB_STATE                7
 #define NB_RAMP_STEPS           5
 
+#define COEF_ZC_TO_CMT          (float)0.7
+
 /*===========================================================================*/
 /* Typedefs                                                                  */
 /*===========================================================================*/
@@ -144,10 +146,22 @@ typedef struct
   uint8_t         AlignTimeout;
 
   /* Zero-crossing */
-  uint32_t ZeroCrossThreshold;
-  uint32_t ZeroCrossTime;
-  uint32_t ZeroCrossCnt;
-  uint8_t  ZeroCrossFlag;
+  uint32_t TimeBLDCCommut;
+
+  uint32_t ZCDetect;
+  uint32_t ZCDetectOld;
+
+  uint32_t ZCBackEmfTime;
+
+  uint32_t ZCTimeout;
+
+  uint32_t ZCPeriod;
+  uint32_t ZCPeriodOld;
+  uint32_t ZCPeriodMean;
+
+  uint32_t ZCNextCommut;
+
+  uint8_t  ZCFlag;
 
 }BrushlessConfig;
 

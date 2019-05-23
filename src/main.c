@@ -34,16 +34,23 @@
 #define DELAY_DEMO				1000
 
 /*  ZERO-CROSSING DETECTION */
-#define ZC_NB_POINTS            16
+#define ZC_NB_POINTS            1000
 #define ZC_THRESHOLD            925
 #define ZC_DELTA                100
 #define ZC_LOW_BOUND            ZC_THRESHOLD - ZC_DELTA
 #define ZC_HIGH_BOUND           ZC_THRESHOLD + ZC_DELTA
 #define ZC_SLOPE_PTS            4
+/* NEW */
+#define ZC_HALF_BUS             (int32_t) 925
+
 
 /*  DATA TX  */
 #define DTX_SIZE_1K             1024
 #define DTX_NB_POINTS           6 * DTX_SIZE_1K
+
+#define TWO_ELEM_IDX            1
+#define LATEST_DATA(x)          (x) - 1
+#define PREVIOUS_DATA(x)        (x) - 2
 
 /*===========================================================================*/
 /* Macro                                                                     */
@@ -152,12 +159,12 @@ static uint16_t gValue=0;
 /*===========================================================================*/
 /* Data Transmission */
 void Adt_Reset_Struct(AdcDataTx* adt);
-void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size);
+void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size,uint8_t zc);
 
 /* Zero crossing detection */
 void Zcs_Reset_Struct(ZCSDetect* zcs);
 void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size);
-void Zcs_Detect(ZCSDetect* zcs);
+uint8_t Zcs_Detect(ZCSDetect* zcs);
 
 // ADC 3
 static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
@@ -290,9 +297,10 @@ void Adt_Reset_Struct(AdcDataTx* adt)
   adt->data_lock = 0;
 }
 
-void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
+void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size,uint8_t zc)
 {
-  size_t i,j,k;
+  size_t i;
+  size_t nb_insertion=0;
 
   //
   if(0==adt->data_full)
@@ -301,29 +309,26 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
     // Enough space for all the data
     if(adt->data_left >= size)
     {
-        for(i = 0;i<size;i++)
-        {
-          adt->data[0][adt->data_idx] = input_data[ adt->nb_channels * i];
-          adt->data[1][adt->data_idx] = input_data[ adt->nb_channels * i +1];
-          adt->data[2][adt->data_idx] = input_data[ adt->nb_channels * i +2];
-          adt->data[3][adt->data_idx] = input_data[ adt->nb_channels * i +3];
-          adt->data_idx += 1;
-        }
-        adt->data_left -= size;
+      nb_insertion = size;
     }
-    // Fill it until maximum capacity
     else
     {
-      for(i = 0;i<adt->data_left;i++)
-      {
-        adt->data[0][adt->data_idx] = input_data[ adt->nb_channels * i];
-        adt->data[1][adt->data_idx] = input_data[ adt->nb_channels * i +1];
-        adt->data[2][adt->data_idx] = input_data[ adt->nb_channels * i +2];
-        adt->data[3][adt->data_idx] = input_data[ adt->nb_channels * i +3];
-        adt->data_idx += 1;
-      }
-      adt->data_left -= adt->data_left;
+      // Fill it until maximum capacity
+      nb_insertion = adt->data_left;
     }
+
+    for(i = 0;i<nb_insertion;i++)
+    {
+      adt->data[0][adt->data_idx] = input_data[ adt->nb_channels * i];
+      adt->data[1][adt->data_idx] = input_data[ adt->nb_channels * i +1];
+/*    adt->data[2][adt->data_idx] = input_data[ adt->nb_channels * i +2];
+      adt->data[3][adt->data_idx] = input_data[ adt->nb_channels * i +3]; */
+      adt->data[2][adt->data_idx] = zc * 1000;
+      adt->data[3][adt->data_idx] = gBrushCfg.StateIterator * 250;
+
+      adt->data_idx += 1;
+    }
+    adt->data_left -= nb_insertion;
 
   }
 
@@ -352,6 +357,13 @@ void Zcs_Reset_Struct(ZCSDetect* zcs)
 void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size)
 {
   size_t i;
+
+  // Check if full
+  if(0 == zcs->data_left || 1 == zcs->data_full)
+  {
+    zcs->data_full = 1;
+    Zcs_Reset_Struct(zcs);
+  }
 
   //
   if(0==zcs->data_full)
@@ -386,79 +398,51 @@ void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size)
 
   }
 
-  // Check if full
-  if(0 == zcs->data_left || 1 == zcs->data_full)
-  {
-    zcs->data_full = 1;
-  }
+
 }
 
 
-void Zcs_Detect(ZCSDetect* zcs)
+uint8_t Zcs_Detect(ZCSDetect* zcs)
 {
-  size_t i;
-  int32_t diff_sum;
+  uint8_t ret_val;
+
   static volatile uint8_t  MeasurementArray[NB_STATE] = {0,1,2,0,1,2,0};
   static volatile uint8_t  MeasureChannel = 0;
-  static volatile uint8_t  OldMeasureChannel = 3;
-  uint16_t meas_value [2][3] = {{1536,1664,1792},{512,640,768}};
+  int32_t lOldMeasure = 0;
+  int32_t lCurMeasure = 0;
+  uint8_t lChangeSign = 0; // 0 is FALSE, 1 is TRUE
+  uint8_t lFound = 0;
 
-  if (ZC_SLOPE_PTS < zcs->data_idx )
+
+  MeasureChannel = MeasurementArray[gBrushCfg.StateIterator];
+  // Check if the sign has changed between old measurement and actual
+  if(zcs->data_idx >  TWO_ELEM_IDX)
   {
-    MeasureChannel = MeasurementArray[gBrushCfg.StateIterator];
-
-    // Zone of interest check
-    if( ZC_LOW_BOUND <= zcs->data[MeasureChannel][zcs->data_idx]  && ZC_HIGH_BOUND >= zcs->data[MeasureChannel][zcs->data_idx] )
-    {
-      diff_sum = 0;
-      // Slope detection
-      for(i = 0;i<ZC_SLOPE_PTS-1;i++)
-      {
-        diff_sum +=  ((int32_t) zcs->data[MeasureChannel][zcs->data_idx-i] - (int32_t) zcs->data[MeasureChannel][zcs->data_idx-i-1]);
-      }
-
-      // Negative slope
-      if(diff_sum < 0)
-      {
-        gBrushCfg.ZeroCrossFlag = 1;
-        if(zcs->data[MeasureChannel][zcs->data_idx] <  ZC_THRESHOLD)
-        {
-          zcs->slope[MeasureChannel][zcs->data_idx] = meas_value[0][MeasureChannel];
-          OldMeasureChannel = MeasureChannel;
-        }
-      }
-      // Positive slope
-      else if (diff_sum > 0)
-      {
-        gBrushCfg.ZeroCrossFlag = 1;
-        if(zcs->data[MeasureChannel][zcs->data_idx] >  ZC_THRESHOLD)
-        {
-          zcs->slope[MeasureChannel][zcs->data_idx] = meas_value[1][MeasureChannel];
-          OldMeasureChannel = MeasureChannel;
-        }
-      }
-      else
-      {
-        zcs->data[MeasureChannel][zcs->data_idx] = 0;
-      }
-    }
+    lCurMeasure = (int32_t) zcs->data[MeasureChannel][LATEST_DATA(zcs->data_idx)]   - ZC_HALF_BUS;
+    lOldMeasure = (int32_t) zcs->data[MeasureChannel][PREVIOUS_DATA(zcs->data_idx)] - ZC_HALF_BUS;
+    lChangeSign = ((lOldMeasure ^ lCurMeasure) < 0); // TRUE if sign has changed
+    gBrushCfg.ZCFlag = lChangeSign;
+    lFound = lChangeSign;
+    ret_val = (MeasureChannel + 1)*lChangeSign;
   }
 
-  if(1==gBrushCfg.ZeroCrossFlag)
+
+  if(ret_val > 0)
   {
-    /*Zero crossing*/
-    if(0==gBrushCfg.ZeroCrossThreshold)
-    {
-      gBrushCfg.ZeroCrossThreshold =  gBrushCfg.RampMaxSpeed;
-    }
-    else
-    {
-      gBrushCfg.ZeroCrossThreshold = ( gBrushCfg.ZeroCrossCnt- gBrushCfg.ZeroCrossTime)/2;
-      gBrushCfg.ZeroCrossThreshold +=  gBrushCfg.ZeroCrossCnt;
-    }
-    gBrushCfg.ZeroCrossTime = gBrushCfg.ZeroCrossCnt;
+
+    gBrushCfg.ZCDetectOld = gBrushCfg.ZCDetect;
+    gBrushCfg.ZCDetect    = gBrushCfg.TimeBLDCCommut;
+    gBrushCfg.ZCPeriodOld = gBrushCfg.ZCPeriod;
+    gBrushCfg.ZCPeriod    = gBrushCfg.ZCDetect - gBrushCfg.ZCDetectOld;
+    gBrushCfg.ZCPeriodMean = ((gBrushCfg.ZCPeriodOld + gBrushCfg.ZCPeriod) >> 1);
+
+
+    gBrushCfg.ZCNextCommut = gBrushCfg.TimeBLDCCommut + gBrushCfg.ZCPeriodMean;
+
     Zcs_Reset_Struct(zcs);
   }
+
+  return ret_val;
 
 }
 
@@ -499,16 +483,18 @@ static const ADCConversionGroup ADC3group = {
  */
 static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 {
+    uint8_t zc_detect;
+
     palSetLine(DEBUG_INT_LINE);
 
     // Zero-crossing and slope detection
 	Zcs_Insert_Data(&gZCS,buffer,n);
-	Zcs_Detect(&gZCS);
+	zc_detect = Zcs_Detect(&gZCS);
 
     // Data transmission
     if(0 == gADT.data_lock)
     {
-      Adt_Insert_Data(&gADT,buffer,n);
+      Adt_Insert_Data(&gADT,buffer,n,zc_detect);
     }
 
     acq_done = 1;

@@ -72,10 +72,14 @@ BrushlessConfig gBrushCfg = {
     .AlignInProgress = 0,
 
     /* Zero-crossing conf */
-    .ZeroCrossFlag = 0,
-    .ZeroCrossCnt  = 0,
-    .ZeroCrossTime = 0,
-    .ZeroCrossThreshold = 0,
+    .ZCFlag         = 0,
+    .ZCDetect       = 0,
+    .ZCDetectOld    = 0,
+    .ZCPeriod       = 0,
+    .ZCPeriodOld    = 0,
+    .ZCBackEmfTime  = 0,
+    .ZCNextCommut   = 0,
+    .ZCTimeout      = 0,
 
     /** IO Configuration **/
     .P_Channels = {LINE_OUT_MOT1_PH1_P,LINE_OUT_MOT1_PH2_P,LINE_OUT_MOT1_PH3_P},
@@ -346,8 +350,9 @@ void timer_1_pwm_config (void)
 void commutation_nextstep(BrushlessConfig *pBrushCfg)
 {
   pBrushCfg->InStepCount++;
-  if ((pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount  && kInitRamp == pBrushCfg->Mode) ||
-      (1 == pBrushCfg->ZeroCrossFlag && kEndless == pBrushCfg->Mode && pBrushCfg->ZeroCrossCnt >= pBrushCfg->ZeroCrossThreshold))
+  if ((pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount && kInitRamp == pBrushCfg->Mode) ||
+      (1 == pBrushCfg->ZCFlag && kEndless == pBrushCfg->Mode && pBrushCfg->TimeBLDCCommut >= pBrushCfg->ZCNextCommut))
+
   {
 
 
@@ -369,10 +374,52 @@ void commutation_nextstep(BrushlessConfig *pBrushCfg)
       }
     }
 
-    pBrushCfg->ZeroCrossFlag=0; // Reset zero-crossing flag
+    pBrushCfg->ZCFlag=0; // Reset zero-crossing flag
 
     pBrushCfg->InStepCount = 0;
   }
+  else if (0 == pBrushCfg->ZCFlag && kEndless == pBrushCfg->Mode && pBrushCfg->TimeBLDCCommut >= pBrushCfg->ZCNextCommut)
+  {
+
+
+    if(pBrushCfg->RotationDir==kCCW)
+    {
+      pBrushCfg->StateIterator++;
+      if(NB_STATE == pBrushCfg->StateIterator)
+      {
+        pBrushCfg->StateIterator=kPhaseUV;
+      }
+
+    }
+    else
+    {
+      pBrushCfg->StateIterator--;
+      if(((int32_t) kStop) >= pBrushCfg->StateIterator)
+      {
+        pBrushCfg->StateIterator=kPhaseWV;
+      }
+    }
+
+    gBrushCfg.ZCDetectOld = gBrushCfg.ZCDetect;
+    gBrushCfg.ZCDetect    = gBrushCfg.TimeBLDCCommut;
+    gBrushCfg.ZCPeriodOld = gBrushCfg.ZCPeriod;
+    gBrushCfg.ZCPeriod    = gBrushCfg.ZCDetect - gBrushCfg.ZCDetectOld;
+    gBrushCfg.ZCPeriodMean = ((gBrushCfg.ZCPeriodOld + gBrushCfg.ZCPeriod) >> 1);
+    gBrushCfg.ZCNextCommut = gBrushCfg.TimeBLDCCommut + gBrushCfg.ZCPeriodMean +  2 * pBrushCfg->ZCTimeout;
+
+  }
+}
+
+
+void commutation_zc_reset(BrushlessConfig *pBrushCfg)
+{
+  pBrushCfg->ZCDetect      = 0;
+  pBrushCfg->ZCDetectOld   = 0;
+  pBrushCfg->ZCPeriod      = 0;
+  pBrushCfg->ZCPeriodOld   = 0;
+  pBrushCfg->ZCNextCommut  = 0;
+  pBrushCfg->ZCTimeout     = 100;
+  pBrushCfg->ZCBackEmfTime = 0;
 }
 
 static void vt_cb(void* arg)
@@ -510,9 +557,7 @@ void commutation_cb(PWMDriver *pwmp)
           chSysUnlockFromISR();
           gBrushCfg.Mode = kEndless;
           /* Reset all the zero-crossing variables */
-           gBrushCfg.ZeroCrossCnt = 0;
-           gBrushCfg.ZeroCrossThreshold = 0;
-           gBrushCfg.ZeroCrossTime = 0;
+          commutation_zc_reset(&gBrushCfg);
         }
 
       }
@@ -521,7 +566,7 @@ void commutation_cb(PWMDriver *pwmp)
     }
     case kEndless:
     {
-      gBrushCfg.ZeroCrossCnt++;
+      gBrushCfg.TimeBLDCCommut++;
 
       tim_1_oc_cmd(kTimChannel1 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][0]);
       tim_1_ocn_cmd(kTimChannel1,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][1]);
