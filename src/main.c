@@ -34,12 +34,12 @@
 #define DELAY_DEMO				1000
 
 /*  ZERO-CROSSING DETECTION */
-#define ZC_NB_POINTS            16
+#define ZC_NB_POINTS            2000
 #define ZC_THRESHOLD            925
 #define ZC_DELTA                100
 #define ZC_LOW_BOUND            ZC_THRESHOLD - ZC_DELTA
 #define ZC_HIGH_BOUND           ZC_THRESHOLD + ZC_DELTA
-#define ZC_SLOPE_PTS            4
+#define ZC_SLOPE_PTS            3
 
 /*  DATA TX  */
 #define DTX_SIZE_1K             1024
@@ -152,12 +152,12 @@ static uint16_t gValue=0;
 /*===========================================================================*/
 /* Data Transmission */
 void Adt_Reset_Struct(AdcDataTx* adt);
-void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size);
+void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size, int8_t zc);
 
 /* Zero crossing detection */
 void Zcs_Reset_Struct(ZCSDetect* zcs);
 void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size);
-void Zcs_Detect(ZCSDetect* zcs);
+int8_t Zcs_Detect(ZCSDetect* zcs);
 
 // ADC 3
 static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
@@ -290,7 +290,7 @@ void Adt_Reset_Struct(AdcDataTx* adt)
   adt->data_lock = 0;
 }
 
-void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
+void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size, int8_t zc)
 {
   size_t i,j,k;
 
@@ -305,8 +305,8 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
         {
           adt->data[0][adt->data_idx] = input_data[ adt->nb_channels * i];
           adt->data[1][adt->data_idx] = input_data[ adt->nb_channels * i +1];
-          adt->data[2][adt->data_idx] = input_data[ adt->nb_channels * i +2];
-          adt->data[3][adt->data_idx] = input_data[ adt->nb_channels * i +3];
+          adt->data[2][adt->data_idx] = gBrushCfg.StateIterator;
+          adt->data[3][adt->data_idx] = zc * 1000;
           adt->data_idx += 1;
         }
         adt->data_left -= size;
@@ -318,8 +318,8 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size)
       {
         adt->data[0][adt->data_idx] = input_data[ adt->nb_channels * i];
         adt->data[1][adt->data_idx] = input_data[ adt->nb_channels * i +1];
-        adt->data[2][adt->data_idx] = input_data[ adt->nb_channels * i +2];
-        adt->data[3][adt->data_idx] = input_data[ adt->nb_channels * i +3];
+        adt->data[2][adt->data_idx] = gBrushCfg.StateIterator;
+        adt->data[3][adt->data_idx] = zc * 1000;
         adt->data_idx += 1;
       }
       adt->data_left -= adt->data_left;
@@ -353,6 +353,12 @@ void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size)
 {
   size_t i;
 
+  // Check if full
+  if(0 == zcs->data_left || 1 == zcs->data_full)
+  {
+    Zcs_Reset_Struct(zcs);
+  }
+
   //
   if(0==zcs->data_full)
   {
@@ -385,81 +391,96 @@ void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size)
     }
 
   }
-
-  // Check if full
-  if(0 == zcs->data_left || 1 == zcs->data_full)
-  {
-    zcs->data_full = 1;
-  }
 }
 
 
-void Zcs_Detect(ZCSDetect* zcs)
+int8_t Zcs_Detect(ZCSDetect* zcs)
 {
   size_t i;
   int32_t diff_sum;
-  static volatile uint8_t  MeasurementArray[NB_STATE] = {0,1,2,0,1,2,0};
+  static volatile uint8_t  MeasurementArray[NB_STATE] = {0,  1, 2,  0, 1,  2, 0};
+  static int8_t MeasurementSlope[NB_STATE] =            {1, -1, 1, -1, 1, -1, 1};
   static volatile uint8_t  MeasureChannel = 0;
-  static volatile uint8_t  OldMeasureChannel = 3;
+  static volatile uint8_t  OldMeasureChannel = 10;
   uint16_t meas_value [2][3] = {{1536,1664,1792},{512,640,768}};
+  int8_t ret_value = 0 ;
 
-  if (ZC_SLOPE_PTS < zcs->data_idx )
+  MeasureChannel = MeasurementArray[gBrushCfg.StateIterator];
+
+  if (10 < zcs->data_idx && OldMeasureChannel != MeasureChannel)
   {
-    MeasureChannel = MeasurementArray[gBrushCfg.StateIterator];
 
-    // Zone of interest check
-    if( ZC_LOW_BOUND <= zcs->data[MeasureChannel][zcs->data_idx]  && ZC_HIGH_BOUND >= zcs->data[MeasureChannel][zcs->data_idx] )
-    {
-      diff_sum = 0;
-      // Slope detection
-      for(i = 0;i<ZC_SLOPE_PTS-1;i++)
-      {
-        diff_sum +=  ((int32_t) zcs->data[MeasureChannel][zcs->data_idx-i] - (int32_t) zcs->data[MeasureChannel][zcs->data_idx-i-1]);
-      }
+    // // Zone of interest check
+    // if( ZC_LOW_BOUND <= zcs->data[MeasureChannel][zcs->data_idx]  && ZC_HIGH_BOUND >= zcs->data[MeasureChannel][zcs->data_idx] )
+    // {
+    //   diff_sum = 0;
+    //   // Slope detection
+    //   for(i = 0;i<ZC_SLOPE_PTS-1;i++)
+    //   {
+    //     diff_sum +=  ((int32_t) zcs->data[MeasureChannel][zcs->data_idx-i] - (int32_t) zcs->data[MeasureChannel][zcs->data_idx-i-1]);
+    //   }
 
-      // Negative slope
-      if(diff_sum < 0)
-      {
+    //   // Negative slope
+    //   if(diff_sum < 0)
+    //   {
+    //     if(zcs->data[MeasureChannel][zcs->data_idx] <  ZC_THRESHOLD)
+    //     {
+    //       gBrushCfg.ZeroCrossFlag = 1;
+    //       zcs->slope[MeasureChannel][zcs->data_idx] = meas_value[0][MeasureChannel];
+    //       OldMeasureChannel = MeasureChannel;
+    //     }
+    //   }
+    //   // Positive slope
+    //   else if (diff_sum > 0)
+    //   {
+    //     if(zcs->data[MeasureChannel][zcs->data_idx] >  ZC_THRESHOLD)
+    //     {
+    //       gBrushCfg.ZeroCrossFlag = 1;
+    //       zcs->slope[MeasureChannel][zcs->data_idx] = meas_value[1][MeasureChannel];
+    //       OldMeasureChannel = MeasureChannel;
+    //     }
+    //   }
+    //   else
+    //   {
+    //     zcs->data[MeasureChannel][zcs->data_idx] = 0;
+    //   }
+    // }
+    static int32_t slope = 0;
+    slope = zcs->data[MeasureChannel][zcs->data_idx] - zcs->data[MeasureChannel][zcs->data_idx - 1];
+    //rising
+    if(slope > 0 && zcs->data[MeasureChannel][zcs->data_idx - 1] < ZC_THRESHOLD && MeasurementSlope[MeasureChannel] > 0){
+      if(zcs->data[MeasureChannel][zcs->data_idx] >= ZC_THRESHOLD){
         gBrushCfg.ZeroCrossFlag = 1;
-        if(zcs->data[MeasureChannel][zcs->data_idx] <  ZC_THRESHOLD)
-        {
-          zcs->slope[MeasureChannel][zcs->data_idx] = meas_value[0][MeasureChannel];
-          OldMeasureChannel = MeasureChannel;
-        }
+        zcs->slope[MeasureChannel][zcs->data_idx] = meas_value[0][MeasureChannel];
+        OldMeasureChannel = MeasureChannel;
+        ret_value = MeasureChannel + 1;
       }
-      // Positive slope
-      else if (diff_sum > 0)
-      {
+    }else if(slope < 0 && zcs->data[MeasureChannel][zcs->data_idx - 1] > ZC_THRESHOLD && MeasurementSlope[MeasureChannel] < 0){
+      if(zcs->data[MeasureChannel][zcs->data_idx] <= ZC_THRESHOLD){
         gBrushCfg.ZeroCrossFlag = 1;
-        if(zcs->data[MeasureChannel][zcs->data_idx] >  ZC_THRESHOLD)
-        {
-          zcs->slope[MeasureChannel][zcs->data_idx] = meas_value[1][MeasureChannel];
-          OldMeasureChannel = MeasureChannel;
-        }
-      }
-      else
-      {
-        zcs->data[MeasureChannel][zcs->data_idx] = 0;
+        zcs->slope[MeasureChannel][zcs->data_idx] = meas_value[0][MeasureChannel];
+        OldMeasureChannel = MeasureChannel;
+        ret_value = MeasureChannel + 1;
       }
     }
   }
 
-  if(1==gBrushCfg.ZeroCrossFlag)
+  if(ret_value > 0)
   {
     /*Zero crossing*/
     if(0==gBrushCfg.ZeroCrossThreshold)
     {
-      gBrushCfg.ZeroCrossThreshold =  gBrushCfg.RampMaxSpeed;
+      gBrushCfg.ZeroCrossThreshold = gBrushCfg.ZeroCrossCnt + gBrushCfg.RampMaxSpeed;
     }
     else
     {
-      gBrushCfg.ZeroCrossThreshold = ( gBrushCfg.ZeroCrossCnt- gBrushCfg.ZeroCrossTime)/2;
+      gBrushCfg.ZeroCrossThreshold = ( gBrushCfg.ZeroCrossCnt - gBrushCfg.ZeroCrossTime)/2;
       gBrushCfg.ZeroCrossThreshold +=  gBrushCfg.ZeroCrossCnt;
     }
     gBrushCfg.ZeroCrossTime = gBrushCfg.ZeroCrossCnt;
     Zcs_Reset_Struct(zcs);
   }
-
+  return ret_value;
 }
 
 /*===========================================================================*/
@@ -499,16 +520,17 @@ static const ADCConversionGroup ADC3group = {
  */
 static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 {
+  int8_t zc_detected = 0;
     palSetLine(DEBUG_INT_LINE);
 
     // Zero-crossing and slope detection
 	Zcs_Insert_Data(&gZCS,buffer,n);
-	Zcs_Detect(&gZCS);
+	zc_detected = Zcs_Detect(&gZCS);
 
     // Data transmission
     if(0 == gADT.data_lock)
     {
-      Adt_Insert_Data(&gADT,buffer,n);
+      Adt_Insert_Data(&gADT,buffer,n, zc_detected);
     }
 
     acq_done = 1;

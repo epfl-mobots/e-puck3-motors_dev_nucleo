@@ -35,17 +35,17 @@ BrushlessConfig gBrushCfg = {
 
     /* PWM Simple from DRV 8323 */
     /* C1 : ENABLE - C1C - C2 - C2C : ENABLE - C3 - C3C */
-    .kChannelStateArray[kPhaseUV] = {kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_High},
+    .kChannelStateArray[kPhaseUV] = {kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_High},
     /* C1 : ENABLE - C1C - C2 - C2C - C3 - C3C : ENABLE */
-    .kChannelStateArray[kPhaseUW] = {kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_High,kTimCh_Low,kTimCh_Low},
+    .kChannelStateArray[kPhaseUW] = {kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_High,kTimCh_Low,kTimCh_Low},
     /* C1 - C1C - C2 : ENABLE - C2C - C3 - C3C : ENABLE */
-    .kChannelStateArray[kPhaseVW] = {kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_High,kTimCh_PWM,kTimCh_PWM},
+    .kChannelStateArray[kPhaseVW] = {kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_High,kTimCh_PWM,kTimCh_Low},
     /* C1 - C1C : ENABLE - C2 : ENABLE - C2C - C3 - C3C */
-    .kChannelStateArray[kPhaseVU] = {kTimCh_Low,kTimCh_High,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_PWM},
+    .kChannelStateArray[kPhaseVU] = {kTimCh_Low,kTimCh_High,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_Low},
     /* C1 - C1C : ENABLE - C2 - C2C - C3 : ENABLE - C3C */
-    .kChannelStateArray[kPhaseWU] = {kTimCh_Low,kTimCh_High,kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_Low},
+    .kChannelStateArray[kPhaseWU] = {kTimCh_Low,kTimCh_High,kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_Low},
     /* C1 - C1C - C2 - C2C : ENABLE - C3 : ENABLE - C3C */
-    .kChannelStateArray[kPhaseWV] = {kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_High},
+    .kChannelStateArray[kPhaseWV] = {kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_High},
 
     /* PWM Double from scratch */
 /*    .kChannelStateArray[kPhaseUV] = {kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_Low,kTimCh_Low},
@@ -346,8 +346,8 @@ void timer_1_pwm_config (void)
 void commutation_nextstep(BrushlessConfig *pBrushCfg)
 {
   pBrushCfg->InStepCount++;
-  if ((pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount  && kInitRamp == pBrushCfg->Mode) ||
-      (1 == pBrushCfg->ZeroCrossFlag && kEndless == pBrushCfg->Mode && pBrushCfg->ZeroCrossCnt >= pBrushCfg->ZeroCrossThreshold))
+  if ((pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount))/* && kInitRamp == pBrushCfg->Mode) ||
+      (1 == pBrushCfg->ZeroCrossFlag && kEndless == pBrushCfg->Mode && pBrushCfg->ZeroCrossCnt >= pBrushCfg->ZeroCrossThreshold))*/
   {
 
 
