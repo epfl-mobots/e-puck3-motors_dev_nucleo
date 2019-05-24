@@ -42,7 +42,9 @@
 #define ZC_SLOPE_PTS            4
 /* NEW */
 #define ZC_HALF_BUS             (int32_t) 925
-
+#define CORR_FACTOR_HALF_BUS    1.04f
+#define LOW_PASS_COEFF_A        0.99f
+#define LOW_PASS_COEFF_B        0.01f
 
 /*  DATA TX  */
 #define DTX_SIZE_1K             1024
@@ -407,19 +409,31 @@ uint8_t Zcs_Detect(ZCSDetect* zcs)
   uint8_t ret_val;
 
   static volatile uint8_t  MeasurementArray[NB_STATE] = {0,1,2,0,1,2,0};
+  static volatile uint8_t  MeasurementArrayHigh[NB_STATE] = {0,0,0,2,2,1,1};
+  static volatile uint8_t  MeasurementArrayLow[NB_STATE] = {0,2,1,1,0,0,2};
   static volatile uint8_t  MeasureChannel = 0;
   int32_t lOldMeasure = 0;
   int32_t lCurMeasure = 0;
   uint8_t lChangeSign = 0; // 0 is FALSE, 1 is TRUE
   uint8_t lFound = 0;
 
+  static uint16_t lhighest_voltage = 0;
+  static uint16_t llowest_voltage = 0;
+  static uint16_t lhalf_bus = ZC_HALF_BUS;
+
+  uint16_t ret_val = lhalf_bus;
 
   MeasureChannel = MeasurementArray[gBrushCfg.StateIterator];
+
+  lhighest_voltage = zcs->data[MeasurementArrayHigh[gBrushCfg.StateIterator]][LATEST_DATA(zcs->data_idx)];
+  llowest_voltage = zcs->data[MeasurementArrayLow[gBrushCfg.StateIterator]][LATEST_DATA(zcs->data_idx)];
+  lhalf_bus = LOW_PASS_COEFF_A * lhalf_bus + LOW_PASS_COEFF_B * (lhighest_voltage + llowest_voltage)/2;
+
   // Check if the sign has changed between old measurement and actual
   if(zcs->data_idx >  TWO_ELEM_IDX)
   {
-    lCurMeasure = (int32_t) zcs->data[MeasureChannel][LATEST_DATA(zcs->data_idx)]   - ZC_HALF_BUS;
-    lOldMeasure = (int32_t) zcs->data[MeasureChannel][PREVIOUS_DATA(zcs->data_idx)] - ZC_HALF_BUS;
+    lCurMeasure = (int32_t) zcs->data[MeasureChannel][LATEST_DATA(zcs->data_idx)]  - CORR_FACTOR_HALF_BUS * lhalf_bus;
+    lOldMeasure = (int32_t) zcs->data[MeasureChannel][PREVIOUS_DATA(zcs->data_idx)] - CORR_FACTOR_HALF_BUS * lhalf_bus;
     lChangeSign = ((lOldMeasure ^ lCurMeasure) < 0); // TRUE if sign has changed
     gBrushCfg.ZCFlag = lChangeSign;
     lFound = lChangeSign;
@@ -686,6 +700,21 @@ int main(void) {
 			spawn_shell();
 		}
 		chThdSleepMilliseconds(500);
+
+    static float percent = 90;
+
+    if(palReadLine(LINE_NUCLEO_USER_BUTTON)){
+      percent -= 2;
+      if(percent < 50){
+        percent = 90;
+      }
+      (&PWMD1)->tim->CCR[kTimChannel1]  =  (percent/100) * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel2]  =  (percent/100) * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel3]  =  (percent/100) * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
+      chThdSleepMilliseconds(500);
+    }
+
+   
 		
 		// chprintf((BaseSequentialStream *) &USB_SERIAL, "fault status 1 	= 0x%x\n", gateDriversReadReg(DRV8323_1, FAULT_STATUS_1_REG));
 		// chprintf((BaseSequentialStream *) &USB_SERIAL, "fault status 2 	= 0x%x\n", gateDriversReadReg(DRV8323_1, FAULT_STATUS_2_REG));
