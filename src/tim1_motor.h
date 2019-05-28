@@ -23,7 +23,7 @@
 #define NB_STATE                7
 #define NB_RAMP_STEPS           5
 
-#define COEF_ZC_TO_CMT          (float)0.7
+#define COEF_ADV                (float)0.375
 
 /*===========================================================================*/
 /* Typedefs                                                                  */
@@ -51,6 +51,7 @@ typedef enum
   kInitCfg  = 0,
   kAlign    = 1,
   kInitRamp = 2,
+  kValidSensorless = 3,
   kEndless  = 255
 }CmdMode;
 
@@ -145,23 +146,27 @@ typedef struct
   uint8_t         AlignInProgress;
   uint8_t         AlignTimeout;
 
+  uint16_t ZCVCount;
+
   /* Zero-crossing */
   uint32_t TimeBLDCCommut;
 
+
   uint32_t ZCDetect;
   uint32_t ZCDetectOld;
-
-  uint32_t ZCBackEmfTime;
 
   uint32_t ZCTimeout;
 
   uint32_t ZCPeriod;
   uint32_t ZCPeriodOld;
   uint32_t ZCPeriodMean;
-
   uint32_t ZCNextCommut;
-
   uint8_t  ZCFlag;
+
+
+
+  /* Speed control */
+  uint16_t Speed;
 
 }BrushlessConfig;
 

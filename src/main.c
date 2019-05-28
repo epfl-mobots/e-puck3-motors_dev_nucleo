@@ -51,6 +51,7 @@
 #define DTX_NB_POINTS           6 * DTX_SIZE_1K
 
 #define TWO_ELEM_IDX            1
+#define SIX_ELEM_IDX            7
 #define LATEST_DATA(x)          (x) - 1
 #define PREVIOUS_DATA(x)        (x) - 2
 
@@ -167,6 +168,8 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size,uint8_t zc)
 void Zcs_Reset_Struct(ZCSDetect* zcs);
 void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size);
 uint8_t Zcs_Detect(ZCSDetect* zcs);
+void zcs_ext_reset(void);
+
 
 // ADC 3
 static void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
@@ -406,7 +409,6 @@ void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size)
 
 uint8_t Zcs_Detect(ZCSDetect* zcs)
 {
-  uint8_t ret_val;
 
   static volatile uint8_t  MeasurementArray[NB_STATE] = {0,1,2,0,1,2,0};
   static volatile uint8_t  MeasurementArrayHigh[NB_STATE] = {0,0,0,2,2,1,1};
@@ -415,13 +417,13 @@ uint8_t Zcs_Detect(ZCSDetect* zcs)
   int32_t lOldMeasure = 0;
   int32_t lCurMeasure = 0;
   uint8_t lChangeSign = 0; // 0 is FALSE, 1 is TRUE
-  uint8_t lFound = 0;
+  static  int32_t lOldStateIterator = 36;
 
   static uint16_t lhighest_voltage = 0;
   static uint16_t llowest_voltage = 0;
   static uint16_t lhalf_bus = ZC_HALF_BUS;
 
-  uint16_t ret_val = lhalf_bus;
+  uint16_t ret_val = 0;
 
   MeasureChannel = MeasurementArray[gBrushCfg.StateIterator];
 
@@ -429,35 +431,36 @@ uint8_t Zcs_Detect(ZCSDetect* zcs)
   llowest_voltage = zcs->data[MeasurementArrayLow[gBrushCfg.StateIterator]][LATEST_DATA(zcs->data_idx)];
   lhalf_bus = LOW_PASS_COEFF_A * lhalf_bus + LOW_PASS_COEFF_B * (lhighest_voltage + llowest_voltage)/2;
 
-  // Check if the sign has changed between old measurement and actual
-  if(zcs->data_idx >  TWO_ELEM_IDX)
-  {
-    lCurMeasure = (int32_t) zcs->data[MeasureChannel][LATEST_DATA(zcs->data_idx)]  - CORR_FACTOR_HALF_BUS * lhalf_bus;
-    lOldMeasure = (int32_t) zcs->data[MeasureChannel][PREVIOUS_DATA(zcs->data_idx)] - CORR_FACTOR_HALF_BUS * lhalf_bus;
-    lChangeSign = ((lOldMeasure ^ lCurMeasure) < 0); // TRUE if sign has changed
-    gBrushCfg.ZCFlag = lChangeSign;
-    lFound = lChangeSign;
-    ret_val = (MeasureChannel + 1)*lChangeSign;
-  }
+      // Check if the sign has changed between old measurement and actual
+      if(zcs->data_idx >  TWO_ELEM_IDX)
+      {
+        lCurMeasure = (int32_t) zcs->data[MeasureChannel][LATEST_DATA(zcs->data_idx)]   - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
+        lOldMeasure = (int32_t) zcs->data[MeasureChannel][PREVIOUS_DATA(zcs->data_idx)] - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
+        lChangeSign = ((lOldMeasure ^ lCurMeasure) < 0); // TRUE if sign has changed
+        gBrushCfg.ZCFlag |= lChangeSign;
+        ret_val = (MeasureChannel + 1)*lChangeSign;
+      }
 
 
-  if(ret_val > 0)
-  {
+      if(ret_val > 0)
+      {
 
-    gBrushCfg.ZCDetectOld = gBrushCfg.ZCDetect;
-    gBrushCfg.ZCDetect    = gBrushCfg.TimeBLDCCommut;
-    gBrushCfg.ZCPeriodOld = gBrushCfg.ZCPeriod;
-    gBrushCfg.ZCPeriod    = gBrushCfg.ZCDetect - gBrushCfg.ZCDetectOld;
-    gBrushCfg.ZCPeriodMean = ((gBrushCfg.ZCPeriodOld + gBrushCfg.ZCPeriod) >> 1);
+        gBrushCfg.ZCDetectOld = gBrushCfg.ZCDetect;
+        gBrushCfg.ZCDetect    = gBrushCfg.TimeBLDCCommut;
+        gBrushCfg.ZCPeriodOld = gBrushCfg.ZCPeriod;
+        gBrushCfg.ZCPeriod    = gBrushCfg.ZCDetect - gBrushCfg.ZCDetectOld;
+        gBrushCfg.ZCPeriodMean = ((gBrushCfg.ZCPeriodOld + gBrushCfg.ZCPeriod) >> 1);
+        gBrushCfg.ZCNextCommut = gBrushCfg.TimeBLDCCommut + (gBrushCfg.ZCPeriodMean >> 1);
 
+      }
 
-    gBrushCfg.ZCNextCommut = gBrushCfg.TimeBLDCCommut + gBrushCfg.ZCPeriodMean;
+    return ret_val;
 
-    Zcs_Reset_Struct(zcs);
-  }
+}
 
-  return ret_val;
-
+void zcs_ext_reset(void)
+{
+  Zcs_Reset_Struct(&gZCS);
 }
 
 /*===========================================================================*/

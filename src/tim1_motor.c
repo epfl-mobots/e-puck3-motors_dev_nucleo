@@ -11,6 +11,7 @@
 
 #include "custom_io.h"
 #include "tim1_motor.h"
+#include "main.h"
 
 /*===========================================================================*/
 /* Variables                                                                 */
@@ -71,13 +72,15 @@ BrushlessConfig gBrushCfg = {
     .AlignTimeout    = 0,
     .AlignInProgress = 0,
 
+    /* Zero-crossing valid */
+    .ZCVCount       =0,
+
     /* Zero-crossing conf */
     .ZCFlag         = 0,
     .ZCDetect       = 0,
     .ZCDetectOld    = 0,
     .ZCPeriod       = 0,
     .ZCPeriodOld    = 0,
-    .ZCBackEmfTime  = 0,
     .ZCNextCommut   = 0,
     .ZCTimeout      = 0,
 
@@ -340,86 +343,84 @@ void timer_1_pwm_config (void)
     // Enable the Timer
     (&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CEN;     // Enable the counter in correct configuration
 
-    chVTObjectInit(&gBrushCfg.ramp_vt); // Init the virtual timer
+    chVTObjectInit(&gBrushCfg.ramp_vt);  // Init the virtual timer
     chVTObjectInit(&gBrushCfg.align_vt); // Init the virtual timer
 }
 
 
+void commutation_step(BrushlessConfig *pBrushCfg)
+{
+  if(pBrushCfg->RotationDir==kCCW)
+  {
+    pBrushCfg->StateIterator++;
+    if(NB_STATE <= pBrushCfg->StateIterator)
+    {
+      pBrushCfg->StateIterator=kPhaseUV;
+    }
+
+  }
+  else
+  {
+    pBrushCfg->StateIterator--;
+    if(((int32_t) kStop) >= pBrushCfg->StateIterator)
+    {
+      pBrushCfg->StateIterator=kPhaseWV;
+    }
+  }
+  pBrushCfg->InStepCount = 0;
+}
 
 
 void commutation_nextstep(BrushlessConfig *pBrushCfg)
 {
-  pBrushCfg->InStepCount++;
-  if ((pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount && kInitRamp == pBrushCfg->Mode) ||
-      (1 == pBrushCfg->ZCFlag && kEndless == pBrushCfg->Mode && pBrushCfg->TimeBLDCCommut >= pBrushCfg->ZCNextCommut))
+  static volatile uint32_t else_cnt = 0;
 
+  switch(pBrushCfg->Mode)
   {
-
-
-    if(pBrushCfg->RotationDir==kCCW)
-    {
-      pBrushCfg->StateIterator++;
-      if(NB_STATE == pBrushCfg->StateIterator)
+    case kInitRamp:
+      pBrushCfg->InStepCount++;
+      if (pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount)
       {
-        pBrushCfg->StateIterator=kPhaseUV;
+        commutation_step(pBrushCfg);
+        if(1==gBrushCfg.ZCFlag){
+          gBrushCfg.ZCFlag = 0;
+          gBrushCfg.ZCVCount++;
+        }
       }
+      break;
 
-    }
-    else
-    {
-      pBrushCfg->StateIterator--;
-      if(((int32_t) kStop) >= pBrushCfg->StateIterator)
+    case kEndless:
+      if(pBrushCfg->TimeBLDCCommut >= pBrushCfg->ZCNextCommut)
       {
-        pBrushCfg->StateIterator=kPhaseWV;
+        if(1== pBrushCfg->ZCFlag)
+        {
+          pBrushCfg->ZCFlag=0; // Reset zero-crossing flag
+          commutation_step(pBrushCfg);
+          zcs_ext_reset();
+          gBrushCfg.ZCNextCommut = gBrushCfg.TimeBLDCCommut + (36 * gBrushCfg.ZCPeriodMean);
+        }
+        else
+        {
+          else_cnt++;
+        }
       }
-    }
-
-    pBrushCfg->ZCFlag=0; // Reset zero-crossing flag
-
-    pBrushCfg->InStepCount = 0;
-  }
-  else if (0 == pBrushCfg->ZCFlag && kEndless == pBrushCfg->Mode && pBrushCfg->TimeBLDCCommut >= pBrushCfg->ZCNextCommut)
-  {
-
-
-    if(pBrushCfg->RotationDir==kCCW)
-    {
-      pBrushCfg->StateIterator++;
-      if(NB_STATE == pBrushCfg->StateIterator)
-      {
-        pBrushCfg->StateIterator=kPhaseUV;
-      }
-
-    }
-    else
-    {
-      pBrushCfg->StateIterator--;
-      if(((int32_t) kStop) >= pBrushCfg->StateIterator)
-      {
-        pBrushCfg->StateIterator=kPhaseWV;
-      }
-    }
-
-    gBrushCfg.ZCDetectOld = gBrushCfg.ZCDetect;
-    gBrushCfg.ZCDetect    = gBrushCfg.TimeBLDCCommut;
-    gBrushCfg.ZCPeriodOld = gBrushCfg.ZCPeriod;
-    gBrushCfg.ZCPeriod    = gBrushCfg.ZCDetect - gBrushCfg.ZCDetectOld;
-    gBrushCfg.ZCPeriodMean = ((gBrushCfg.ZCPeriodOld + gBrushCfg.ZCPeriod) >> 1);
-    gBrushCfg.ZCNextCommut = gBrushCfg.TimeBLDCCommut + gBrushCfg.ZCPeriodMean +  2 * pBrushCfg->ZCTimeout;
-
+      break;
+    default:
+      break;
   }
 }
 
 
 void commutation_zc_reset(BrushlessConfig *pBrushCfg)
 {
+  pBrushCfg->ZCFlag        = 0;
   pBrushCfg->ZCDetect      = 0;
   pBrushCfg->ZCDetectOld   = 0;
-  pBrushCfg->ZCPeriod      = 0;
+  pBrushCfg->ZCPeriod      = 20;
   pBrushCfg->ZCPeriodOld   = 0;
-  pBrushCfg->ZCNextCommut  = 0;
+  pBrushCfg->ZCPeriodMean  = 0;
+  pBrushCfg->ZCNextCommut  = 40;
   pBrushCfg->ZCTimeout     = 100;
-  pBrushCfg->ZCBackEmfTime = 0;
 }
 
 static void vt_cb(void* arg)
@@ -494,6 +495,7 @@ void commutation_cb(PWMDriver *pwmp)
         // Set to UV phase
         tim_1_oc_cmd(kTimChannel1,kTimCh_High);
         tim_1_ocn_cmd(kTimChannel2,kTimCh_High);
+        tim_1_ocn_cmd(kTimChannel3,kTimCh_High);
 
         chSysLockFromISR();
         chVTSetI(&gBrushCfg.align_vt, gBrushCfg.AlignInterval, vt_cb, NULL); // Start the virtual timer
@@ -505,6 +507,7 @@ void commutation_cb(PWMDriver *pwmp)
         // Disconnect the selected path
         tim_1_oc_cmd(kTimChannel1,kTimCh_Low);
         tim_1_ocn_cmd(kTimChannel2,kTimCh_Low);
+        tim_1_ocn_cmd(kTimChannel3,kTimCh_Low);
 
         chSysLockFromISR();
         chVTSetI(&gBrushCfg.ramp_vt, gBrushCfg.RampInterval, vt_cb, NULL); // Start the virtual timer
@@ -550,7 +553,7 @@ void commutation_cb(PWMDriver *pwmp)
         chSysUnlockFromISR();
 
         // Check if we have done all the ramp speeds
-        if(gBrushCfg.RampMaxSpeed >= gBrushCfg.RampCurSpeed)
+        if(gBrushCfg.RampMaxSpeed >= gBrushCfg.RampCurSpeed || 6==gBrushCfg.ZCVCount)
         {
           chSysLockFromISR();
           chVTResetI(&gBrushCfg.ramp_vt);
@@ -558,12 +561,15 @@ void commutation_cb(PWMDriver *pwmp)
           gBrushCfg.Mode = kEndless;
           /* Reset all the zero-crossing variables */
           commutation_zc_reset(&gBrushCfg);
+          gBrushCfg.TimeBLDCCommut = 0;
         }
 
       }
 
       break;
     }
+
+
     case kEndless:
     {
       gBrushCfg.TimeBLDCCommut++;
