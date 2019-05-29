@@ -162,6 +162,7 @@ typedef struct
   uint32_t ZCPeriodMean;
   uint32_t ZCNextCommut;
   uint8_t  ZCFlag;
+  float  ZCTiming;
 
 
 

@@ -116,6 +116,26 @@ static void cmd_step_time(BaseSequentialStream *chp, int argc, char *argv[])
   }
 }
 
+static void cmd_motor_timing(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  (void)argv;
+  if(argc == 1)
+  {
+    char *endptr;
+    float timing = strtol(argv[0], &endptr, 0);
+    timing -= 30;
+    timing *= -1;
+    timing /= 60;
+    gBrushCfg.ZCTiming = timing;
+
+
+  }
+  else
+  {
+      shellUsage(chp, "set_motor_timing -30 to 30 degrees");
+  }
+}
+
 static void cmd_sample_time(BaseSequentialStream *chp, int argc, char *argv[])
 {
   (void)argv;
@@ -168,6 +188,7 @@ static const ShellCommand commands[] = {
 	{"set_step_time", cmd_step_time},
 	{"set_direction",cmd_dir},
 	{"set_sample_time",cmd_sample_time},
+	{"set_motor_timing",cmd_motor_timing},
 	{NULL, NULL}
 };
 

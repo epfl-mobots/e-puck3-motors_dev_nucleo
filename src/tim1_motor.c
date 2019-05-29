@@ -83,6 +83,7 @@ BrushlessConfig gBrushCfg = {
     .ZCPeriodOld    = 0,
     .ZCNextCommut   = 0,
     .ZCTimeout      = 0,
+    .ZCTiming       = 0.5,
 
     /** IO Configuration **/
     .P_Channels = {LINE_OUT_MOT1_PH1_P,LINE_OUT_MOT1_PH2_P,LINE_OUT_MOT1_PH3_P},
@@ -495,7 +496,7 @@ void commutation_cb(PWMDriver *pwmp)
         // Set to UV phase
         tim_1_oc_cmd(kTimChannel1,kTimCh_High);
         tim_1_ocn_cmd(kTimChannel2,kTimCh_High);
-        tim_1_ocn_cmd(kTimChannel3,kTimCh_High);
+        //tim_1_ocn_cmd(kTimChannel3,kTimCh_High);
 
         chSysLockFromISR();
         chVTSetI(&gBrushCfg.align_vt, gBrushCfg.AlignInterval, vt_cb, NULL); // Start the virtual timer
@@ -507,7 +508,7 @@ void commutation_cb(PWMDriver *pwmp)
         // Disconnect the selected path
         tim_1_oc_cmd(kTimChannel1,kTimCh_Low);
         tim_1_ocn_cmd(kTimChannel2,kTimCh_Low);
-        tim_1_ocn_cmd(kTimChannel3,kTimCh_Low);
+        //tim_1_ocn_cmd(kTimChannel3,kTimCh_Low);
 
         chSysLockFromISR();
         chVTSetI(&gBrushCfg.ramp_vt, gBrushCfg.RampInterval, vt_cb, NULL); // Start the virtual timer

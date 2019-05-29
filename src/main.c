@@ -450,7 +450,7 @@ uint8_t Zcs_Detect(ZCSDetect* zcs)
         gBrushCfg.ZCPeriodOld = gBrushCfg.ZCPeriod;
         gBrushCfg.ZCPeriod    = gBrushCfg.ZCDetect - gBrushCfg.ZCDetectOld;
         gBrushCfg.ZCPeriodMean = ((gBrushCfg.ZCPeriodOld + gBrushCfg.ZCPeriod) >> 1);
-        gBrushCfg.ZCNextCommut = gBrushCfg.TimeBLDCCommut + (gBrushCfg.ZCPeriodMean >> 1);
+        gBrushCfg.ZCNextCommut = gBrushCfg.TimeBLDCCommut + (gBrushCfg.ZCPeriod * gBrushCfg.ZCTiming);
 
       }
 
@@ -708,13 +708,14 @@ int main(void) {
 
     if(palReadLine(LINE_NUCLEO_USER_BUTTON)){
       percent -= 2;
-      if(percent < 50){
+      if(percent < 5){
         percent = 90;
       }
       (&PWMD1)->tim->CCR[kTimChannel1]  =  (percent/100) * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
       (&PWMD1)->tim->CCR[kTimChannel2]  =  (percent/100) * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
       (&PWMD1)->tim->CCR[kTimChannel3]  =  (percent/100) * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
       chThdSleepMilliseconds(500);
+      chprintf((BaseSequentialStream *)&USB_GDB, "duty cycle = %f\r\n",percent);
     }
 
    
