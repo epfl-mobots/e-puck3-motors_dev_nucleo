@@ -138,7 +138,10 @@ CSRC = $(ALLCSRC) \
        gate_drivers.c \
        utility.c \
        power_button.c \
-       tim1_motor.c
+       tim1_motor.c \
+       zero_cross.c \
+       adc_motor.c  \
+       adc_tx.c
 
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global

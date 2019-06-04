@@ -90,6 +90,115 @@ BrushlessConfig gBrushCfg = {
     .N_Channels = {LINE_OUT_MOT1_PH1_N,LINE_OUT_MOT1_PH2_N,LINE_OUT_MOT1_PH3_N}
 };
 
+
+/*===========================================================================*/
+/* PWM Configuration                                                         */
+/*===========================================================================*/
+
+/*
+ * Use PWM_Config only to configure the callback definitions
+ * */
+static PWMConfig tim_1_cfg = {
+  .frequency = 10000,                        /* PWM clock frequency.   */
+  .period    = 4096,                         /* PWM period in ticks  (here 0.4096 second)  */
+  commutation_cb,                            /* Callback called when UIF is set*/
+                                             /* PWM Channels configuration */
+  // Complete configuration is done after the call of PWmStart
+  // Channels Callback are called when the counter matches the compare value (CCxIF)
+  {
+   {PWM_OUTPUT_DISABLED, NULL},
+   {PWM_OUTPUT_DISABLED, NULL},
+   {PWM_OUTPUT_DISABLED, NULL},
+   {PWM_OUTPUT_DISABLED, pwm_cb_ch4}
+  },
+  .cr2  = 0,
+  .bdtr = 0,
+  .dier = 0
+};
+
+
+
+/*===========================================================================*/
+/* IO                                                                        */
+/*===========================================================================*/
+void initTIM1MotorIo(void)
+{
+  /* Phase 1 P */
+  palSetLineMode(LINE_OUT_MOT1_PH1_P,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT1_PH1_P);                            // Set to 0
+  // Set back to alternate function
+  palSetLineMode(LINE_OUT_MOT1_PH1_P,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+  /* Phase 1 N */
+  palSetLineMode(LINE_OUT_MOT1_PH1_N,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT1_PH1_N);                            // Set to 0
+  // Set back to alternate function
+  palSetLineMode(LINE_OUT_MOT1_PH1_N,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+
+  /* Phase 2 P */
+  palSetLineMode(LINE_OUT_MOT1_PH2_P,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT1_PH2_P);                            // Set to 0
+  // Set back to alternate function
+  palSetLineMode(LINE_OUT_MOT1_PH2_P,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+  /* Phase 2 N */
+  palSetLineMode(LINE_OUT_MOT1_PH2_N,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT1_PH2_N);                            // Set to 0
+  // Set back to alternate function
+  palSetLineMode(LINE_OUT_MOT1_PH2_N,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+
+  /* Phase 3 P */
+  palSetLineMode(LINE_OUT_MOT1_PH3_P,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT1_PH3_P);                            // Set to 0
+  // Set back to alternate function
+  palSetLineMode(LINE_OUT_MOT1_PH3_P,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+  /* Phase 3 N */
+  palSetLineMode(LINE_OUT_MOT1_PH3_N,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT1_PH3_N);                            // Set to 0
+  // Set back to alternate function
+  palSetLineMode(LINE_OUT_MOT1_PH3_N,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+}
+
+
+
+
+int32_t brushcfg_GetStateIterator(BrushlessConfig* bcfg)
+{
+  return bcfg->StateIterator;
+}
+
+void brushcfg_SetZCFlag(BrushlessConfig* bcfg)
+{
+  bcfg->ZCFlag |= 1;
+}
+void brushcfg_ClearZCFlag(BrushlessConfig* bcfg)
+{
+  bcfg->ZCFlag = 0;
+}
+
+
+void brushcfg_ComputeZCPeriod (BrushlessConfig* bcfg)
+{
+  bcfg->ZCDetectOld = bcfg->ZCDetect;
+  bcfg->ZCDetect    = bcfg->TimeBLDCCommut;
+  bcfg->ZCPeriodOld = bcfg->ZCPeriod;
+  bcfg->ZCPeriod    = bcfg->ZCDetect - bcfg->ZCDetectOld;
+  bcfg->ZCPeriodMean = ((bcfg->ZCPeriodOld + bcfg->ZCPeriod) >> 1);
+  bcfg->ZCNextCommut = bcfg->TimeBLDCCommut + (bcfg->ZCPeriod * bcfg->ZCTiming);
+
+}
+
+
+void timer1Start()
+{
+  /*
+     * Starting PWM driver 1 and enabling the notifications.
+     */
+    // TIMER 1 Config
+    pwmStart(&PWMD1, &tim_1_cfg); // WARNING : PWM MODE 1 BY DEFAULT AND MOE SET TO 1 !!
+    timer_1_pwm_config();
+    pwmEnablePeriodicNotification(&PWMD1); // Enable the Update Event interruption
+}
+
+
 /*===========================================================================*/
 /* Timer 1 Configuration                                                     */
 /*===========================================================================*/
@@ -220,27 +329,6 @@ static void tim_1_ocn_cmd(TimChannel aChannel,TimChannelState aState)
     }
   }
 }
-
-static void tim_1_oc_start(TimChannel aChannel)
-{
-  tim_1_oc_cmd(aChannel,kTimCh_PWM);
-}
-
-static void tim_1_oc_stop(TimChannel aChannel)
-{
-  tim_1_oc_cmd(aChannel,kTimCh_Low);
-}
-
-static void tim_1_ocn_start(TimChannel aChannel)
-{
-  tim_1_ocn_cmd(aChannel,kTimCh_PWM);
-}
-
-static void tim_1_ocn_stop(TimChannel aChannel)
-{
-  tim_1_ocn_cmd(aChannel,kTimCh_Low);
-}
-
 
 
 void timer_1_pwm_config (void)
@@ -426,6 +514,7 @@ void commutation_zc_reset(BrushlessConfig *pBrushCfg)
 
 static void vt_cb(void* arg)
 {
+  (void) arg;
   if(kInitRamp == gBrushCfg.Mode)
   {
     gBrushCfg.RampTimeout = 1;
@@ -441,12 +530,14 @@ static void vt_cb(void* arg)
 
 void pwm_cb_ch4(PWMDriver *pwmp)
 {
+  (void) pwmp;
   palSetLine(DEBUG_INT_LINE2);
 }
 
 
 void commutation_cb(PWMDriver *pwmp)
 {
+  (void) pwmp;
   palClearLine(DEBUG_INT_LINE2);
   palSetLine(LD2_LINE);
 
@@ -458,13 +549,6 @@ void commutation_cb(PWMDriver *pwmp)
     {
 
       /* Timer 1 config */
-      /* Stop all the channels */
-      tim_1_oc_stop(kTimChannel1);
-      tim_1_oc_stop(kTimChannel2);
-      tim_1_oc_stop(kTimChannel3);
-      tim_1_ocn_stop(kTimChannel1);
-      tim_1_ocn_stop(kTimChannel2);
-      tim_1_ocn_stop(kTimChannel3);
 
       /* Set all the OC output to same PWM */
       (&PWMD1)->tim->CCR[kTimChannel1]  =  0.9 * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
