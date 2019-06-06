@@ -10,6 +10,98 @@
 #ifndef AS5055_H
 #define AS5055_H
 
+/********************               AS5055 WRITE/READ              ********************/
+
+#define DRV8323_WR_Pos		(15U)
+#define DRV8322_WRITE		(0x0U << DRV8323_WR_Pos)
+#define DRV8322_READ		(0x1U << DRV8323_WR_Pos)
+
+/********************               AS5055 REGISTERS               ********************/
+
+#define AS5055_REG_Pos					(1U)
+#define AS5055_REG_Msk					(0x3FFFU << AS5055_REG_Pos)
+#define AS5055_POR_OFF_REG				(0x3F22U << AS5055_REG_Pos)
+#define AS5055_SOFTWARE_RESET_REG		(0x3C00U << AS5055_REG_Pos)
+#define AS5055_MASTER_RESET_REG			(0x33A5U << AS5055_REG_Pos)
+#define AS5055_CLEAR_EF_REG				(0x3380U << AS5055_REG_Pos)
+#define AS5055_NOP_REG					(0x0000U << AS5055_REG_Pos)
+#define AS5055_AGC_REG					(0x3FF8U << AS5055_REG_Pos)
+#define AS5055_ANGULAR_DATA_REG			(0x3FFFU << AS5055_REG_Pos)
+#define AS5055_ERROR_STATUS_REG			(0x335AU << AS5055_REG_Pos)
+#define AS5055_SYSTEM_CONFIG_REG		(0x3F20U << AS5055_REG_Pos)
+
+/********************      Bit definition for POR OFF register     ********************/
+
+#define DIS_POR_Pos      	(2U)                                            
+#define DIS_POR_Msk      	(0x5AU << DIS_POR_Pos)           /*!< 0x00000168 */
+#define DIS_POR          	DIS_POR_Msk                 	 /*!< Deactivates the POR cell and reduces the current consumption in low power mode (IOFF). 	*/
+
+/********************  Bit definition for Software Reset register  ********************/
+
+#define RES_SPI_Pos      	(2U)                                            
+#define RES_SPI_Msk      	(0x1U << RES_SPI_Pos) 			 /*!< 0x00000004 */
+#define RES_SPI          	RES_SPI_Msk                      /*!< With the RES SPI bit of the Data Package set to 1 it is possible to reset the SPI registers 	*/
+
+/********************        Bit definition for AGC register       ********************/
+
+#define AGC_VAL_Pos      	(2U)                                            
+#define AGC_VAL_Msk      	(0x3FU << AGC_VAL_Pos) 			 /*!< 0x000000FC */
+#define AGC_VAL_MAX 		AGC_VAL_Msk                      /*!< Writing a value different than zero to this register, stops the AGC loop and keeps a constant AGC value. 	*/
+
+/********************   Bit definition for Angular Data register   ********************/
+
+#define ALARM_LO_Pos      	(15U)                                            
+#define ALARM_LO_Msk      	(0x1U << ALARM_LO_Pos) 			 /*!< 0x00008000 */
+#define ALARM_LO 	      	ALARM_LO_Msk                     /*!< Alarm flag, which indicates a too weak magnetic field.  	*/
+#define ALARM_HI_Pos      	(14U)                                            
+#define ALARM_HI_Msk      	(0x1U << ALARM_HI_Pos) 			 /*!< 0x00004000 */
+#define ALARM_HI 	      	ALARM_HI_Msk                     /*!< Alarm flag, which indicates a too strong magnetic field.  	*/
+#define ANGLE_VAL_Pos     	(2U)                                            
+#define ANGLE_VAL_Msk     	(0xFFFU << ANGLE_VAL_Pos) 		 /*!< 0x00003FFC */
+#define ANGLE_VAL 			ANGLE_VAL_Msk                    /*!< Angular value in 12 bit binary code.  	*/
+
+/********************   Bit definition for Error Status register   ********************/
+
+#define FIELD_ALARM_LO_Pos  (14U)                                            
+#define FIELD_ALARM_LO_Msk  (0x1U << FIELD_ALARM_LO_Pos) 	 /*!< 0x00004000 */
+#define FIELD_ALARM_LO 	    FIELD_ALARM_LO_Msk               /*!< AGC level is equal or even higher than the maximum level. Magnetic field is too weak.  	*/
+#define FIELD_ALARM_HI_Pos  (13U)                                            
+#define FIELD_ALARM_HI_Msk  (0x1U << FIELD_ALARM_HI_Pos) 	 /*!< 0x00002000 */
+#define FIELD_ALARM_HI 	    FIELD_ALARM_HI_Msk               /*!< AGC level is equal or even lower than the minimum level. Magnetic field is too strong.  	*/
+#define RANGE_Pos  			(12U)                                            
+#define RANGE_Msk  			(0x1U << RANGE_Pos) 	 		 /*!< 0x00001000 */
+#define RANGE 	    		RANGE_Msk               		 /*!< The RANGE flag signals that the Hall bias circuit has reached the head room limit.  	*/
+#define CORDICOV_Pos  		(11U)                                            
+#define CORDICOV_Msk  		(0x1U << CORDICOV_Pos) 	 		 /*!< 0x00000800 */
+#define CORDICOV 	    	CORDICOV_Msk               		 /*!< The CORDIC calculates the angle. An error occurs when the input signals of the CORDIC are too large. The internal algorithm fails.  	*/
+#define ADCOV_Pos  			(10U)                                            
+#define ADCOV_Msk  			(0x1U << ADCOV_Pos) 	 		 /*!< 0x00000400 */
+#define ADCOV 	    		ADCOV_Msk               		 /*!< The ADCOV bit occurs if the magnetic input field strength is too large for at least one Hall element.  	*/
+#define WOW_Pos  			(6U)                                            
+#define WOW_Msk  			(0x1U << WOW_Pos) 	 			 /*!< 0x00000040 */
+#define WOW 	    		WOW_Msk               		 	 /*!< When a READ ANGLE command is in progress, the WOW flag is set to 1. At the end of the measurement the WOW flag is cleared to 0.  	*/
+#define ADDMON_Pos  		(4U)                                            
+#define ADDMON_Msk  		(0x1U << ADDMON_Pos) 	 		 /*!< 0x00000010 */
+#define ADDMON 	    		ADDMON_Msk               		 /*!< Set to high when non existing address is used.  	*/
+#define CLKMON_Pos  		(3U)                                            
+#define CLKMON_Msk  		(0x1U << CLKMON_Pos) 	 		 /*!< 0x00000008 */
+#define CLKMON 	    		CLKMON_Msk               		 /*!< Set to high when the amount of clock cycles is not correct.  	*/
+#define PARITY_Pos  		(2U)                                            
+#define PARITY_Msk  		(0x1U << PARITY_Pos) 	 		 /*!< 0x00000004 */
+#define PARITY 	    		PARITY_Msk               		 /*!< Set to high when the transmitted parity bit does not match to calculated parity bit.  	*/
+
+
+/********************Bit definition for System Configuration register********************/
+
+#define RESOLUTION_Pos      (14U)                                            
+#define RESOLUTION_Msk     	(0x3U << RESOLUTION_Pos) 	     /*!< 0x0000C000 */
+#define RESOLUTION 	      	RESOLUTION_Msk                   /*!< 00 indicates 12 bit resolution.  	*/
+#define CHIP_ID_Pos      	(11U)                                            
+#define CHIP_ID_Msk     	(0x7U << CHIP_ID_Pos) 	     	 /*!< 0x00003800 */
+#define CHIP_ID 	      	CHIP_ID_Msk                   	 /*!< Silicon version 010.  	*/
+#define GAIN_Pos      		(5U)                                            
+#define GAIN_Msk     		(0x3U << GAIN_Pos) 	     	 	 /*!< 0x00000060 */
+#define GAIN 	      		GAIN_Msk                   	 	 /*!< Sets gain setting.  	*/
 
 
 #endif /* AS5055_H */
