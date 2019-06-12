@@ -10,11 +10,90 @@
 #ifndef AS5055_H
 #define AS5055_H
 
+/**
+ * @brief   Id of the two encoders present on the motor_dev board
+ */
+typedef enum {
+	AS5055_1 = 0,
+	AS5055_2,
+	NB_OF_AS5055,
+} AS5055_ID_t;
+
+typedef struct {
+	bool alarm_lo;
+
+	bool alarm_hi;
+
+	float angle;
+
+}AS5055_data_t;
+
+/**
+ * @brief   Structure representing a set of AS5055 encoders in a daisy chain config.
+ */
+typedef struct {
+	/**
+	 * SPI driver used
+	 */
+	SPIDriver*				spip;
+	/**
+	 * SPI config used. 
+	 * Note 1 :	The spicfg should not be declared as static const.
+	 * 			Use static instead.
+	 * Note 2 :	The SPI com should be configured to use 16bits words and CPHA=1
+	 */
+	SPIConfig* 				spicfg;
+	/**
+	 * Chip select line of the AS5055
+	 */
+	ioline_t				ssline;
+	/**
+	 * Interrupt line of the AS5055
+	 */
+	ioline_t				interruptline;
+
+	AS5055_data_t 			data[NB_OF_AS5055];
+
+} AS5550Config;
+
+void as5055DoAMasterReset(AS5550Config *as);
+
+void as5055ReadAngleBlocking(AS5550Config *as);
+
+/********************          AS5055 REGISTER EXPLANATION         ********************/
+
+/**
+ * 	
+ * 
+ * 	SPI Command Frame : 
+ *	bit  [15]		-> 	Write or read command
+ *  bits [14..1]	->	Register address
+ *	bits [0]		->	Parity bit
+ *	
+ *	SPI Read Data Frame :
+ *	bit  [15..2]	-> 	Data to read
+ *  bits [1]		->	EF bit (an error occured)
+ *	bits [0]		->	Parity bit
+ *	
+ *	SPI Write Data Frame :
+ *	bit  [15..2]	-> 	Data to write
+ *  bits [1]		->	Don't care
+ *	bits [0]		->	Parity bit
+ *	
+ *	To write to a register, we need to send a Command Frame and on the next frame should be
+ *	a Write Data Frame. During the sending of the Write Data Frame, we receive the actual content 
+ *	of the register we are writing to as a Read Data Frame.
+ *	
+ *	To read a register, we need to send a Command Frame and we will receive a Read Data Frame on 
+ *	the next frame sent.
+ *
+ */
+
 /********************               AS5055 WRITE/READ              ********************/
 
-#define DRV8323_WR_Pos		(15U)
-#define DRV8322_WRITE		(0x0U << DRV8323_WR_Pos)
-#define DRV8322_READ		(0x1U << DRV8323_WR_Pos)
+#define AS5055_WR_Pos		(15U)
+#define AS5055_WRITE		(0x0U << AS5055_WR_Pos)
+#define AS5055_READ			(0x1U << AS5055_WR_Pos)
 
 /********************               AS5055 REGISTERS               ********************/
 
