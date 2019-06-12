@@ -9,6 +9,11 @@
 #ifndef UTILITY_H
 #define UTILITY_H
 
+typedef enum{
+	EVEN_PARITY = 0,
+	ODD_PARITY,
+}parity_type_t;
+
 /**
  * @brief 		Writes the given mode in the PUPDR register of the line given
  * 
@@ -31,5 +36,15 @@ uint16_t utilityChangePUPDRGpio(ioline_t line, uint16_t mode);
  * @param config 	New config
  */
 void utilityReconfigureSPI(SPIDriver *spip, const SPIConfig *config);
+
+/**
+ * @brief 				Computes the parity of a given 16bits value.
+ * 
+ * @param parity_type 	Tell if we want the odd or even parity. See parity_type_t
+ * @param value 		16 bits value to compute the parity
+ * 
+ * @return 				Returns true or false depending on the parity type chosen
+ */
+bool utilityComputeParity(parity_type_t parity_type, uint16_t value);
 
 #endif /* UTILITY_H */
