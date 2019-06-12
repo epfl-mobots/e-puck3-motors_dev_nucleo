@@ -12,18 +12,6 @@
 
 
 /**
- * @brief   Id of the four gate drivers present on the motor_dev board
- */
-typedef enum {
-	DRV8232_1 = 0,
-	DRV8232_2,
-	DRV8232_3,
-	DRV8232_4,
-	NB_OF_DRV8232,
-} DRV8323_ID_t;
-
-
-/**
  * @brief   Structure representing a DRV8323 Config.
  */
 typedef struct {
