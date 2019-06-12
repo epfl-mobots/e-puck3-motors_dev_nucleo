@@ -16,6 +16,7 @@
 #include "gate_drivers.h"
 #include "power_button.h"
 #include "usb_pd_controller.h"
+#include "encoders.h"
 
 static THD_WORKING_AREA(waThread1,128);
 static THD_FUNCTION(Thread1,arg) {
@@ -130,14 +131,17 @@ int main(void) {
 
 	// Configure the Thread that will blink the leds on the boards
 	chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO + 1, Thread1, NULL);
-
-
+	encodersStartReading();
+	AS5055_data_t *data;
 	while (true) {
 		if(isUSBConfigured()){
 			//spawns the shell if the usb is connected
 			spawn_shell();
 		}
-		chThdSleepMilliseconds(500);
+		chThdSleepMilliseconds(1);
+
+		data = encodersGetData();
+		chprintf((BaseSequentialStream *) &USB_SERIAL, "Hi = %d, Lo = %d, Angle 1 = %.2f, Hi = %d, Lo = %d, Angle 2 = %.2f\n",data[0].alarm_hi, data[0].alarm_lo, data[0].angle, data[1].alarm_hi, data[1].alarm_lo, data[1].angle);
 		
 		// chprintf((BaseSequentialStream *) &USB_SERIAL, "fault status 1 	= 0x%x\n", gateDriversReadReg(DRV8323_1, DRV8323_FAULT_STATUS_1_REG));
 		// chprintf((BaseSequentialStream *) &USB_SERIAL, "fault status 2 	= 0x%x\n", gateDriversReadReg(DRV8323_1, DRV8323_FAULT_STATUS_2_REG));
