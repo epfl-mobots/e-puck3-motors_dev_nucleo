@@ -486,7 +486,7 @@ void commutation_nextstep(BrushlessConfig *pBrushCfg)
           pBrushCfg->ZCFlag=0; // Reset zero-crossing flag
           commutation_step(pBrushCfg);
           zcs_ext_reset();
-          gBrushCfg.ZCNextCommut = gBrushCfg.TimeBLDCCommut + (36 * gBrushCfg.ZCPeriodMean);
+          gBrushCfg.ZCNextCommut = gBrushCfg.TimeBLDCCommut + (COEF_MARGIN * gBrushCfg.ZCPeriodMean);
         }
         else
         {

@@ -24,6 +24,7 @@
 #define NB_RAMP_STEPS           5
 
 #define COEF_ADV                (float)0.375
+#define COEF_MARGIN             4
 
 
 /*===========================================================================*/
