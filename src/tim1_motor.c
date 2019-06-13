@@ -578,8 +578,8 @@ void commutation_cb(PWMDriver *pwmp)
         gBrushCfg.AlignInProgress = 1;
 
         // Set to UV phase
-        tim_1_oc_cmd(kTimChannel1,kTimCh_High);
-        tim_1_ocn_cmd(kTimChannel2,kTimCh_High);
+        tim_1_oc_cmd(kTimChannel1,kTimCh_PWM);
+        tim_1_ocn_cmd(kTimChannel2,kTimCh_PWM);
         //tim_1_ocn_cmd(kTimChannel3,kTimCh_High);
 
         chSysLockFromISR();

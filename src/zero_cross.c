@@ -106,7 +106,7 @@ uint8_t Zcs_Detect(ZCSDetect* zcs)
     lCurMeasure = (int32_t) zcs->data[MeasureChannel][LATEST_DATA(zcs->data_idx)]   - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
     lOldMeasure = (int32_t) zcs->data[MeasureChannel][PREVIOUS_DATA(zcs->data_idx)] - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
     lChangeSign = ((lOldMeasure ^ lCurMeasure) < 0); // TRUE if sign has changed
-    brushcfg_SetZCFlag(&gBrushCfg); //gBrushCfg.ZCFlag |= lChangeSign;
+     //gBrushCfg.ZCFlag |= lChangeSign;
     ret_val = (MeasureChannel + 1)*lChangeSign;
   }
 
@@ -114,6 +114,7 @@ uint8_t Zcs_Detect(ZCSDetect* zcs)
   if(ret_val > 0)
   {
     brushcfg_ComputeZCPeriod(&gBrushCfg);
+    brushcfg_SetZCFlag(&gBrushCfg);
   }
 
   return ret_val;

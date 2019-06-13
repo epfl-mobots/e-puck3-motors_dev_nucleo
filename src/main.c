@@ -236,7 +236,7 @@ int main(void) {
 
     if(palReadLine(LINE_NUCLEO_USER_BUTTON)){
       percent -= 2;
-      if(percent < 5){
+      if(percent < 0){
         percent = 90;
       }
       (&PWMD1)->tim->CCR[kTimChannel1]  =  (percent/100) * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
