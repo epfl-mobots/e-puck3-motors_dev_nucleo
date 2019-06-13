@@ -9,6 +9,7 @@
 #include "ch.h"
 #include "hal.h"
 #include "utility.h"
+#include "encoders.h"
 #include "as5055.h"
 
 #define DEGREES_360		360
@@ -21,8 +22,8 @@ void as5055DoAMasterReset(AS5550Config *as){
 	uint16_t order = AS5055_WRITE | AS5055_MASTER_RESET_REG;
 	order |= utilityComputeParity(EVEN_PARITY, order);
 
-	uint16_t send[NB_OF_AS5055];
-	for(uint8_t i = 0 ; i < NB_OF_AS5055 ; i++){
+	uint16_t send[as->nb_of_as5055];
+	for(uint8_t i = 0 ; i < as->nb_of_as5055 ; i++){
 		send[i] = order;
 	}
 	/* Bus acquisition and SPI reprogramming.*/
@@ -33,7 +34,7 @@ void as5055DoAMasterReset(AS5550Config *as){
     uint16_t pupdr = utilityChangePUPDRGpio(LINE_SPI3_MISO, PAL_STM32_PUPDR_PULLDOWN);
 
 	spiSelect(as->spip);
-	spiExchange(as->spip, NB_OF_AS5055, send, &rcv);
+	spiExchange(as->spip, as->nb_of_as5055, send, &rcv);
 	spiUnselect(as->spip);
 
 	//we restore the original pupdr state
@@ -44,17 +45,17 @@ void as5055DoAMasterReset(AS5550Config *as){
 
 }
 
-void as5055ReadAngleBlocking(AS5550Config *as){
+void as5055ReadAngle(AS5550Config *as){
 
 	uint16_t order = AS5055_READ | AS5055_ANGULAR_DATA_REG;
 	order |= utilityComputeParity(EVEN_PARITY, order);
 
-	uint16_t send[NB_OF_AS5055];
-	for(uint8_t i = 0 ; i < NB_OF_AS5055 ; i++){
+	uint16_t send[as->nb_of_as5055];
+	for(uint8_t i = 0 ; i < as->nb_of_as5055 ; i++){
 		send[i] = order;
 	}
 
-	uint16_t rcv[NB_OF_AS5055] = {0};
+	uint16_t rcv[as->nb_of_as5055];
 
 	/* Bus acquisition and SPI reprogramming.*/
     spiAcquireBus(as->spip);
@@ -64,7 +65,7 @@ void as5055ReadAngleBlocking(AS5550Config *as){
     uint16_t pupdr = utilityChangePUPDRGpio(LINE_SPI3_MISO, PAL_STM32_PUPDR_PULLDOWN);
 
 	spiSelect(as->spip);
-	spiExchange(as->spip, NB_OF_AS5055, send, rcv);
+	spiExchange(as->spip, as->nb_of_as5055, send, rcv);
 	spiUnselect(as->spip);
 
 	//we restore the original pupdr state
@@ -73,7 +74,7 @@ void as5055ReadAngleBlocking(AS5550Config *as){
 	/* Releasing the bus.*/
     spiReleaseBus(as->spip);
 
-    for(uint8_t i = 0 ; i < NB_OF_AS5055 ; i++){
+    for(uint8_t i = 0 ; i < as->nb_of_as5055 ; i++){
     	as->data[i].alarm_lo = (rcv[i] & ALARM_LO) 	>> ALARM_LO_Pos;
     	as->data[i].alarm_hi = (rcv[i] & ALARM_HI) 	>> ALARM_HI_Pos;
     	as->data[i].angle 	 = (rcv[i] & ANGLE_VAL)	>> ANGLE_VAL_Pos;

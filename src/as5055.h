@@ -11,24 +11,6 @@
 #define AS5055_H
 
 /**
- * @brief   Id of the two encoders present on the motor_dev board
- */
-typedef enum {
-	AS5055_1 = 0,
-	AS5055_2,
-	NB_OF_AS5055,
-} AS5055_ID_t;
-
-typedef struct {
-	bool alarm_lo;
-
-	bool alarm_hi;
-
-	float angle;
-
-}AS5055_data_t;
-
-/**
  * @brief   Structure representing a set of AS5055 encoders in a daisy chain config.
  */
 typedef struct {
@@ -51,14 +33,33 @@ typedef struct {
 	 * Interrupt line of the AS5055
 	 */
 	ioline_t				interruptline;
-
-	AS5055_data_t 			data[NB_OF_AS5055];
+	/**
+	 * Pointer to the data structure of the encoders. Must be the same
+	 * size as the nb_of_as5055 parameter
+	 */
+	encoders_data_t* 			data;
+	/**
+	 * Number of AS5055 in daisy chain
+	 */
+	uint8_t					nb_of_as5055;
 
 } AS5550Config;
 
+
+/**
+ * @brief 		Performs a master reset of the encoders.
+ * 
+ * @param as 	AS5550Config of the encoders
+ */
 void as5055DoAMasterReset(AS5550Config *as);
 
-void as5055ReadAngleBlocking(AS5550Config *as);
+/**
+ * @brief  		Reads the angle from the encoders. Needs to be called only when
+ * 				the interruot line of the encoders is low.
+ * 
+ * @param as 	AS5550Config of the encoders
+ */
+void as5055ReadAngle(AS5550Config *as);
 
 /********************          AS5055 REGISTER EXPLANATION         ********************/
 
