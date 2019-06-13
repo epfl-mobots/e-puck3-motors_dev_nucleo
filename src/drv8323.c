@@ -29,37 +29,37 @@ void drv8323WriteConf(DRV8323Config *drv){
 	//we need to release the CS pin between each word
 
 	spiSelect(drv->spip);
-	tx = DRV8322_WRITE | FAULT_STATUS_1_REG | drv->registers->fault_status_1;
+	tx = DRV8323_WRITE | DRV8323_FAULT_STATUS_1_REG | drv->registers->fault_status_1;
 	spiExchange(drv->spip, 1, &tx, &rx);
 	spiUnselect(drv->spip);
 
 	spiSelect(drv->spip);
-	tx = DRV8322_WRITE | FAULT_STATUS_2_REG | drv->registers->fault_status_2;
+	tx = DRV8323_WRITE | DRV8323_FAULT_STATUS_2_REG | drv->registers->fault_status_2;
 	spiExchange(drv->spip, 1, &tx, &rx);
 	spiUnselect(drv->spip);
 
 	spiSelect(drv->spip);
-	tx = DRV8322_WRITE | DRIVER_CONTROL_REG | drv->registers->driver_control;
+	tx = DRV8323_WRITE | DRV8323_DRIVER_CONTROL_REG | drv->registers->driver_control;
 	spiExchange(drv->spip, 1, &tx, &rx);
 	spiUnselect(drv->spip);
 
 	spiSelect(drv->spip);
-	tx = DRV8322_WRITE | GATE_DRIVE_HS_REG | drv->registers->gate_drive_hs;
+	tx = DRV8323_WRITE | DRV8323_GATE_DRIVE_HS_REG | drv->registers->gate_drive_hs;
 	spiExchange(drv->spip, 1, &tx, &rx);
 	spiUnselect(drv->spip);
 
 	spiSelect(drv->spip);
-	tx = DRV8322_WRITE | GATE_DRIVE_LS_REG | drv->registers->gate_drive_ls;
+	tx = DRV8323_WRITE | DRV8323_GATE_DRIVE_LS_REG | drv->registers->gate_drive_ls;
 	spiExchange(drv->spip, 1, &tx, &rx);
 	spiUnselect(drv->spip);
 	
 	spiSelect(drv->spip);
-	tx = DRV8322_WRITE | OCP_CONTROL_REG | drv->registers->ocp_control;
+	tx = DRV8323_WRITE | DRV8323_OCP_CONTROL_REG | drv->registers->ocp_control;
 	spiExchange(drv->spip, 1, &tx, &rx);
 	spiUnselect(drv->spip);
 
 	spiSelect(drv->spip);
-	tx = DRV8322_WRITE | CSA_CONTROL_REG | drv->registers->csa_control;
+	tx = DRV8323_WRITE | DRV8323_CSA_CONTROL_REG | drv->registers->csa_control;
 	spiExchange(drv->spip, 1, &tx, &rx);
 	spiUnselect(drv->spip);
 
@@ -73,7 +73,7 @@ void drv8323WriteConf(DRV8323Config *drv){
 uint16_t drv8323WriteReg(DRV8323Config *drv, uint16_t reg){
 	uint16_t rcv = 0;
 
-	reg |= DRV8322_WRITE;
+	reg |= DRV8323_WRITE;
 
 	/* Bus acquisition and SPI reprogramming.*/
     spiAcquireBus(drv->spip);
@@ -100,7 +100,7 @@ uint16_t drv8323WriteReg(DRV8323Config *drv, uint16_t reg){
 uint16_t drv8323ReadReg(DRV8323Config *drv, uint16_t reg){
 	uint16_t rcv = 0;
 
-	reg |= DRV8322_READ;
+	reg |= DRV8323_READ;
 
 	/* Bus acquisition and SPI reprogramming.*/
     spiAcquireBus(drv->spip);

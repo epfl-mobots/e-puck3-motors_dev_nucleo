@@ -119,20 +119,20 @@ uint16_t drv8323ReadReg(DRV8323Config *drv, uint16_t reg);
 /********************               DRV8323 WRITE/READ             ********************/
 
 #define DRV8323_WR_Pos		(15U)
-#define DRV8322_WRITE		(0x0U << DRV8323_WR_Pos)
-#define DRV8322_READ		(0x1U << DRV8323_WR_Pos)
+#define DRV8323_WRITE		(0x0U << DRV8323_WR_Pos)
+#define DRV8323_READ		(0x1U << DRV8323_WR_Pos)
 
 /********************               DRV8323 REGISTERS              ********************/
 
-#define DRV8323_REG_Pos				(11U)
-#define DRV8323_REG_Msk				(0xFU << DRV8323_REG_Pos)
-#define FAULT_STATUS_1_REG			(0x0U << DRV8323_REG_Pos)
-#define FAULT_STATUS_2_REG			(0x1U << DRV8323_REG_Pos)
-#define DRIVER_CONTROL_REG			(0x2U << DRV8323_REG_Pos)
-#define GATE_DRIVE_HS_REG			(0x3U << DRV8323_REG_Pos)
-#define GATE_DRIVE_LS_REG			(0x4U << DRV8323_REG_Pos)
-#define OCP_CONTROL_REG				(0x5U << DRV8323_REG_Pos)
-#define CSA_CONTROL_REG				(0x6U << DRV8323_REG_Pos)
+#define DRV8323_REG_Pos					(11U)
+#define DRV8323_REG_Msk					(0xFU << DRV8323_REG_Pos)
+#define DRV8323_FAULT_STATUS_1_REG		(0x0U << DRV8323_REG_Pos)
+#define DRV8323_FAULT_STATUS_2_REG		(0x1U << DRV8323_REG_Pos)
+#define DRV8323_DRIVER_CONTROL_REG		(0x2U << DRV8323_REG_Pos)
+#define DRV8323_GATE_DRIVE_HS_REG		(0x3U << DRV8323_REG_Pos)
+#define DRV8323_GATE_DRIVE_LS_REG		(0x4U << DRV8323_REG_Pos)
+#define DRV8323_OCP_CONTROL_REG			(0x5U << DRV8323_REG_Pos)
+#define DRV8323_CSA_CONTROL_REG			(0x6U << DRV8323_REG_Pos)
 
 /********************              Configuration bits              ********************/
 

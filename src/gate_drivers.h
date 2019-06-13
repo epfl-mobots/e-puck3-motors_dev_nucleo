@@ -18,11 +18,11 @@
  * made inside gate_drivers.c will be broken.
  */
 typedef enum {
-	DRV8323_1 = 0,
-	DRV8323_2,
-	DRV8323_3,
-	DRV8323_4,
-	NB_OF_DRV8323,
+	GATE_DRIVER_1 = 0,
+	GATE_DRIVER_2,
+	GATE_DRIVER_3,
+	GATE_DRIVER_4,
+	NB_OF_GATE_DRIVERS,
 } gateDriver_id;
 
 /**
