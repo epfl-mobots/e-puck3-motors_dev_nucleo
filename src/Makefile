@@ -5,7 +5,7 @@
 
 # Compiler options here.
 ifeq ($(USE_OPT),)
-  USE_OPT = -Og -ggdb -fomit-frame-pointer -falign-functions=16
+  USE_OPT = -O2 -ggdb -fomit-frame-pointer -falign-functions=16
 
   USE_OPT += -fno-strict-aliasing -lc -lnosys
 
@@ -120,6 +120,9 @@ include $(CHIBIOS)/os/various/shell/shell.mk
 BLACKMAGIC = ../blackmagic
 include $(BLACKMAGIC)/src/platforms/stm32-ChibiOS/Blackmagic_ChibiOS.mk
 
+PDBLIB = ../usb_pd_controller/pdblib
+include $(PDBLIB)/pdblib.mk
+
 # Define linker script file here
 LDSCRIPT= $(STARTUPLD)/STM32F746xG.ld
 
@@ -138,10 +141,14 @@ CSRC = $(ALLCSRC) \
        gate_drivers.c \
        utility.c \
        power_button.c \
+       device_policy_manager.c \
+       usb_pd_controller.c \
        tim1_motor.c \
        zero_cross.c \
        adc_motor.c  \
-       adc_tx.c
+       adc_tx.c \
+       as5055.c \
+       encoders.c
 
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global

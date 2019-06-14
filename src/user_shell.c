@@ -9,11 +9,16 @@
 #include "ch.h"
 #include "hal.h"
 #include "shell.h"
+#include <stdlib.h>
+#include <string.h>
+
 #include "chprintf.h"
 #include "usbcfg.h"
 #include "main.h"
 #include "user_shell.h"
+#include "uc_usage.h"
 #include "gate_drivers.h"
+#include "usb_pd_controller.h"
 #include "tim1_motor.h"
 
 
@@ -23,6 +28,17 @@ static THD_WORKING_AREA(waShell,2048);
 
 static char sc_histbuf[SHELL_MAX_HIST_BUFF];
 static char* completion_buffer[SHELL_MAX_COMPLETIONS];
+
+static void cmd_uc_usage(BaseSequentialStream *chp, int argc, char *argv[])
+{
+    (void) argv;
+    if (argc > 0) {
+    	shellUsage(chp, "uc_usage");
+        return;
+    }
+
+    printUcUsage(chp);
+}
 
 static void cmd_set_phase(BaseSequentialStream *chp, int argc, char *argv[]) {
 
@@ -182,18 +198,148 @@ static void cmd_dir(BaseSequentialStream *chp, int argc, char *argv[])
 }
 
 
+static void cmd_get_source_cap(BaseSequentialStream *chp, int argc, char *argv[])
+{
+    (void) argv;
+    if (argc > 0) {
+    	shellUsage(chp, "get_source_cap");
+        return;
+    }
+
+    usbPDControllerPrintSrcPDO(chp);
+}
+
+static void cmd_get_cfg(BaseSequentialStream *chp, int argc, char *argv[])
+{
+    (void) argv;
+    if (argc > 0) {
+        shellUsage(chp, "get_cfg");
+        return;
+    }
+
+    usbPDControllerPrintConfig(chp);
+}
+
+static void cmd_set_v(BaseSequentialStream *chp, int argc, char *argv[])
+{
+    (void) argv;
+    bool err = false;
+    if (argc != 1) {
+        shellUsage(chp, "set_v voltage_in_mV");
+        return;
+    }
+
+    char *endptr;
+    uint16_t voltage = strtol(argv[0], &endptr, 0);
+
+    if(endptr <= argv[0]){
+    	err = true;
+    }else{
+    	err = !usbPDControllerSetFixedVoltage(voltage);
+    }
+
+    if(err){
+    	chprintf(chp, "Invalid voltage\r\n");
+    } 
+}
+
+static void cmd_set_vrange(BaseSequentialStream *chp, int argc, char *argv[])
+{
+    (void) argv;
+    bool err = false;
+    if (argc != 2) {
+        shellUsage(chp, "set_v min_voltage_in_mV max_voltage_in_mV");
+        return;
+    }
+
+    char *endptr_min;
+    char *endptr_max;
+    uint16_t vmin = strtol(argv[0], &endptr_min, 0);
+    uint16_t vmax = strtol(argv[1], &endptr_max, 0);
+
+    if(endptr_min <= argv[0] || endptr_max <= argv[1]){
+    	err = true;
+    }else{
+    	err = !usbPDControllerSetRangeVoltage(vmin, vmax);
+    }
+
+    if(err){
+    	chprintf(chp, "Invalid voltages\r\n");
+    }
+}
+
+static void cmd_set_i(BaseSequentialStream *chp, int argc, char *argv[])
+{
+    (void) argv;
+    bool err = false;
+    if (argc != 1) {
+        shellUsage(chp, "set_v current_in_mA");
+        return;
+    }
+
+    char *endptr;
+    uint16_t current = strtol(argv[0], &endptr, 0);
+
+    if(endptr <= argv[0]){
+    	err = true;
+    }else{
+    	err = !usbPDControllerSetFixedCurrent(current);
+    }
+
+    if(err){
+    	chprintf(chp, "Invalid current\r\n");
+    }
+    
+}
+
+static void cmd_hv_prefered(BaseSequentialStream *chp, int argc, char *argv[])
+{
+    (void) argv;
+    if (argc == 0) {
+    	chprintf(chp, "Actual setting for HV prefered : %s\r\n",usbPDControllerGetHVPrefered() ? "enabled" : "disabled");
+    	return;
+    }else if(argc == 1){
+    	uint8_t enable = (char)*argv[0]-'0';
+    	usbPDControllerSetHVPrefered(enable);
+    }else{
+    	shellUsage(chp, "hv_prefered 1|0 or without arg to show the actual setting");
+        return;
+    }
+}
+
+static void cmd_get_contract(BaseSequentialStream *chp, int argc, char *argv[])
+{
+    (void) argv;
+    if (argc > 0) {
+    	shellUsage(chp, "get_contract");
+        return;
+    }
+
+    chprintf(chp, "Do we have a contract ? : %s \r\n", usbPDControllerIsContract() ? "yes" : "no");
+    uint16_t voltage = usbPDControllerGetNegociatedVoltage();
+    chprintf(chp, "Actual voltage : %d.%03d V\r\n", voltage/1000, voltage%1000);
+}
+
 static const ShellCommand commands[] = {
+	{"uc_usage", cmd_uc_usage},
 	{"set_phase", cmd_set_phase},
 	{"power_drivers", cmd_power_drivers},
 	{"set_step_time", cmd_step_time},
 	{"set_direction",cmd_dir},
 	{"set_sample_time",cmd_sample_time},
 	{"set_motor_timing",cmd_motor_timing},
+	{"get_source_cap", cmd_get_source_cap},
+	{"get_cfg", cmd_get_cfg},
+	{"set_v", cmd_set_v},
+	{"set_vrange", cmd_set_vrange},
+	{"set_i", cmd_set_i},
+	{"hv_prefered", cmd_hv_prefered},
+	{"get_contract", cmd_get_contract},
 	{NULL, NULL}
 };
 
 static const ShellConfig shell_cfg = {
-	(BaseSequentialStream *)&SDU1,
+	(BaseSequentialStream *)&USB_GDB,
 	commands,
 	sc_histbuf,
 	sizeof(sc_histbuf),
@@ -204,5 +350,6 @@ void spawn_shell(void){
 	static thread_t *shellTh = NULL;
 	if(shellTh == NULL){
 		shellTh = chThdCreateStatic(waShell, sizeof(waShell), NORMALPRIO + 1, shellThread, (void *)&shell_cfg);
+		shellTh->name = "Shell";
 	}	
 }

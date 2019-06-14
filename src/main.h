@@ -22,7 +22,8 @@
 #define NOT_CONFIGURED	0
 
 #define I2C_PD_CONTROLER	I2CD2
-#define SPI_DRV8323			SPID3
+#define SPI_GATE_DRIVERS	SPID3
+#define SPI_ENCODERS		SPID3
 
 #define NB_MOTORS		4
 #define NB_PHASES		3

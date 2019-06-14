@@ -33,3 +33,17 @@ void utilityReconfigureSPI(SPIDriver *spip, const SPIConfig *config){
 		spiStart(spip, config);
 	}
 }
+
+bool utilityComputeParity(parity_type_t parity_type, uint16_t value){
+	
+	// recursively divide the (16-bit) integer into two equal 
+	// halves and take their XOR until only 1 bit is left
+
+	value = (value & 0x00FF)^(value >> 8);
+	value = (value & 0x000F)^(value >> 4);
+	value = (value & 0x0003)^(value >> 2);
+	value = (value & 0x0001)^(value >> 1);
+	
+	// return the last bit
+	return value ^ parity_type;
+}

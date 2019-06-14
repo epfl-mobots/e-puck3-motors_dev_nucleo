@@ -14,7 +14,7 @@
 static thread_t* fault_handler_thd = NULL;
 static bool thread_must_pause = FALSE;
 static BSEMAPHORE_DECL(fault_handler_bsem, TRUE);
-static bool enable_states[NB_OF_DRV8323] = {FALSE};
+static bool enable_states[NB_OF_GATE_DRIVERS] = {FALSE};
 
 /********************            CONFIGURATION VARIABLES           ********************/
 
@@ -45,9 +45,9 @@ static DRV8323ConfRegisters drv8323cfg = {
 /**
  * Top config of the DRV8232 to use
  */
-static DRV8323Config gateDrivers[NB_OF_DRV8323] = {
+static DRV8323Config gateDrivers[NB_OF_GATE_DRIVERS] = {
 	{
-		.spip = &SPI_DRV8323,
+		.spip = &SPI_GATE_DRIVERS,
 		.spicfg = &spicfg,
 		.enline = LINE_EN_DRIVER_1,
 		.ssline = LINE_CS_DRIVER_1_n,
@@ -55,7 +55,7 @@ static DRV8323Config gateDrivers[NB_OF_DRV8323] = {
 		.registers = &drv8323cfg,
 	},
 	{
-		.spip = &SPI_DRV8323,
+		.spip = &SPI_GATE_DRIVERS,
 		.spicfg = &spicfg,
 		.enline = LINE_EN_DRIVER_2,
 		.ssline = LINE_CS_DRIVER_2_n,
@@ -63,7 +63,7 @@ static DRV8323Config gateDrivers[NB_OF_DRV8323] = {
 		.registers = &drv8323cfg,
 	},
 	{
-		.spip = &SPI_DRV8323,
+		.spip = &SPI_GATE_DRIVERS,
 		.spicfg = &spicfg,
 		.enline = LINE_EN_DRIVER_3,
 		.ssline = LINE_CS_DRIVER_3_n,
@@ -71,7 +71,7 @@ static DRV8323Config gateDrivers[NB_OF_DRV8323] = {
 		.registers = &drv8323cfg,
 	},
 	{
-		.spip = &SPI_DRV8323,
+		.spip = &SPI_GATE_DRIVERS,
 		.spicfg = &spicfg,
 		.enline = LINE_EN_DRIVER_4,
 		.ssline = LINE_CS_DRIVER_4_n,
@@ -130,8 +130,8 @@ static THD_FUNCTION(fault_thd, arg)
 					}
 				}
 
-				fault_1_reg = drv8323ReadReg(&gateDrivers[device_id], FAULT_STATUS_1_REG);
-				fault_2_reg = drv8323ReadReg(&gateDrivers[device_id], FAULT_STATUS_2_REG);
+				fault_1_reg = drv8323ReadReg(&gateDrivers[device_id], DRV8323_FAULT_STATUS_1_REG);
+				fault_2_reg = drv8323ReadReg(&gateDrivers[device_id], DRV8323_FAULT_STATUS_2_REG);
 
 				/*
 				*	To do : do something with the fault detected
@@ -172,7 +172,7 @@ void _gateDriversResumeThread(void){
 void _gateDriverSuspendThread(void){
 
 	//searches for at least one enabled device. If none, then pauses the thread
-	for(uint8_t i = 0 ; i < NB_OF_DRV8323 ; i++){
+	for(uint8_t i = 0 ; i < NB_OF_GATE_DRIVERS ; i++){
 		if(enable_states[i]){
 			return;
 		}
@@ -232,7 +232,7 @@ void gateDriversEnableAll(void){
 
 	_gateDriversResumeThread();
 
-	for(uint32_t i = 0 ; i < NB_OF_DRV8323 ; i++){
+	for(uint32_t i = 0 ; i < NB_OF_GATE_DRIVERS ; i++){
 		if(!enable_states[i]){
 			_gateDriversSetEnable(i);
 			palSetLineCallback(gateDrivers[i].faultline, gateDriverCb, (void*) i);
@@ -246,7 +246,7 @@ void gateDriversEnableAll(void){
 	//we wait that the drivers are completely enabled and ready
 	chThdSleepMilliseconds(1);
 
-	for(uint8_t i = 0 ; i < NB_OF_DRV8323 ; i++){
+	for(uint8_t i = 0 ; i < NB_OF_GATE_DRIVERS ; i++){
 		drv8323WriteConf(&gateDrivers[i]);
 	}
 }
@@ -262,7 +262,7 @@ void gateDriversDisable(gateDriver_id id){
 }
 
 void gateDriversDisableAll(void){
-	for(uint8_t i = 0 ; i < NB_OF_DRV8323 ; i++){
+	for(uint8_t i = 0 ; i < NB_OF_GATE_DRIVERS ; i++){
 		gateDriversDisable(i);
 	}
 }

@@ -81,12 +81,12 @@ void platform_turn_on_target_on_swdp_scan(void);
 
 #define JTAG_PORT 	GPIOA
 #define TDI_PORT	JTAG_PORT
-#define TMS_PORT	JTAG_PORT
-#define TCK_PORT	JTAG_PORT
+#define TMS_PORT	SWDIO_PORT
+#define TCK_PORT	SWCLK_PORT
 #define TDO_PORT	JTAG_PORT
-#define TDI_PIN		JTAG_PORT
-#define TMS_PIN		0
-#define TCK_PIN		0
+#define TDI_PIN		0
+#define TMS_PIN		SWDIO_PIN
+#define TCK_PIN		SWCLK_PIN
 #define TDO_PIN		0
 
 #define SWDIO_PORT 	GPIOE
@@ -96,7 +96,7 @@ void platform_turn_on_target_on_swdp_scan(void);
 
 #define TRST_PORT	JTAG_PORT
 #define TRST_PIN	0
-#define SRST_PORT	GPIOB
+#define SRST_PORT	GPIOA
 #define SRST_PIN	0
 
 #define LED_PORT_ERROR		GPIOA //RED_LED

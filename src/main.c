@@ -6,7 +6,6 @@
  * @creation date   14.02.2019
  */
 
-#include <adc_tx.h>
 #include <stdio.h>
 #include <string.h>
 #include "main.h"
@@ -17,11 +16,12 @@
 #include "hal.h"
 #include "gate_drivers.h"
 #include "power_button.h"
+#include "usb_pd_controller.h"
 #include "custom_io.h"
 #include "tim1_motor.h"
 #include "adc_motor.h"
 #include "adc_tx.h"
-#include <chprintf.h>
+#include "encoders.h"
 
 
 /*===========================================================================*/
@@ -173,6 +173,7 @@ int main(void) {
 	initGDBEvents();
 	gdbStart();
 
+	usbPDControllerStart();
 
 	// Debug MCU Config
 	DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM1_STOP; // Clock and outputs of TIM 1 are disabled when the core is halted
@@ -235,7 +236,7 @@ int main(void) {
     static float percent = 90;
 
     if(palReadLine(LINE_NUCLEO_USER_BUTTON)){
-      percent -= 2;
+      percent -= 5;
       if(percent < 0){
         percent = 90;
       }
@@ -243,18 +244,18 @@ int main(void) {
       (&PWMD1)->tim->CCR[kTimChannel2]  =  (percent/100) * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
       (&PWMD1)->tim->CCR[kTimChannel3]  =  (percent/100) * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
       chThdSleepMilliseconds(500);
-      chprintf((BaseSequentialStream *)&USB_GDB, "duty cycle = %f\r\n",percent);
+      chprintf((BaseSequentialStream *)&USB_GDB, "duty cycle = %f\r\n",100-percent);
     }
 
    
 		
-		// chprintf((BaseSequentialStream *) &USB_SERIAL, "fault status 1 	= 0x%x\n", gateDriversReadReg(DRV8323_1, FAULT_STATUS_1_REG));
-		// chprintf((BaseSequentialStream *) &USB_SERIAL, "fault status 2 	= 0x%x\n", gateDriversReadReg(DRV8323_1, FAULT_STATUS_2_REG));
-		// chprintf((BaseSequentialStream *) &USB_SERIAL, "driver control  = 0x%x\n", gateDriversReadReg(DRV8323_1, DRIVER_CONTROL_REG));
-		// chprintf((BaseSequentialStream *) &USB_SERIAL, "gate driver hs 	= 0x%x\n", gateDriversReadReg(DRV8323_1, GATE_DRIVE_HS_REG));
-		// chprintf((BaseSequentialStream *) &USB_SERIAL, "gate driver hs 	= 0x%x\n", gateDriversReadReg(DRV8323_1, GATE_DRIVE_LS_REG));
-		// chprintf((BaseSequentialStream *) &USB_SERIAL, "ocp control 	= 0x%x\n", gateDriversReadReg(DRV8323_1, OCP_CONTROL_REG));
-		// chprintf((BaseSequentialStream *) &USB_SERIAL, "csa control 	= 0x%x\n\n", gateDriversReadReg(DRV8323_1, CSA_CONTROL_REG));
+		// chprintf((BaseSequentialStream *) &USB_SERIAL, "fault status 1 	= 0x%x\n", gateDriversReadReg(DRV8323_1, DRV8323_FAULT_STATUS_1_REG));
+		// chprintf((BaseSequentialStream *) &USB_SERIAL, "fault status 2 	= 0x%x\n", gateDriversReadReg(DRV8323_1, DRV8323_FAULT_STATUS_2_REG));
+		// chprintf((BaseSequentialStream *) &USB_SERIAL, "driver control  = 0x%x\n", gateDriversReadReg(DRV8323_1, DRV8323_DRIVER_CONTROL_REG));
+		// chprintf((BaseSequentialStream *) &USB_SERIAL, "gate driver hs 	= 0x%x\n", gateDriversReadReg(DRV8323_1, DRV8323_GATE_DRIVE_HS_REG));
+		// chprintf((BaseSequentialStream *) &USB_SERIAL, "gate driver hs 	= 0x%x\n", gateDriversReadReg(DRV8323_1, DRV8323_GATE_DRIVE_LS_REG));
+		// chprintf((BaseSequentialStream *) &USB_SERIAL, "ocp control 	= 0x%x\n", gateDriversReadReg(DRV8323_1, DRV8323_OCP_CONTROL_REG));
+		// chprintf((BaseSequentialStream *) &USB_SERIAL, "csa control 	= 0x%x\n\n", gateDriversReadReg(DRV8323_1, DRV8323_CSA_CONTROL_REG));
 		
 	}
 }
