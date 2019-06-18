@@ -185,23 +185,23 @@ int main(void) {
 	/* Debug IO for interrupt timings */
 	palSetLineMode(DEBUG_INT_LINE,PAL_MODE_OUTPUT_PUSHPULL);
 	palClearLine(DEBUG_INT_LINE);
-    palSetLineMode(DEBUG_INT_LINE2,PAL_MODE_OUTPUT_PUSHPULL);
-    palClearLine(DEBUG_INT_LINE2);
-    palSetLineMode(DEBUG_INT_LINE3,PAL_MODE_OUTPUT_PUSHPULL);
-    palClearLine(DEBUG_INT_LINE3);
-    palSetLineMode(DEBUG_INT_LINE4,PAL_MODE_OUTPUT_PUSHPULL);
-    palClearLine(DEBUG_INT_LINE4);
+  palSetLineMode(DEBUG_INT_LINE2,PAL_MODE_OUTPUT_PUSHPULL);
+  palClearLine(DEBUG_INT_LINE2);
+  palSetLineMode(DEBUG_INT_LINE3,PAL_MODE_OUTPUT_PUSHPULL);
+  palClearLine(DEBUG_INT_LINE3);
+  palSetLineMode(DEBUG_INT_LINE4,PAL_MODE_OUTPUT_PUSHPULL);
+  palClearLine(DEBUG_INT_LINE4);
 
-    /* Motor 1 IO configuration when High-Impedance due to TIM 1
-     * Phase 1 P : PA8  AF : 1
-     * Phase 1 N : PB13 AF : 1
-     * Phase 2 P : PE11 AF : 1
-     * Phase 2 N : PE10 AF : 1
-     * Phase 3 P : PA10 AF : 1
-     * Phase 3 N : PE12 AF : 1
-     *
-     * */
-    initTIM1MotorIo();
+  /* Motor 1 IO configuration when High-Impedance due to TIM 1
+   * Phase 1 P : PA8  AF : 1
+   * Phase 1 N : PB13 AF : 1
+   * Phase 2 P : PE11 AF : 1
+   * Phase 2 N : PE10 AF : 1
+   * Phase 3 P : PA10 AF : 1
+   * Phase 3 N : PE12 AF : 1
+   *
+   * */
+  initTIM1MotorIo();
 
 	/*
 	* Initializes two serial-over-USB CDC drivers and starts and connects the USB.
@@ -211,18 +211,22 @@ int main(void) {
 	shellInit();
 	gateDriversEnableAll();
 
+  encodersStartReading();
+
 	adc3Start();
 
-    timer1Start();
+  timer1Start();
 
 
 
 	// Configure the Thread that will blink the leds on the boards
 	chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO + 1, Thread1, NULL);
 
-    // Configure the Thread that will blink the leds on the boards
-    chThdCreateStatic(waThread2, sizeof(waThread2), NORMALPRIO + 2, Thread2, NULL);
+  // Configure the Thread that will blink the leds on the boards
+  chThdCreateStatic(waThread2, sizeof(waThread2), NORMALPRIO + 2, Thread2, NULL);
 
+  //encoders_data_t *data;
+  
 	while (true)
 	{
 		/* Send ADC values */
@@ -231,7 +235,8 @@ int main(void) {
 			//spawns the shell if the usb is connected
 			spawn_shell();
 		}
-		chThdSleepMilliseconds(500);
+		chThdSleepMilliseconds(1);
+    //data = encodersGetData();
 
     static float percent = 90;
 
@@ -243,10 +248,12 @@ int main(void) {
       (&PWMD1)->tim->CCR[kTimChannel1]  =  (percent/100) * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
       (&PWMD1)->tim->CCR[kTimChannel2]  =  (percent/100) * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
       (&PWMD1)->tim->CCR[kTimChannel3]  =  (percent/100) * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
-      chThdSleepMilliseconds(500);
       chprintf((BaseSequentialStream *)&USB_GDB, "duty cycle = %f\r\n",100-percent);
+      chThdSleepMilliseconds(500);
     }
 
+    //chprintf((BaseSequentialStream *) &USB_GDB, "Hi = %d, Lo = %d, Angle 1 = %.2f, Hi = %d, Lo = %d, Angle 2 = %.2f\n",data[0].alarm_hi, data[0].alarm_lo, data[0].angle, data[1].alarm_hi, data[1].alarm_lo, data[1].angle);
+    chprintf((BaseSequentialStream *)&USB_GDB, "averages : %d %d %d %d %d %d\r\n",gBrushCfg.kChannelNeutralPoint[1], gBrushCfg.kChannelNeutralPoint[2],gBrushCfg.kChannelNeutralPoint[3],gBrushCfg.kChannelNeutralPoint[4],gBrushCfg.kChannelNeutralPoint[5],gBrushCfg.kChannelNeutralPoint[6]);
    
 		
 		// chprintf((BaseSequentialStream *) &USB_SERIAL, "fault status 1 	= 0x%x\n", gateDriversReadReg(DRV8323_1, DRV8323_FAULT_STATUS_1_REG));

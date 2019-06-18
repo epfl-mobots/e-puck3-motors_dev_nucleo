@@ -14,7 +14,7 @@ static SPIConfig spicfg = {
 	.circular = false,
 	.end_cb = NULL,
 	.ssline = LINE_CS_ENCODERS_n,
-	.cr1 = SPI_CR1_BR_2 | SPI_CR1_BR_1 | SPI_CR1_BR_0 | SPI_CR1_CPHA,	//PRESCALER = 010, POL = 0, PHASE = 1
+	.cr1 = SPI_CR1_BR_1 | SPI_CR1_CPHA,	//PRESCALER = 010, POL = 0, PHASE = 1
 	.cr2 = SPI_CR2_DS_3 | SPI_CR2_DS_2 | SPI_CR2_DS_1 | SPI_CR2_DS_0	//16bits
 };
 

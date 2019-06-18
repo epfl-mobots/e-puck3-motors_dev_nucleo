@@ -16,10 +16,29 @@ ZCSDetect gZCS = {
     .nb_points = ZC_NB_POINTS
 };
 
+static uint32_t average = 0;
+static uint32_t count = 0;
 
 /*===========================================================================*/
 /* Zero-crossing detection                                                   */
 /*===========================================================================*/
+
+uint16_t Zcs_Get_average(void){
+  return average/count;
+}
+
+void Zcs_Reset_Average(void){
+  average = 0;
+  count = 0;
+}
+
+void Zcs_Average(uint16_t* input_data, size_t size){
+  for(uint16_t i = 0 ; i < size ; i++){
+    average += input_data[gBrushCfg.kChannelMeasureArray[gBrushCfg.StateIterator]];
+    count++;
+  }
+}
+
 void Zcs_Reset_Struct(ZCSDetect* zcs)
 {
   zcs->data_idx  = 0;
@@ -78,7 +97,6 @@ void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size)
 uint8_t Zcs_Detect(ZCSDetect* zcs)
 {
 
-  static volatile uint8_t  MeasurementArray[NB_STATE] = {0,1,2,0,1,2,0};
   static volatile uint8_t  MeasurementArrayHigh[NB_STATE] = {0,0,0,2,2,1,1};
   static volatile uint8_t  MeasurementArrayLow[NB_STATE] = {0,2,1,1,0,0,2};
   static volatile uint8_t  MeasureChannel = 0;
@@ -94,17 +112,21 @@ uint8_t Zcs_Detect(ZCSDetect* zcs)
   uint16_t ret_val = 0;
 
   lStateIterator = brushcfg_GetStateIterator(&gBrushCfg);
-  MeasureChannel = MeasurementArray[lStateIterator];
+  MeasureChannel = gBrushCfg.kChannelMeasureArray[lStateIterator];;
 
   lhighest_voltage = zcs->data[MeasurementArrayHigh[lStateIterator]][LATEST_DATA(zcs->data_idx)];
   llowest_voltage = zcs->data[MeasurementArrayLow[lStateIterator]][LATEST_DATA(zcs->data_idx)];
   lhalf_bus = LOW_PASS_COEFF_A * lhalf_bus + LOW_PASS_COEFF_B * (lhighest_voltage + llowest_voltage)/2;
 
+
   // Check if the sign has changed between old measurement and actual
-  if(zcs->data_idx >  TWO_ELEM_IDX)
+  if(zcs->data_idx > TWO_ELEM_IDX && !gBrushCfg.ZCFlag)
   {
     lCurMeasure = (int32_t) zcs->data[MeasureChannel][LATEST_DATA(zcs->data_idx)]   - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
     lOldMeasure = (int32_t) zcs->data[MeasureChannel][PREVIOUS_DATA(zcs->data_idx)] - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
+    // lCurMeasure = (int32_t) zcs->data[MeasureChannel][LATEST_DATA(zcs->data_idx)]   - gBrushCfg.kChannelNeutralPoint[lStateIterator];
+    // lOldMeasure = (int32_t) zcs->data[MeasureChannel][PREVIOUS_DATA(zcs->data_idx)] - gBrushCfg.kChannelNeutralPoint[lStateIterator];
+    
     lChangeSign = ((lOldMeasure ^ lCurMeasure) < 0); // TRUE if sign has changed
      //gBrushCfg.ZCFlag |= lChangeSign;
     ret_val = (MeasureChannel + 1)*lChangeSign;

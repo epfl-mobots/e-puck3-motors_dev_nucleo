@@ -6,6 +6,12 @@
  */
 
 #include "adc_tx.h"
+#include "encoders.h"
+
+#include "tim1_motor.h"
+
+extern uint16_t average[NB_STATE];
+extern uint32_t count[NB_STATE];
 
 AdcDataTx gADT= {
    // VAR
@@ -36,6 +42,10 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size,uint8_t zc)
   (void) zc; // COULD BE USED FOR DEBUGGING PURPOSE
   size_t i;
   size_t nb_insertion=0;
+  encoders_data_t* encoders;
+  encoders = encodersGetData();
+
+  static uint8_t MeasurementArray[7] = {0,1,2,0,1,2,0};
 
   //
   if(0==adt->data_full)
@@ -57,7 +67,16 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size,uint8_t zc)
       adt->data[0][adt->data_idx] = input_data[ adt->nb_channels * i];
       adt->data[1][adt->data_idx] = input_data[ adt->nb_channels * i +1];
       adt->data[2][adt->data_idx] = input_data[ adt->nb_channels * i +2];
-      adt->data[3][adt->data_idx] = input_data[ adt->nb_channels * i +3];
+
+      if(zc){
+        adt->data[MeasurementArray[gBrushCfg.StateIterator]][adt->data_idx] = 0;
+      }
+
+      //adt->data[3][adt->data_idx] = (uint16_t)(encoders[0].angle*10);
+      adt->data[3][adt->data_idx] = (uint16_t)(brushcfg_GetStateIterator(&gBrushCfg) * 100);
+      //adt->data[3][adt->data_idx] = (uint16_t)(count[6]);
+      //adt->data[3][adt->data_idx] = (uint16_t)(gBrushCfg.ZCPeriod * gBrushCfg.ZCTiming);
+      //adt->data[3][adt->data_idx] = (uint16_t)(gBrushCfg.ZCPeriodMean);
 
       adt->data_idx += 1;
     }

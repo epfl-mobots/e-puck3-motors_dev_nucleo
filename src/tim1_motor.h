@@ -24,7 +24,7 @@
 #define NB_RAMP_STEPS           5
 
 #define COEF_ADV                (float)0.375
-#define COEF_MARGIN             4
+#define COEF_MARGIN             10
 
 
 /*===========================================================================*/
@@ -86,7 +86,7 @@ typedef enum
 typedef enum
 {
   kInitCfg  = 0,
-  kAlign    = 1,
+  kCalibrate    = 1,
   kInitRamp = 2,
   kValidSensorless = 3,
   kEndless  = 255
@@ -162,6 +162,8 @@ typedef struct
   /* Commutation tables and iterator */
   int32_t StateIterator;
   const TimChannelState kChannelStateArray[NB_STATE][NB_CHANNELS]; // Each phase has a P and N channel
+  const uint8_t kChannelMeasureArray[NB_STATE]; // To know which channel to measure
+  uint16_t kChannelNeutralPoint[NB_STATE];  // To store the calibration values of the neutral points
 
   /* Ramp speed */
 
@@ -170,18 +172,18 @@ typedef struct
 
   virtual_timer_t ramp_vt;
   sysinterval_t RampInterval;
+
+  virtual_timer_t calibration_vt;
+  sysinterval_t CalibrationInterval;
+  uint8_t       CalibrationTimeout;
+  uint8_t       CalibrationState;
+  uint8_t       DoAverage;
   uint8_t RampTimeout;
 
   uint32_t RampMinSpeed;
   uint32_t RampMaxSpeed;
   uint32_t RampCurSpeed;
   uint32_t RampStep;
-
-  /* Startup alignement */
-  virtual_timer_t align_vt;
-  sysinterval_t   AlignInterval;
-  uint8_t         AlignInProgress;
-  uint8_t         AlignTimeout;
 
   uint16_t ZCVCount;
 

@@ -9,6 +9,7 @@
 
 #include "adc_motor.h"
 
+extern BrushlessConfig gBrushCfg;
 
 // ADC 3
 static adcsample_t adc_sample_3[ADC_GRP3_NUM_CHANNELS * ADC_GRP3_BUF_DEPTH * 2];
@@ -53,13 +54,18 @@ void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 {
     (void) adcp;
 
-    uint8_t zc_detect;
+    uint8_t zc_detect = 0;
 
     palSetLine(DEBUG_INT_LINE);
 
-    // Zero-crossing and slope detection
-    Zcs_Insert_Data(&gZCS,buffer,n);
-    zc_detect = Zcs_Detect(&gZCS);
+    if(gBrushCfg.Mode == kCalibrate){
+
+        Zcs_Average(buffer,n);
+    }else{
+        // Zero-crossing and slope detection
+        Zcs_Insert_Data(&gZCS,buffer,n);
+        zc_detect = Zcs_Detect(&gZCS);
+    }
 
     // Data transmission
     if(0 == gADT.data_lock)

@@ -11,6 +11,7 @@
 
 #include "custom_io.h"
 #include "tim1_motor.h"
+#include "zero_cross.h"
 #include "main.h"
 
 /*===========================================================================*/
@@ -48,6 +49,8 @@ BrushlessConfig gBrushCfg = {
     /* C1 - C1C - C2 - C2C : ENABLE - C3 : ENABLE - C3C */
     .kChannelStateArray[kPhaseWV] = {kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_High},
 
+    .kChannelMeasureArray = {0, 1, 2, 0, 1, 2, 0},
+
     /* PWM Double from scratch */
 /*    .kChannelStateArray[kPhaseUV] = {kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_Low,kTimCh_Low},
     .kChannelStateArray[kPhaseUW] = {kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_PWM},
@@ -59,6 +62,9 @@ BrushlessConfig gBrushCfg = {
     /** Ramp speed **/
 
     .RampInterval = TIME_MS2I(10),
+    .CalibrationInterval = TIME_MS2I(100),
+    .CalibrationTimeout = 1,
+    .CalibrationState = 0,
     .RampMaxSpeed = 26,
     .RampTimeout  = 0,
     .RampMinSpeed = 100,
@@ -66,11 +72,6 @@ BrushlessConfig gBrushCfg = {
     .RampStep = 1,
     .RampTime = 0,
     .kMaxRampTime = 2,
-
-    /** Alignement **/
-    .AlignInterval   = TIME_MS2I(10),
-    .AlignTimeout    = 0,
-    .AlignInProgress = 0,
 
     /* Zero-crossing valid */
     .ZCVCount       =0,
@@ -181,7 +182,8 @@ void brushcfg_ComputeZCPeriod (BrushlessConfig* bcfg)
   bcfg->ZCDetect    = bcfg->TimeBLDCCommut;
   bcfg->ZCPeriodOld = bcfg->ZCPeriod;
   bcfg->ZCPeriod    = bcfg->ZCDetect - bcfg->ZCDetectOld;
-  bcfg->ZCPeriodMean = ((bcfg->ZCPeriodOld + bcfg->ZCPeriod) >> 1);
+  //bcfg->ZCPeriodMean = ((bcfg->ZCPeriodOld + bcfg->ZCPeriod) >> 1);
+  bcfg->ZCPeriodMean = (0.95 * (float)bcfg->ZCPeriodMean + 0.05 * (float)bcfg->ZCPeriod);
   bcfg->ZCNextCommut = bcfg->TimeBLDCCommut + (bcfg->ZCPeriod * bcfg->ZCTiming);
 
 }
@@ -252,15 +254,15 @@ static void tim_1_oc_cmd(TimChannel aChannel,TimChannelState aState)
   {
     case kTimCh_Low:
     {
-      palSetLineMode(gBrushCfg.P_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
       palClearLine(gBrushCfg.P_Channels[aChannel]);
+      palSetLineMode(gBrushCfg.P_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
       (&PWMD1)->tim->CCER &= (~lCCEnable);
       break;
     }
     case kTimCh_High:
     {
-      palSetLineMode(gBrushCfg.P_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
       palSetLine(gBrushCfg.P_Channels[aChannel]);
+      palSetLineMode(gBrushCfg.P_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
       (&PWMD1)->tim->CCER &= (~lCCEnable);
       break;
     }
@@ -309,15 +311,15 @@ static void tim_1_ocn_cmd(TimChannel aChannel,TimChannelState aState)
   {
     case kTimCh_Low:
     {
-      palSetLineMode(gBrushCfg.N_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
       palClearLine(gBrushCfg.N_Channels[aChannel]);
+      palSetLineMode(gBrushCfg.N_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
       (&PWMD1)->tim->CCER &= (~lCCNEnable);
       break;
     }
     case kTimCh_High:
     {
-      palSetLineMode(gBrushCfg.N_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
       palSetLine(gBrushCfg.N_Channels[aChannel]);
+      palSetLineMode(gBrushCfg.N_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
       (&PWMD1)->tim->CCER &= (~lCCNEnable);
       break;
     }
@@ -433,7 +435,7 @@ void timer_1_pwm_config (void)
     (&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CEN;     // Enable the counter in correct configuration
 
     chVTObjectInit(&gBrushCfg.ramp_vt);  // Init the virtual timer
-    chVTObjectInit(&gBrushCfg.align_vt); // Init the virtual timer
+    chVTObjectInit(&gBrushCfg.calibration_vt); // Init the virtual timer
 }
 
 
@@ -486,6 +488,7 @@ void commutation_nextstep(BrushlessConfig *pBrushCfg)
           pBrushCfg->ZCFlag=0; // Reset zero-crossing flag
           commutation_step(pBrushCfg);
           zcs_ext_reset();
+          gBrushCfg.ZCVCount++;
           gBrushCfg.ZCNextCommut = gBrushCfg.TimeBLDCCommut + (COEF_MARGIN * gBrushCfg.ZCPeriodMean);
         }
         else
@@ -519,9 +522,9 @@ static void vt_cb(void* arg)
   {
     gBrushCfg.RampTimeout = 1;
   }
-  else if(kAlign == gBrushCfg.Mode)
+  else if(kCalibrate == gBrushCfg.Mode)
   {
-    gBrushCfg.AlignTimeout = 1;
+    gBrushCfg.CalibrationTimeout = 1;
   }
 
 }
@@ -540,6 +543,7 @@ void commutation_cb(PWMDriver *pwmp)
   (void) pwmp;
   palClearLine(DEBUG_INT_LINE2);
   palSetLine(LD2_LINE);
+  static uint8_t steps = 0;
 
   switch (gBrushCfg.Mode)
   {
@@ -566,41 +570,61 @@ void commutation_cb(PWMDriver *pwmp)
       // Force update event (if preload enabled)
       (&PWMD1)->tim->EGR |= STM32_TIM_EGR_COMG;
 
-      gBrushCfg.Mode = kAlign;
+      gBrushCfg.Mode = kCalibrate;
+      gBrushCfg.StateIterator = 0;
       break;
     }
 
-    case kAlign:
+    case kCalibrate:
     {
 
-      if(0 == gBrushCfg.AlignInProgress)
-      {
-        gBrushCfg.AlignInProgress = 1;
+      if(gBrushCfg.CalibrationTimeout == 1){
+        if(gBrushCfg.CalibrationState == 0){
+          commutation_step(&gBrushCfg);
+          tim_1_oc_cmd(kTimChannel1 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][0]);
+          tim_1_ocn_cmd(kTimChannel1,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][1]);
+          tim_1_oc_cmd(kTimChannel2 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][2]);
+          tim_1_ocn_cmd(kTimChannel2,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][3]);
+          tim_1_oc_cmd(kTimChannel3 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][4]);
+          tim_1_ocn_cmd(kTimChannel3,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][5]);
 
-        // Set to UV phase
-        tim_1_oc_cmd(kTimChannel1,kTimCh_PWM);
-        tim_1_ocn_cmd(kTimChannel2,kTimCh_PWM);
-        //tim_1_ocn_cmd(kTimChannel3,kTimCh_High);
+          chSysLockFromISR();
+          chVTSetI(&gBrushCfg.calibration_vt, gBrushCfg.CalibrationInterval, vt_cb, NULL); // Start the virtual timer
+          chSysUnlockFromISR();
+          gBrushCfg.CalibrationState = 1;
+          gBrushCfg.CalibrationTimeout = 0;
+        }else if(gBrushCfg.CalibrationState == 1){
+          //begins average
+          Zcs_Reset_Average();
+          chSysLockFromISR();
+          chVTSetI(&gBrushCfg.calibration_vt, gBrushCfg.CalibrationInterval, vt_cb, NULL); // Start the virtual timer
+          chSysUnlockFromISR();
+          gBrushCfg.CalibrationState = 2;
+          gBrushCfg.CalibrationTimeout = 0;
+        }else if(gBrushCfg.CalibrationState == 2){
+          //stores average
+          gBrushCfg.kChannelNeutralPoint[gBrushCfg.StateIterator] = Zcs_Get_average();
 
-        chSysLockFromISR();
-        chVTSetI(&gBrushCfg.align_vt, gBrushCfg.AlignInterval, vt_cb, NULL); // Start the virtual timer
-        chSysUnlockFromISR();
+          steps++;
+          if(steps == 6){
+            //ugly stuff to begin the ramp
+            chSysLockFromISR();
+            chVTSetI(&gBrushCfg.ramp_vt, gBrushCfg.RampInterval, vt_cb, NULL); // Start the virtual timer
+            chSysUnlockFromISR();
+
+            gBrushCfg.Mode = kInitRamp;
+            gBrushCfg.RampCurSpeed = gBrushCfg.RampMinSpeed;
+            (&PWMD1)->tim->CCR[kTimChannel1]  =  0.9 * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
+            (&PWMD1)->tim->CCR[kTimChannel2]  =  0.9 * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
+            (&PWMD1)->tim->CCR[kTimChannel3]  =  0.9 * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
+          }else{
+            //do the next step
+            gBrushCfg.CalibrationState = 0;
+          }
+        }
       }
 
-      if(1==gBrushCfg.AlignTimeout)
-      {
-        // Disconnect the selected path
-        tim_1_oc_cmd(kTimChannel1,kTimCh_Low);
-        tim_1_ocn_cmd(kTimChannel2,kTimCh_Low);
-        //tim_1_ocn_cmd(kTimChannel3,kTimCh_Low);
 
-        chSysLockFromISR();
-        chVTSetI(&gBrushCfg.ramp_vt, gBrushCfg.RampInterval, vt_cb, NULL); // Start the virtual timer
-        chSysUnlockFromISR();
-
-        gBrushCfg.Mode = kInitRamp;
-        gBrushCfg.RampCurSpeed = gBrushCfg.RampMinSpeed;
-      }
 
      break;
     }
