@@ -22,6 +22,7 @@
 
 
 // ADC 3
+void adc_1_cb		(ADCDriver *adcp, adcsample_t *buffer, size_t n);
 void adc_3_cb       (ADCDriver *adcp, adcsample_t *buffer, size_t n);
 void adc_3_err_cb   (ADCDriver *adcp, adcerror_t err);
 void adc3Start(void);
