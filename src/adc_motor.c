@@ -26,8 +26,8 @@ static const ADCConversionGroup ADC3group = {
     .error_cb = adc_3_err_cb,
     .cr1 = ADC_CR1_EOCIE,   /*End of Conversion interruption ,No OVR int,12 bit resolution,no AWDG/JAWDG,*/
     .cr2 = //ADC_CR2_SWSTART      | /* manual start of regular channels,EOC is set at end of each sequence^,no OVR detect */
-           ADC_CR2_EXTEN_RISING             |  /* We need both as OCxREF don't behave as expected */
-           ADC_CR2_EXTSEL_SRC(kTimer8_TRGO2)|  /* External trigger is from Timer 1 TRGO 2*/
+           ADC_CR2_EXTEN_BOTH             |  /* We need both as OCxREF don't behave as expected */
+           ADC_CR2_EXTSEL_SRC(kTimer8_TRGO)|  /* External trigger is from Timer 1 TRGO 2*/
            0,                       /**/
     .htr = 0,
     .ltr = 0,
@@ -52,7 +52,7 @@ static const ADCConversionGroup ADC1group = {
     .error_cb = NULL,
     .cr1 = ADC_CR1_EOCIE,   /*End of Conversion interruption ,No OVR int,12 bit resolution,no AWDG/JAWDG,*/
     .cr2 = //ADC_CR2_SWSTART      | /* manual start of regular channels,EOC is set at end of each sequence^,no OVR detect */
-           ADC_CR2_EXTEN_FALLING             |  /* We need both as OCxREF don't behave as expected */
+           ADC_CR2_EXTEN_BOTH             |  /* We need both as OCxREF don't behave as expected */
            ADC_CR2_EXTSEL_SRC(kTimer8_TRGO2)|  /* External trigger is from Timer 1 TRGO 2*/
            0,                       /**/
     .htr = 0,
@@ -139,11 +139,11 @@ void adc3Start()
         adc_sample_3[i] = 0;
     }
     adcStart(&ADCD3, NULL);
-    //adcStart(&ADCD1, NULL);
+    adcStart(&ADCD1, NULL);
 
     /*
      * Launch the conversion (to get the buffer configured)
      */
     adcStartConversion(&ADCD3, &ADC3group, adc_sample_3,ADC_GRP3_BUF_DEPTH);
-    //adcStartConversion(&ADCD1, &ADC1group, adc_sample_1,1);
+    adcStartConversion(&ADCD1, &ADC1group, adc_sample_1,1);
 }

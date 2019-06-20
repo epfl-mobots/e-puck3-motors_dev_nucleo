@@ -392,7 +392,7 @@ void timer_1_pwm_config (void)
 
     (&PWMD8)->tim->CCER &= (~STM32_TIM_CCER_CC6P);    // OC6  Polarity : Active High
     (&PWMD8)->tim->CR2  &= (~STM32_TIM_CR2_OIS6);     // OC6 Idle State (when MOE=0): 0
-    (&PWMD8)->tim->CCMR3|=  STM32_TIM_CCMR3_OC6M(kPWMMode1);  // OC6 Mode : PWM Mode 1
+    (&PWMD8)->tim->CCMR3|=  STM32_TIM_CCMR3_OC6M(kPWMMode2);  // OC6 Mode : PWM Mode 1
     (&PWMD8)->tim->CCMR3 |= STM32_TIM_CCMR3_OC6PE;    // Enable the Preload -> CCR is loaded in the active register at each update event
     (&PWMD8)->tim->CCMR3 &= (~STM32_TIM_CCMR3_OC6FE); // Disable the Fast Mode
 
@@ -408,7 +408,7 @@ void timer_1_pwm_config (void)
     pwmEnableChannel(&PWMD8, kTimChannel4 , 0.95 * PERIOD_PWM_20_KHZ - 1);                 // Enabled to allow HAL support
     pwmEnableChannelNotification(&PWMD8, kTimChannel4);         // Enable the callback to be called for the specific channel
   
-    pwmEnableChannel(&PWMD8, kTimChannel6 , 0.50 * PERIOD_PWM_20_KHZ - 1);                 // Enabled to allow HAL support
+    pwmEnableChannel(&PWMD8, kTimChannel6 , 0.98 * PERIOD_PWM_20_KHZ - 1);                 // Enabled to allow HAL support
     
     // Break stage configuration
 
@@ -423,7 +423,9 @@ void timer_1_pwm_config (void)
 
     // Select OC4REF as TRGO2
     //(&PWMD8)->tim->CR2 |= STM32_TIM_CR2_MMS2(7); // Master Mode Selection 2 : OC4REF
-    (&PWMD8)->tim->CR2 |= STM32_TIM_CR2_MMS2(13); // Master Mode Selection 2 : OC44REF Rising or OC6REF falling
+    (&PWMD8)->tim->CR2 |= STM32_TIM_CR2_MMS(7); // Master Mode Selection 1 : OC4REF
+    (&PWMD8)->tim->CR2 |= STM32_TIM_CR2_MMS2(9); // Master Mode Selection 2 : OC6REF
+    //(&PWMD8)->tim->CR2 |= STM32_TIM_CR2_MMS2(13); // Master Mode Selection 2 : OC44REF Rising or OC6REF falling
 
     // Force update event (if preload enabled)
     (&PWMD8)->tim->EGR |= STM32_TIM_EGR_UG;
@@ -481,29 +483,19 @@ void commutation_nextstep(BrushlessConfig *pBrushCfg)
       break;
 
     case kEndless:
-      // if(pBrushCfg->TimeBLDCCommut >= pBrushCfg->ZCNextCommut)
-      // {
-      //   if(1== pBrushCfg->ZCFlag)
-      //   {
-      //     pBrushCfg->ZCFlag=0; // Reset zero-crossing flag
-      //     commutation_step(pBrushCfg);
-      //     zcs_ext_reset();
-      //     gBrushCfg.ZCVCount++;
-      //     gBrushCfg.ZCNextCommut = gBrushCfg.TimeBLDCCommut + (COEF_MARGIN * gBrushCfg.ZCPeriodMean);
-      //   }
-      //   else
-      //   {
-      //     else_cnt++;
-      //   }
-      // }
-      // break;
-     pBrushCfg->InStepCount++;
-      if (pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount)
+      if(pBrushCfg->TimeBLDCCommut >= pBrushCfg->ZCNextCommut)
       {
-        commutation_step(pBrushCfg);
-        if(1==gBrushCfg.ZCFlag){
-          gBrushCfg.ZCFlag = 0;
+        if(1== pBrushCfg->ZCFlag)
+        {
+          pBrushCfg->ZCFlag=0; // Reset zero-crossing flag
+          commutation_step(pBrushCfg);
+          zcs_ext_reset();
           gBrushCfg.ZCVCount++;
+          gBrushCfg.ZCNextCommut = gBrushCfg.TimeBLDCCommut + (COEF_MARGIN * gBrushCfg.ZCPeriodMean);
+        }
+        else
+        {
+          else_cnt++;
         }
       }
       break;

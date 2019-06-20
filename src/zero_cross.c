@@ -112,7 +112,7 @@ uint8_t Zcs_Detect(ZCSDetect* zcs)
   uint16_t ret_val = 0;
 
   lStateIterator = brushcfg_GetStateIterator(&gBrushCfg);
-  MeasureChannel = gBrushCfg.kChannelMeasureArray[lStateIterator];;
+  MeasureChannel = gBrushCfg.kChannelMeasureArray[lStateIterator];
 
   lhighest_voltage = zcs->data[MeasurementArrayHigh[lStateIterator]][LATEST_DATA(zcs->data_idx)];
   llowest_voltage = zcs->data[MeasurementArrayLow[lStateIterator]][LATEST_DATA(zcs->data_idx)];
