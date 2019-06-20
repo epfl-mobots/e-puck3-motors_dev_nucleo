@@ -25,7 +25,7 @@ BrushlessConfig gBrushCfg = {
     .StateIterator=0,
     .InStepCount = 0,
     .kMaxStepCount = 55,
-    .kDefaultIOConfig = PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1),
+    .kDefaultIOConfig = PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(3),
     .Mode = kInitCfg,
 
     /** Configuration of the commutation steps of the brushless motor **/
@@ -87,8 +87,8 @@ BrushlessConfig gBrushCfg = {
     .ZCTiming       = 0.5,
 
     /** IO Configuration **/
-    .P_Channels = {LINE_OUT_MOT1_PH1_P,LINE_OUT_MOT1_PH2_P,LINE_OUT_MOT1_PH3_P},
-    .N_Channels = {LINE_OUT_MOT1_PH1_N,LINE_OUT_MOT1_PH2_N,LINE_OUT_MOT1_PH3_N}
+    .P_Channels = {LINE_OUT_MOT4_PH1_P,LINE_OUT_MOT4_PH2_P,LINE_OUT_MOT4_PH3_P},
+    .N_Channels = {LINE_OUT_MOT4_PH1_N,LINE_OUT_MOT4_PH2_N,LINE_OUT_MOT4_PH3_N}
 };
 
 
@@ -125,37 +125,37 @@ static PWMConfig tim_1_cfg = {
 void initTIM1MotorIo(void)
 {
   /* Phase 1 P */
-  palSetLineMode(LINE_OUT_MOT1_PH1_P,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
-  palClearLine(LINE_OUT_MOT1_PH1_P);                            // Set to 0
+  palSetLineMode(LINE_OUT_MOT4_PH1_P,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT4_PH1_P);                            // Set to 0
   // Set back to alternate function
-  palSetLineMode(LINE_OUT_MOT1_PH1_P,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+  palSetLineMode(LINE_OUT_MOT4_PH1_P,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(3));
   /* Phase 1 N */
-  palSetLineMode(LINE_OUT_MOT1_PH1_N,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
-  palClearLine(LINE_OUT_MOT1_PH1_N);                            // Set to 0
+  palSetLineMode(LINE_OUT_MOT4_PH1_N,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT4_PH1_N);                            // Set to 0
   // Set back to alternate function
-  palSetLineMode(LINE_OUT_MOT1_PH1_N,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+  palSetLineMode(LINE_OUT_MOT4_PH1_N,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(3));
 
   /* Phase 2 P */
-  palSetLineMode(LINE_OUT_MOT1_PH2_P,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
-  palClearLine(LINE_OUT_MOT1_PH2_P);                            // Set to 0
+  palSetLineMode(LINE_OUT_MOT4_PH2_P,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT4_PH2_P);                            // Set to 0
   // Set back to alternate function
-  palSetLineMode(LINE_OUT_MOT1_PH2_P,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+  palSetLineMode(LINE_OUT_MOT4_PH2_P,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(3));
   /* Phase 2 N */
-  palSetLineMode(LINE_OUT_MOT1_PH2_N,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
-  palClearLine(LINE_OUT_MOT1_PH2_N);                            // Set to 0
+  palSetLineMode(LINE_OUT_MOT4_PH2_N,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT4_PH2_N);                            // Set to 0
   // Set back to alternate function
-  palSetLineMode(LINE_OUT_MOT1_PH2_N,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+  palSetLineMode(LINE_OUT_MOT4_PH2_N,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(3));
 
   /* Phase 3 P */
-  palSetLineMode(LINE_OUT_MOT1_PH3_P,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
-  palClearLine(LINE_OUT_MOT1_PH3_P);                            // Set to 0
+  palSetLineMode(LINE_OUT_MOT4_PH3_P,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT4_PH3_P);                            // Set to 0
   // Set back to alternate function
-  palSetLineMode(LINE_OUT_MOT1_PH3_P,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+  palSetLineMode(LINE_OUT_MOT4_PH3_P,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(3));
   /* Phase 3 N */
-  palSetLineMode(LINE_OUT_MOT1_PH3_N,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
-  palClearLine(LINE_OUT_MOT1_PH3_N);                            // Set to 0
+  palSetLineMode(LINE_OUT_MOT4_PH3_N,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT4_PH3_N);                            // Set to 0
   // Set back to alternate function
-  palSetLineMode(LINE_OUT_MOT1_PH3_N,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+  palSetLineMode(LINE_OUT_MOT4_PH3_N,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(3));
 }
 
 
@@ -195,9 +195,9 @@ void timer1Start()
      * Starting PWM driver 1 and enabling the notifications.
      */
     // TIMER 1 Config
-    pwmStart(&PWMD1, &tim_1_cfg); // WARNING : PWM MODE 1 BY DEFAULT AND MOE SET TO 1 !!
+    pwmStart(&PWMD8, &tim_1_cfg); // WARNING : PWM MODE 1 BY DEFAULT AND MOE SET TO 1 !!
     timer_1_pwm_config();
-    pwmEnablePeriodicNotification(&PWMD1); // Enable the Update Event interruption
+    pwmEnablePeriodicNotification(&PWMD8); // Enable the Update Event interruption
 }
 
 
@@ -256,20 +256,20 @@ static void tim_1_oc_cmd(TimChannel aChannel,TimChannelState aState)
     {
       palClearLine(gBrushCfg.P_Channels[aChannel]);
       palSetLineMode(gBrushCfg.P_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
-      (&PWMD1)->tim->CCER &= (~lCCEnable);
+      (&PWMD8)->tim->CCER &= (~lCCEnable);
       break;
     }
     case kTimCh_High:
     {
       palSetLine(gBrushCfg.P_Channels[aChannel]);
       palSetLineMode(gBrushCfg.P_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
-      (&PWMD1)->tim->CCER &= (~lCCEnable);
+      (&PWMD8)->tim->CCER &= (~lCCEnable);
       break;
     }
     case kTimCh_PWM:
     {
       palSetLineMode(gBrushCfg.P_Channels[aChannel],gBrushCfg.kDefaultIOConfig);
-      (&PWMD1)->tim->CCER |= lCCEnable;
+      (&PWMD8)->tim->CCER |= lCCEnable;
       break;
     }
   }
@@ -313,20 +313,20 @@ static void tim_1_ocn_cmd(TimChannel aChannel,TimChannelState aState)
     {
       palClearLine(gBrushCfg.N_Channels[aChannel]);
       palSetLineMode(gBrushCfg.N_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
-      (&PWMD1)->tim->CCER &= (~lCCNEnable);
+      (&PWMD8)->tim->CCER &= (~lCCNEnable);
       break;
     }
     case kTimCh_High:
     {
       palSetLine(gBrushCfg.N_Channels[aChannel]);
       palSetLineMode(gBrushCfg.N_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
-      (&PWMD1)->tim->CCER &= (~lCCNEnable);
+      (&PWMD8)->tim->CCER &= (~lCCNEnable);
       break;
     }
     case kTimCh_PWM:
     {
       palSetLineMode(gBrushCfg.N_Channels[aChannel],gBrushCfg.kDefaultIOConfig);
-      (&PWMD1)->tim->CCER |= lCCNEnable;
+      (&PWMD8)->tim->CCER |= lCCNEnable;
       break;
     }
   }
@@ -335,104 +335,104 @@ static void tim_1_ocn_cmd(TimChannel aChannel,TimChannelState aState)
 
 void timer_1_pwm_config (void)
 {
-    (&PWMD1)->tim->CR1 &= (~STM32_TIM_CR1_CEN);     // Disable the counter until correct configuration
-    (&PWMD1)->tim->CR1 &= (~STM32_TIM_CR1_CMS(0));  // Edge-aligned mode
-    (&PWMD1)->tim->CR1 &= (~STM32_TIM_CR1_DIR);     // Direction : upcounter
-    (&PWMD1)->tim->PSC =  0;                        // Set the prescaler to 0 TIM_FREQ = 216 MHz
-    (&PWMD1)->tim->ARR =  PERIOD_PWM_20_KHZ - 1;    // Set the period of our PWM
+    (&PWMD8)->tim->CR1 &= (~STM32_TIM_CR1_CEN);     // Disable the counter until correct configuration
+    (&PWMD8)->tim->CR1 &= (~STM32_TIM_CR1_CMS(0));  // Edge-aligned mode
+    (&PWMD8)->tim->CR1 &= (~STM32_TIM_CR1_DIR);     // Direction : upcounter
+    (&PWMD8)->tim->PSC =  0;                        // Set the prescaler to 0 TIM_FREQ = 216 MHz
+    (&PWMD8)->tim->ARR =  PERIOD_PWM_20_KHZ - 1;    // Set the period of our PWM
 
-    (&PWMD1)->tim->CR1 &= (~STM32_TIM_CR1_ARPE);    // Remove the ARPE
-    (&PWMD1)->tim->CR2 |= STM32_TIM_CR2_CCPC;       // Enable the Preload of the CxE,CxNE bits
+    (&PWMD8)->tim->CR1 &= (~STM32_TIM_CR1_ARPE);    // Remove the ARPE
+    (&PWMD8)->tim->CR2 |= STM32_TIM_CR2_CCPC;       // Enable the Preload of the CxE,CxNE bits
 
-    (&PWMD1)->tim->CCER = 0; // Reset Capture/Compare Register
+    (&PWMD8)->tim->CCER = 0; // Reset Capture/Compare Register
     //
 
     // 1 : Output channels configuration
     // General Config
-    (&PWMD1)->tim->CCMR1 = 0;                         // Reset OC 1 and OC2 configuration
-    (&PWMD1)->tim->CCMR2 = 0;                         // Reset OC 3 and OC4 configuration
+    (&PWMD8)->tim->CCMR1 = 0;                         // Reset OC 1 and OC2 configuration
+    (&PWMD8)->tim->CCMR2 = 0;                         // Reset OC 3 and OC4 configuration
 
     // Channel 1 Config
-    (&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC1P);    // OC1 Polarity  : Active High
-    (&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC1NP);   // OC1N Polarity : Active High
-    (&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS1);    // OC1 Idle State (when MOE=0) : 0
-    (&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS1N);   // OC1N Idle State (when MOE=0): 0
-    (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kFrozen);  // OC1 Mode : Frozen
-    (&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC1FE); // Disable the Fast Mode
-    (&PWMD1)->tim->CCMR1 |= STM32_TIM_CCMR1_OC1PE;    // Enable the Preload -> CCR is loaded in the active register at each update event
-    // (&PWMD1)->tim->CCR[kTimChannel1] =  PERIOD_PWM_20_KHZ/2 - 1;  // Select the Half-period to overflow
+    (&PWMD8)->tim->CCER &= (~STM32_TIM_CCER_CC1P);    // OC1 Polarity  : Active High
+    (&PWMD8)->tim->CCER &= (~STM32_TIM_CCER_CC1NP);   // OC1N Polarity : Active High
+    (&PWMD8)->tim->CR2  &=  (~STM32_TIM_CR2_OIS1);    // OC1 Idle State (when MOE=0) : 0
+    (&PWMD8)->tim->CR2  &=  (~STM32_TIM_CR2_OIS1N);   // OC1N Idle State (when MOE=0): 0
+    (&PWMD8)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kFrozen);  // OC1 Mode : Frozen
+    (&PWMD8)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC1FE); // Disable the Fast Mode
+    (&PWMD8)->tim->CCMR1 |= STM32_TIM_CCMR1_OC1PE;    // Enable the Preload -> CCR is loaded in the active register at each update event
+    // (&PWMD8)->tim->CCR[kTimChannel1] =  PERIOD_PWM_20_KHZ/2 - 1;  // Select the Half-period to overflow
 
     // Channel 2 Config
-    (&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC2P);    // OC2 Polarity  : Active High
-    (&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC2NP);   // OC2N Polarity : Active High
-    (&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS2);    // OC2 Idle State (when MOE=0) : 0
-    (&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS2N);   // OC2N Idle State (when MOE=0): 0
-    (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(kFrozen);  // OC2 Mode : Frozen
-    (&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC2FE); // Disable the Fast Mode
-    (&PWMD1)->tim->CCMR1 |= STM32_TIM_CCMR1_OC2PE;    // Enable the Preload
-    // (&PWMD1)->tim->CCR[kTimChannel2] =  PERIOD_PWM_20_KHZ/4 - 1;  // Select the Quarter-period to overflow
+    (&PWMD8)->tim->CCER &= (~STM32_TIM_CCER_CC2P);    // OC2 Polarity  : Active High
+    (&PWMD8)->tim->CCER &= (~STM32_TIM_CCER_CC2NP);   // OC2N Polarity : Active High
+    (&PWMD8)->tim->CR2  &=  (~STM32_TIM_CR2_OIS2);    // OC2 Idle State (when MOE=0) : 0
+    (&PWMD8)->tim->CR2  &=  (~STM32_TIM_CR2_OIS2N);   // OC2N Idle State (when MOE=0): 0
+    (&PWMD8)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(kFrozen);  // OC2 Mode : Frozen
+    (&PWMD8)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC2FE); // Disable the Fast Mode
+    (&PWMD8)->tim->CCMR1 |= STM32_TIM_CCMR1_OC2PE;    // Enable the Preload
+    // (&PWMD8)->tim->CCR[kTimChannel2] =  PERIOD_PWM_20_KHZ/4 - 1;  // Select the Quarter-period to overflow
 
     // Channel 3 Config
-    (&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC3P);    // OC3 Polarity  : Active High
-    (&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC3NP);   // OC3N Polarity : Active High
-    (&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS3);    // OC3 Idle State (when MOE=0) : 0
-    (&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS3N);   // OC3N Idle State (when MOE=0): 0
-    (&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(kFrozen);  // OC3 Mode : Frozen
-    (&PWMD1)->tim->CCMR2 &= (~STM32_TIM_CCMR2_OC3FE); // Disable the Fast Mode
-    (&PWMD1)->tim->CCMR2 |= STM32_TIM_CCMR2_OC3PE;    // Enable the Preload
-    // (&PWMD1)->tim->CCR[kTimChannel3]  =  PERIOD_PWM_20_KHZ/8 - 1;  // Select the 1/8 period to overflow
+    (&PWMD8)->tim->CCER &= (~STM32_TIM_CCER_CC3P);    // OC3 Polarity  : Active High
+    (&PWMD8)->tim->CCER &= (~STM32_TIM_CCER_CC3NP);   // OC3N Polarity : Active High
+    (&PWMD8)->tim->CR2  &=  (~STM32_TIM_CR2_OIS3);    // OC3 Idle State (when MOE=0) : 0
+    (&PWMD8)->tim->CR2  &=  (~STM32_TIM_CR2_OIS3N);   // OC3N Idle State (when MOE=0): 0
+    (&PWMD8)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(kFrozen);  // OC3 Mode : Frozen
+    (&PWMD8)->tim->CCMR2 &= (~STM32_TIM_CCMR2_OC3FE); // Disable the Fast Mode
+    (&PWMD8)->tim->CCMR2 |= STM32_TIM_CCMR2_OC3PE;    // Enable the Preload
+    // (&PWMD8)->tim->CCR[kTimChannel3]  =  PERIOD_PWM_20_KHZ/8 - 1;  // Select the 1/8 period to overflow
 
     // Channel 4 Config (for ADC trigger)
-    (&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC4P);    // OC4  Polarity : Active High
-    (&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC4NP);   // OC4N Polarity : Active High
-    (&PWMD1)->tim->CR2  &= (~STM32_TIM_CR2_OIS4);     // OC4 Idle State (when MOE=0): 0
-    (&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC4M(kPWMMode2);  // OC4 Mode : PWM Mode 2
-    (&PWMD1)->tim->CCMR2 |= STM32_TIM_CCMR2_OC4PE;    // Enable the Preload -> CCR is loaded in the active register at each update event
-    (&PWMD1)->tim->CCMR2 &= (~STM32_TIM_CCMR2_OC4FE); // Disable the Fast Mode
+    (&PWMD8)->tim->CCER &= (~STM32_TIM_CCER_CC4P);    // OC4  Polarity : Active High
+    (&PWMD8)->tim->CCER &= (~STM32_TIM_CCER_CC4NP);   // OC4N Polarity : Active High
+    (&PWMD8)->tim->CR2  &= (~STM32_TIM_CR2_OIS4);     // OC4 Idle State (when MOE=0): 0
+    (&PWMD8)->tim->CCMR2|=  STM32_TIM_CCMR2_OC4M(kPWMMode2);  // OC4 Mode : PWM Mode 2
+    (&PWMD8)->tim->CCMR2 |= STM32_TIM_CCMR2_OC4PE;    // Enable the Preload -> CCR is loaded in the active register at each update event
+    (&PWMD8)->tim->CCMR2 &= (~STM32_TIM_CCMR2_OC4FE); // Disable the Fast Mode
 
-    (&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC6P);    // OC6  Polarity : Active High
-    (&PWMD1)->tim->CR2  &= (~STM32_TIM_CR2_OIS6);     // OC6 Idle State (when MOE=0): 0
-    (&PWMD1)->tim->CCMR3|=  STM32_TIM_CCMR3_OC6M(kPWMMode1);  // OC6 Mode : PWM Mode 1
-    (&PWMD1)->tim->CCMR3 |= STM32_TIM_CCMR3_OC6PE;    // Enable the Preload -> CCR is loaded in the active register at each update event
-    (&PWMD1)->tim->CCMR3 &= (~STM32_TIM_CCMR3_OC6FE); // Disable the Fast Mode
+    (&PWMD8)->tim->CCER &= (~STM32_TIM_CCER_CC6P);    // OC6  Polarity : Active High
+    (&PWMD8)->tim->CR2  &= (~STM32_TIM_CR2_OIS6);     // OC6 Idle State (when MOE=0): 0
+    (&PWMD8)->tim->CCMR3|=  STM32_TIM_CCMR3_OC6M(kPWMMode1);  // OC6 Mode : PWM Mode 1
+    (&PWMD8)->tim->CCMR3 |= STM32_TIM_CCMR3_OC6PE;    // Enable the Preload -> CCR is loaded in the active register at each update event
+    (&PWMD8)->tim->CCMR3 &= (~STM32_TIM_CCMR3_OC6FE); // Disable the Fast Mode
 
     // Configure the time and the interruption enable
 
     // BSP - Style
-    // (&PWMD1)->tim->CCR4   =  PERIOD_100_MS_INT;    // Each 100 ms an interruption
-    // (&PWMD1)->tim->DIER |= STM32_TIM_DIER_CC4IE;   // Enable Capture/Compare 4 Interrupt
+    // (&PWMD8)->tim->CCR4   =  PERIOD_100_MS_INT;    // Each 100 ms an interruption
+    // (&PWMD8)->tim->DIER |= STM32_TIM_DIER_CC4IE;   // Enable Capture/Compare 4 Interrupt
 
 
 
     // ChibiOS - Style
-    pwmEnableChannel(&PWMD1, kTimChannel4 , 0.95 * PERIOD_PWM_20_KHZ - 1);                 // Enabled to allow HAL support
-    pwmEnableChannelNotification(&PWMD1, kTimChannel4);         // Enable the callback to be called for the specific channel
+    pwmEnableChannel(&PWMD8, kTimChannel4 , 0.95 * PERIOD_PWM_20_KHZ - 1);                 // Enabled to allow HAL support
+    pwmEnableChannelNotification(&PWMD8, kTimChannel4);         // Enable the callback to be called for the specific channel
   
-    pwmEnableChannel(&PWMD1, kTimChannel6 , 0.50 * PERIOD_PWM_20_KHZ - 1);                 // Enabled to allow HAL support
+    pwmEnableChannel(&PWMD8, kTimChannel6 , 0.50 * PERIOD_PWM_20_KHZ - 1);                 // Enabled to allow HAL support
     
     // Break stage configuration
 
-    (&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CKD(0);     // Modification of the CR1 CKD in order to have a bigger period for the dead times
+    (&PWMD8)->tim->CR1 |= STM32_TIM_CR1_CKD(0);     // Modification of the CR1 CKD in order to have a bigger period for the dead times
                                                     // OSSR and OSSI not needed
-    (&PWMD1)->tim->BDTR = 0;                        // Reset BDTR to everything disabled (BK,BK2 not enabled)
-    (&PWMD1)->tim->BDTR |= STM32_TIM_BDTR_DTG(0);   // Dead-time generator Setup
-    (&PWMD1)->tim->BDTR |= STM32_TIM_BDTR_OSSR;     // Off-state selection for Run Mode
-    (&PWMD1)->tim->BDTR |= STM32_TIM_BDTR_MOE;      // Main Output Enable
+    (&PWMD8)->tim->BDTR = 0;                        // Reset BDTR to everything disabled (BK,BK2 not enabled)
+    (&PWMD8)->tim->BDTR |= STM32_TIM_BDTR_DTG(0);   // Dead-time generator Setup
+    (&PWMD8)->tim->BDTR |= STM32_TIM_BDTR_OSSR;     // Off-state selection for Run Mode
+    (&PWMD8)->tim->BDTR |= STM32_TIM_BDTR_MOE;      // Main Output Enable
 
     // Commutation event configuration (Not needed at the moment.)
 
     // Select OC4REF as TRGO2
-    (&PWMD1)->tim->CR2 |= STM32_TIM_CR2_MMS2(7); // Master Mode Selection 2 : OC4REF
-    //(&PWMD1)->tim->CR2 |= STM32_TIM_CR2_MMS2(13); // Master Mode Selection 2 : OC44REF Rising or OC6REF falling
+    //(&PWMD8)->tim->CR2 |= STM32_TIM_CR2_MMS2(7); // Master Mode Selection 2 : OC4REF
+    (&PWMD8)->tim->CR2 |= STM32_TIM_CR2_MMS2(13); // Master Mode Selection 2 : OC44REF Rising or OC6REF falling
 
     // Force update event (if preload enabled)
-    (&PWMD1)->tim->EGR |= STM32_TIM_EGR_UG;
+    (&PWMD8)->tim->EGR |= STM32_TIM_EGR_UG;
 
     // Force update event (if preload enabled) for CxE,CxNE and OCxM
-    (&PWMD1)->tim->EGR |= STM32_TIM_EGR_COMG;
+    (&PWMD8)->tim->EGR |= STM32_TIM_EGR_COMG;
 
     // Enable the Timer
-    (&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CEN;     // Enable the counter in correct configuration
+    (&PWMD8)->tim->CR1 |= STM32_TIM_CR1_CEN;     // Enable the counter in correct configuration
 
     chVTObjectInit(&gBrushCfg.ramp_vt);  // Init the virtual timer
     chVTObjectInit(&gBrushCfg.calibration_vt); // Init the virtual timer
@@ -481,19 +481,29 @@ void commutation_nextstep(BrushlessConfig *pBrushCfg)
       break;
 
     case kEndless:
-      if(pBrushCfg->TimeBLDCCommut >= pBrushCfg->ZCNextCommut)
+      // if(pBrushCfg->TimeBLDCCommut >= pBrushCfg->ZCNextCommut)
+      // {
+      //   if(1== pBrushCfg->ZCFlag)
+      //   {
+      //     pBrushCfg->ZCFlag=0; // Reset zero-crossing flag
+      //     commutation_step(pBrushCfg);
+      //     zcs_ext_reset();
+      //     gBrushCfg.ZCVCount++;
+      //     gBrushCfg.ZCNextCommut = gBrushCfg.TimeBLDCCommut + (COEF_MARGIN * gBrushCfg.ZCPeriodMean);
+      //   }
+      //   else
+      //   {
+      //     else_cnt++;
+      //   }
+      // }
+      // break;
+     pBrushCfg->InStepCount++;
+      if (pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount)
       {
-        if(1== pBrushCfg->ZCFlag)
-        {
-          pBrushCfg->ZCFlag=0; // Reset zero-crossing flag
-          commutation_step(pBrushCfg);
-          zcs_ext_reset();
+        commutation_step(pBrushCfg);
+        if(1==gBrushCfg.ZCFlag){
+          gBrushCfg.ZCFlag = 0;
           gBrushCfg.ZCVCount++;
-          gBrushCfg.ZCNextCommut = gBrushCfg.TimeBLDCCommut + (COEF_MARGIN * gBrushCfg.ZCPeriodMean);
-        }
-        else
-        {
-          else_cnt++;
         }
       }
       break;
@@ -555,20 +565,20 @@ void commutation_cb(PWMDriver *pwmp)
       /* Timer 1 config */
 
       /* Set all the OC output to same PWM */
-      (&PWMD1)->tim->CCR[kTimChannel1]  =  0.9 * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
-      (&PWMD1)->tim->CCR[kTimChannel2]  =  0.9 * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
-      (&PWMD1)->tim->CCR[kTimChannel3]  =  0.9 * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
+      (&PWMD8)->tim->CCR[kTimChannel1]  =  0.9 * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
+      (&PWMD8)->tim->CCR[kTimChannel2]  =  0.9 * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
+      (&PWMD8)->tim->CCR[kTimChannel3]  =  0.9 * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
 
       // Force update event (if preload enabled)
-      (&PWMD1)->tim->EGR |= STM32_TIM_EGR_UG;
+      (&PWMD8)->tim->EGR |= STM32_TIM_EGR_UG;
 
       /* Configure the mode of each channel */
-      (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kPWMMode2);  // OC1 Mode : PWM Mode 2
-      (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(kPWMMode2);  // OC2 Mode : PWM Mode 2
-      (&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(kPWMMode2);  // OC3 Mode : PWM Mode 2
+      (&PWMD8)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kPWMMode2);  // OC1 Mode : PWM Mode 2
+      (&PWMD8)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(kPWMMode2);  // OC2 Mode : PWM Mode 2
+      (&PWMD8)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(kPWMMode2);  // OC3 Mode : PWM Mode 2
 
       // Force update event (if preload enabled)
-      (&PWMD1)->tim->EGR |= STM32_TIM_EGR_COMG;
+      (&PWMD8)->tim->EGR |= STM32_TIM_EGR_COMG;
 
       gBrushCfg.Mode = kCalibrate;
       gBrushCfg.StateIterator = 0;
@@ -614,9 +624,9 @@ void commutation_cb(PWMDriver *pwmp)
 
             gBrushCfg.Mode = kInitRamp;
             gBrushCfg.RampCurSpeed = gBrushCfg.RampMinSpeed;
-            (&PWMD1)->tim->CCR[kTimChannel1]  =  0.9 * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
-            (&PWMD1)->tim->CCR[kTimChannel2]  =  0.9 * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
-            (&PWMD1)->tim->CCR[kTimChannel3]  =  0.9 * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
+            (&PWMD8)->tim->CCR[kTimChannel1]  =  0.9 * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
+            (&PWMD8)->tim->CCR[kTimChannel2]  =  0.9 * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
+            (&PWMD8)->tim->CCR[kTimChannel3]  =  0.9 * PERIOD_PWM_20_KHZ - 1;  // Select the quarter-Period to overflow
           }else{
             //do the next step
             gBrushCfg.CalibrationState = 0;
@@ -662,7 +672,7 @@ void commutation_cb(PWMDriver *pwmp)
         chSysUnlockFromISR();
 
         // Check if we have done all the ramp speeds
-        if(gBrushCfg.RampMaxSpeed >= gBrushCfg.RampCurSpeed || 6==gBrushCfg.ZCVCount)
+        if(gBrushCfg.RampMaxSpeed >= gBrushCfg.RampCurSpeed)// || 6==gBrushCfg.ZCVCount)
         {
           chSysLockFromISR();
           chVTResetI(&gBrushCfg.ramp_vt);
@@ -699,5 +709,5 @@ void commutation_cb(PWMDriver *pwmp)
   }
   palClearLine(LD2_LINE);
   // Force update event (if preload enabled) for CxE,CxNE and OCxM
-  (&PWMD1)->tim->EGR |= STM32_TIM_EGR_COMG;
+  (&PWMD8)->tim->EGR |= STM32_TIM_EGR_COMG;
 }
