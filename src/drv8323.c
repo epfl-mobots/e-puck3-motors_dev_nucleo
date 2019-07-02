@@ -70,6 +70,19 @@ void drv8323WriteConf(DRV8323Config *drv){
 	spiReleaseBus(drv->spip);
 }
 
+void drv8323CalibrateCurrentProbe(DRV8323Config *drv){
+
+	uint16_t reg = DRV8323_CSA_CONTROL_REG | drv->registers->csa_control | CSA_CAL_C | CSA_CAL_B | CSA_CAL_A;
+
+	drv8323WriteReg(drv, reg);
+	//we wait the calibration to finish (approx 100us)
+	chThdSleepMilliseconds(1);
+
+	reg = DRV8323_CSA_CONTROL_REG | drv->registers->csa_control;
+	drv8323WriteReg(drv, reg);
+
+}
+
 uint16_t drv8323WriteReg(DRV8323Config *drv, uint16_t reg){
 	uint16_t rcv = 0;
 

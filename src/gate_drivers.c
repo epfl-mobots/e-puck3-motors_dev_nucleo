@@ -203,6 +203,10 @@ void _gateDriversClearEnable(gateDriver_id id){
 
 /********************                PUBLIC FUNCTIONS              ********************/
 
+void gateDriversCalibrateCurrentProbe(gateDriver_id id){
+	drv8323CalibrateCurrentProbe(&gateDrivers[id]);
+}
+
 void gateDriversWriteReg(gateDriver_id id, uint16_t reg){
 	drv8323ReadReg(&gateDrivers[id], reg);
 }
@@ -217,14 +221,15 @@ void gateDriversEnable(gateDriver_id id){
 
 		palSetLineCallback(gateDrivers[id].faultline, gateDriverCb, (void*) id);
 		_gateDriversSetEnable(id);
+		//we wait that the driver is completely enabled and ready
+		chThdSleepMilliseconds(2);
+
 		drv8323WriteConf(&gateDrivers[id]);
+		gateDriversCalibrateCurrentProbe(id);
 		/* Enabling events on falling edge of the fault line.
 		 * We do it after the power on of the chip to not catch the fault pulse on init from the chip.
 		 */
 		palEnableLineEvent(gateDrivers[id].faultline, PAL_EVENT_MODE_FALLING_EDGE);
-
-		//we wait that the drivers are completely enabled and ready
-		chThdSleepMilliseconds(1);
 	}
 }
 
@@ -236,18 +241,19 @@ void gateDriversEnableAll(void){
 		if(!enable_states[i]){
 			_gateDriversSetEnable(i);
 			palSetLineCallback(gateDrivers[i].faultline, gateDriverCb, (void*) i);
-			/* Enabling events on falling edge of the fault line.
-			 * We do it after the power on of the chips to not catch the fault pulse on init from the chip.
-			 */
-			palEnableLineEvent(gateDrivers[i].faultline, PAL_EVENT_MODE_FALLING_EDGE);
 		}
 	}
 
 	//we wait that the drivers are completely enabled and ready
-	chThdSleepMilliseconds(1);
+	chThdSleepMilliseconds(2);
 
 	for(uint8_t i = 0 ; i < NB_OF_GATE_DRIVERS ; i++){
 		drv8323WriteConf(&gateDrivers[i]);
+		gateDriversCalibrateCurrentProbe(i);
+		/* Enabling events on falling edge of the fault line.
+		 * We do it after the power on of the chips to not catch the fault pulse on init from the chip.
+		 */
+		palEnableLineEvent(gateDrivers[i].faultline, PAL_EVENT_MODE_FALLING_EDGE);
 	}
 }
 

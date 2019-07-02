@@ -68,6 +68,13 @@ typedef struct {
 void drv8323WriteConf(DRV8323Config *drv);
 
 /**
+ * @brief 		Performs a zero calibration of the current sense amplifiers
+ * 
+ * @param drv 	Device to calibrate. See DRV8323Config
+ */
+void drv8323CalibrateCurrentProbe(DRV8323Config *drv);
+
+/**
  * @brief 			Writes the given register to the given device.
  * 
  * @param drv 		Device. See DRV8323Config

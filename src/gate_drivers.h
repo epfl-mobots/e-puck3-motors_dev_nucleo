@@ -25,6 +25,14 @@ typedef enum {
 	NB_OF_GATE_DRIVERS,
 } gateDriver_id;
 
+
+/**
+ * @brief 		Performs a zero calibration of the current sense amplifiers
+ * 
+ * @param id 	Device number. See gateDriver_id for choice.
+ */
+void gateDriversCalibrateCurrentProbe(gateDriver_id id);
+
 /**
  * @brief 		Writes the given register to the given DRV8323
  * 
