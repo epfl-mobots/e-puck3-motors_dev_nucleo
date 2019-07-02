@@ -8,6 +8,7 @@
  
 #include "main.h"
 #include "gate_drivers.h"
+#include "drv8323.h"
 
 /********************              INTERNAL VARIABLES              ********************/
 
@@ -137,11 +138,76 @@ static THD_FUNCTION(fault_thd, arg)
 				*	To do : do something with the fault detected
 				*/
 
+				if(fault_1_reg & VDS_LC){
+					chprintf((BaseSequentialStream *) &USB_GDB, "VDS overcurrent fault on the C low-side %d\n", device_id);
+				}
+				if(fault_1_reg & VDS_HC){
+					chprintf((BaseSequentialStream *) &USB_GDB, "VDS overcurrent fault on the C high-side %d\n", device_id);
+				}
+				if(fault_1_reg & VDS_LB){
+					chprintf((BaseSequentialStream *) &USB_GDB, "VDS overcurrent fault on the B low-side %d\n", device_id);
+				}
+				if(fault_1_reg & VDS_HB){
+					chprintf((BaseSequentialStream *) &USB_GDB, "VDS overcurrent fault on the B high-side %d\n", device_id);
+				}
+				if(fault_1_reg & VDS_LA){
+					chprintf((BaseSequentialStream *) &USB_GDB, "VDS overcurrent fault on the A low-side %d\n", device_id);
+				}
+				if(fault_1_reg & VDS_HA){
+					chprintf((BaseSequentialStream *) &USB_GDB, "VDS overcurrent fault on the A high-side %d\n", device_id);
+				}
+				if(fault_1_reg & OTSD){
+					chprintf((BaseSequentialStream *) &USB_GDB, "Overtemperature shutdown %d\n", device_id);
+				}
+				if(fault_1_reg & UVLO){
+					chprintf((BaseSequentialStream *) &USB_GDB, "Undervoltage lockout fault condition %d\n", device_id);
+				}
+				if(fault_1_reg & GDF){
+					chprintf((BaseSequentialStream *) &USB_GDB, "Gate drive fault condition %d\n", device_id);
+				}
+				if(fault_1_reg & VDS_OCP){
+					chprintf((BaseSequentialStream *) &USB_GDB, "VDS monitor overcurrent fault condition %d\n", device_id);
+				}
+				if(fault_2_reg & VGS_LC){
+					chprintf((BaseSequentialStream *) &USB_GDB, "Gate drive fault on the C low-side %d\n", device_id);
+				}
+				if(fault_2_reg & VGS_HC){
+					chprintf((BaseSequentialStream *) &USB_GDB, "Gate drive fault on the C high-side %d\n", device_id);
+				}
+				if(fault_2_reg & VGS_LB){
+					chprintf((BaseSequentialStream *) &USB_GDB, "Gate drive fault on the B low-side %d\n", device_id);
+				}
+				if(fault_2_reg & VGS_HB){
+					chprintf((BaseSequentialStream *) &USB_GDB, "Gate drive fault on the B high-side %d\n", device_id);
+				}
+				if(fault_2_reg & VGS_LA){
+					chprintf((BaseSequentialStream *) &USB_GDB, "Gate drive fault on the A low-side %d\n", device_id);
+				}
+				if(fault_2_reg & VGS_HA){
+					chprintf((BaseSequentialStream *) &USB_GDB, "Gate drive fault on the A high-side %d\n", device_id);
+				}
+				if(fault_2_reg & CPUV){
+					chprintf((BaseSequentialStream *) &USB_GDB, "Charge pump undervoltage fault condition %d\n", device_id);
+				}
+				if(fault_2_reg & OTW){
+					chprintf((BaseSequentialStream *) &USB_GDB, "Overtemperature warning %d\n", device_id);
+				}
+				if(fault_2_reg & SC_OC){
+					chprintf((BaseSequentialStream *) &USB_GDB, "Overcurrent on phase C sense amplifier %d\n", device_id);
+				}
+				if(fault_2_reg & SB_OC){
+					chprintf((BaseSequentialStream *) &USB_GDB, "Overcurrent on phase B sense amplifier %d\n", device_id);
+				}
+				if(fault_2_reg & SA_OC){
+					chprintf((BaseSequentialStream *) &USB_GDB, "Overcurrent on phase A sense amplifier %d\n", device_id);
+				}
+
+
 				//to remove the "variable unused" warning
 				(void)fault_1_reg;
 				(void)fault_2_reg;
 
-				chprintf((BaseSequentialStream *) &USB_SERIAL, "fault detected on device %d\n", device_id);
+				//chprintf((BaseSequentialStream *) &USB_GDB, "fault detected on device %d\n", device_id);
 
 			}
 		}else{
