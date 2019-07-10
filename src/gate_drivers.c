@@ -39,7 +39,7 @@ static DRV8323ConfRegisters drv8323cfg = {
 	.driver_control	= 0,
 	.gate_drive_hs	= IDRIVEN_HS | IDRIVEP_HS,
 	.gate_drive_ls 	= IDRIVEN_LS | IDRIVEP_LS | TDRIVE | CBC,
-	.ocp_control 	= VDS_LVL_3 | VDS_LVL_0 | OCP_DEG_0 | OCP_MODE_0 | DEAD_TIME_0,
+	.ocp_control 	= VDS_LVL_1 | VDS_LVL_0 | OCP_DEG_0 | OCP_MODE_0 | DEAD_TIME_0,
 	.csa_control 	= SEN_LVL | CSA_GAIN_1 /*| VREF_DIV*/ | CSA_FET
 };
 
