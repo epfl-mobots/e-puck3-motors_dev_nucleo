@@ -27,7 +27,7 @@ static const ADCConversionGroup ADC3group = {
     .cr1 = ADC_CR1_EOCIE,   /*End of Conversion interruption ,No OVR int,12 bit resolution,no AWDG/JAWDG,*/
     .cr2 = //ADC_CR2_SWSTART      | /* manual start of regular channels,EOC is set at end of each sequence^,no OVR detect */
            ADC_CR2_EXTEN_BOTH             |  /* We need both as OCxREF don't behave as expected */
-           ADC_CR2_EXTSEL_SRC(kTimer8_TRGO)|  /* External trigger is from Timer 1 TRGO 2*/
+           ADC_CR2_EXTSEL_SRC(kTimer1_TRGO)|  /* External trigger is from Timer 1 TRGO 2*/
            0,                       /**/
     .htr = 0,
     .ltr = 0,
@@ -38,10 +38,10 @@ static const ADCConversionGroup ADC3group = {
              ADC_SMPR2_SMP_AN3(ADC_SAMPLE_3),
     .sqr1 = ADC_SQR1_NUM_CH(ADC_GRP3_NUM_CHANNELS),
     .sqr2 = 0,
-    .sqr3 = ADC_SQR3_SQ1_N(ADC_CHANNEL_IN12)|
-            ADC_SQR3_SQ2_N(ADC_CHANNEL_IN13)|
-            ADC_SQR3_SQ3_N(ADC_CHANNEL_IN14)|
-            ADC_SQR3_SQ4_N(ADC_CHANNEL_IN15),
+    .sqr3 = ADC_SQR3_SQ1_N(ADC_CHANNEL_IN0)|
+            ADC_SQR3_SQ2_N(ADC_CHANNEL_IN1)|
+            ADC_SQR3_SQ3_N(ADC_CHANNEL_IN2)|
+            ADC_SQR3_SQ4_N(ADC_CHANNEL_IN3),
 };
 
 /* ADC 1 Configuration */
@@ -53,7 +53,7 @@ static const ADCConversionGroup ADC1group = {
     .cr1 = ADC_CR1_EOCIE,   /*End of Conversion interruption ,No OVR int,12 bit resolution,no AWDG/JAWDG,*/
     .cr2 = //ADC_CR2_SWSTART      | /* manual start of regular channels,EOC is set at end of each sequence^,no OVR detect */
            ADC_CR2_EXTEN_BOTH             |  /* We need both as OCxREF don't behave as expected */
-           ADC_CR2_EXTSEL_SRC(kTimer8_TRGO2)|  /* External trigger is from Timer 1 TRGO 2*/
+           ADC_CR2_EXTSEL_SRC(kTimer1_TRGO2)|  /* External trigger is from Timer 1 TRGO 2*/
            0,                       /**/
     .htr = 0,
     .ltr = 0,
@@ -63,9 +63,9 @@ static const ADCConversionGroup ADC1group = {
              ADC_SMPR2_SMP_AN2(ADC_SAMPLE_3),
     .sqr1 = ADC_SQR1_NUM_CH(3),
     .sqr2 = 0,
-    .sqr3 = ADC_SQR3_SQ1_N(ADC_CHANNEL_IN9)|
-            ADC_SQR3_SQ2_N(ADC_CHANNEL_IN14)|
-            ADC_SQR3_SQ3_N(ADC_CHANNEL_IN15),
+    .sqr3 = ADC_SQR3_SQ1_N(ADC_CHANNEL_IN4)|
+            ADC_SQR3_SQ2_N(ADC_CHANNEL_IN5)|
+            ADC_SQR3_SQ3_N(ADC_CHANNEL_IN6),
 };
 
 
@@ -96,6 +96,9 @@ void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 
     uint8_t zc_detect = 0;
 
+    static uint16_t current = 0;
+    static uint16_t current2 = 0;
+
     palSetLine(DEBUG_INT_LINE);
 
     if(gBrushCfg.Mode == kCalibrate){
@@ -111,9 +114,14 @@ void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
     if(0 == gADT.data_lock)
     {
       //replaces the data by the ones of ADC1 
-      buffer[1] = adc_sample_1_copy[0];
-      buffer[2] = adc_sample_1_copy[1];
-      buffer[3] = adc_sample_1_copy[2];
+      // if((gBrushCfg.StateIterator == 4) || (gBrushCfg.StateIterator == 5)){
+      //   current = (uint16_t)(0.99 * (float)current + 0.01 * (float)adc_sample_1_copy[0]);
+      //   current2 = (uint16_t)(0.99 * (float)current2 + 0.01 * (float)current);
+      // }
+      // buffer[1] = current;
+      // buffer[2] = adc_sample_1_copy[0];
+      // buffer[3] = current2;
+      //buffer[3] = adc_sample_1_copy[2];
       Adt_Insert_Data(&gADT,buffer,n,zc_detect);
     }
 

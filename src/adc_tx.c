@@ -67,7 +67,7 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size,uint8_t zc)
       adt->data[0][adt->data_idx] = input_data[ adt->nb_channels * i];
       adt->data[1][adt->data_idx] = input_data[ adt->nb_channels * i +1];
       adt->data[2][adt->data_idx] = input_data[ adt->nb_channels * i +2];
-      adt->data[3][adt->data_idx] = input_data[ adt->nb_channels * i +3];
+      adt->data[3][adt->data_idx] = (uint16_t)((uint32_t)input_data[ adt->nb_channels * i +2] + (uint32_t)input_data[ adt->nb_channels * i +1] + (uint32_t)input_data[ adt->nb_channels * i +0]);
 
       // if(zc){
       //   adt->data[MeasurementArray[gBrushCfg.StateIterator]][adt->data_idx] = 0;
