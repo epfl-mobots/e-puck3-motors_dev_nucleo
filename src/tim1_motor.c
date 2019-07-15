@@ -21,7 +21,7 @@
 
 BrushlessConfig gBrushCfg = {
 
-    .RotationDir=kCW,
+    .RotationDir=kCCW,
     .StateIterator=0,
     .InStepCount = 0,
     .kMaxStepCount = 55,
@@ -50,8 +50,8 @@ BrushlessConfig gBrushCfg = {
     .kChannelStateArray[kPhaseWV] = {kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_High},
 
     .kChannelMeasureArray = {0, 1, 2, 0, 1, 2, 0},
-    .kchannelSlope         = {1, 0, 1, 0, 1 ,0, 1},
-    .kchannelOffset       = {0, 0, 15},
+    .kchannelSlope         = {0, 1, 0, 1, 0 ,1, 0},
+    .kchannelOffset       = {1, 8, 25},
 
     /* PWM Double from scratch */
 /*    .kChannelStateArray[kPhaseUV] = {kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_Low,kTimCh_Low},
@@ -203,7 +203,7 @@ void timer1Start()
     // TIMER 1 Config
     pwmStart(&PWMD1, &tim_1_cfg); // WARNING : PWM MODE 1 BY DEFAULT AND MOE SET TO 1 !!
     timer_1_pwm_config();
-    pwmEnablePeriodicNotification(&PWMD1); // Enable the Update Event interruption
+    pwmDisablePeriodicNotification(&PWMD1); // Enable the Update Event interruption
 }
 
 
@@ -345,7 +345,7 @@ void timer_1_pwm_config (void)
     (&PWMD1)->tim->CR1 &= (~STM32_TIM_CR1_CMS(0));  // Edge-aligned mode
     (&PWMD1)->tim->CR1 &= (~STM32_TIM_CR1_DIR);     // Direction : upcounter
     (&PWMD1)->tim->PSC =  0;                        // Set the prescaler to 0 TIM_FREQ = 216 MHz
-    (&PWMD1)->tim->ARR =  PERIOD_PWM_32_KHZ - 1;    // Set the period of our PWM
+    (&PWMD1)->tim->ARR =  PERIOD_PWM_52_KHZ - 1;    // Set the period of our PWM
 
     (&PWMD1)->tim->CR1 &= (~STM32_TIM_CR1_ARPE);    // Remove the ARPE
     (&PWMD1)->tim->CR2 |= STM32_TIM_CR2_CCPC;       // Enable the Preload of the CxE,CxNE bits
@@ -366,7 +366,7 @@ void timer_1_pwm_config (void)
     (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kFrozen);  // OC1 Mode : Frozen
     (&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC1FE); // Disable the Fast Mode
     (&PWMD1)->tim->CCMR1 |= STM32_TIM_CCMR1_OC1PE;    // Enable the Preload -> CCR is loaded in the active register at each update event
-    // (&PWMD1)->tim->CCR[kTimChannel1] =  PERIOD_PWM_32_KHZ/2 - 1;  // Select the Half-period to overflow
+    // (&PWMD1)->tim->CCR[kTimChannel1] =  PERIOD_PWM_52_KHZ/2 - 1;  // Select the Half-period to overflow
 
     // Channel 2 Config
     (&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC2P);    // OC2 Polarity  : Active High
@@ -376,7 +376,7 @@ void timer_1_pwm_config (void)
     (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(kFrozen);  // OC2 Mode : Frozen
     (&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC2FE); // Disable the Fast Mode
     (&PWMD1)->tim->CCMR1 |= STM32_TIM_CCMR1_OC2PE;    // Enable the Preload
-    // (&PWMD1)->tim->CCR[kTimChannel2] =  PERIOD_PWM_32_KHZ/4 - 1;  // Select the Quarter-period to overflow
+    // (&PWMD1)->tim->CCR[kTimChannel2] =  PERIOD_PWM_52_KHZ/4 - 1;  // Select the Quarter-period to overflow
 
     // Channel 3 Config
     (&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC3P);    // OC3 Polarity  : Active High
@@ -386,7 +386,7 @@ void timer_1_pwm_config (void)
     (&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(kFrozen);  // OC3 Mode : Frozen
     (&PWMD1)->tim->CCMR2 &= (~STM32_TIM_CCMR2_OC3FE); // Disable the Fast Mode
     (&PWMD1)->tim->CCMR2 |= STM32_TIM_CCMR2_OC3PE;    // Enable the Preload
-    // (&PWMD1)->tim->CCR[kTimChannel3]  =  PERIOD_PWM_32_KHZ/8 - 1;  // Select the 1/8 period to overflow
+    // (&PWMD1)->tim->CCR[kTimChannel3]  =  PERIOD_PWM_52_KHZ/8 - 1;  // Select the 1/8 period to overflow
 
     // Channel 4 Config (for ADC trigger)
     (&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC4P);    // OC4  Polarity : Active High
@@ -411,10 +411,10 @@ void timer_1_pwm_config (void)
 
 
     // ChibiOS - Style
-    pwmEnableChannel(&PWMD1, kTimChannel4 , 0.95 * PERIOD_PWM_32_KHZ - 1);                 // Enabled to allow HAL support
+    pwmEnableChannel(&PWMD1, kTimChannel4 , 0.75 * PERIOD_PWM_52_KHZ - 1);                 // Enabled to allow HAL support
     pwmEnableChannelNotification(&PWMD1, kTimChannel4);         // Enable the callback to be called for the specific channel
   
-    pwmEnableChannel(&PWMD1, kTimChannel6 , 0.86 * PERIOD_PWM_32_KHZ - 1);                 // Enabled to allow HAL support
+    pwmEnableChannel(&PWMD1, kTimChannel6 , 0.20 * PERIOD_PWM_52_KHZ - 1);                 // Enabled to allow HAL support
     
     // Break stage configuration
 
@@ -444,6 +444,30 @@ void timer_1_pwm_config (void)
 
     chVTObjectInit(&gBrushCfg.ramp_vt);  // Init the virtual timer
     chVTObjectInit(&gBrushCfg.calibration_vt); // Init the virtual timer
+
+    /* Timer 1 config */
+
+    /* Set all the OC output to same PWM */
+    (&PWMD1)->tim->CCR[kTimChannel1]  =  0.9 * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
+    (&PWMD1)->tim->CCR[kTimChannel2]  =  0.9 * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
+    (&PWMD1)->tim->CCR[kTimChannel3]  =  0.9 * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
+
+    // Force update event (if preload enabled)
+    (&PWMD1)->tim->EGR |= STM32_TIM_EGR_UG;
+
+    /* Configure the mode of each channel */
+    (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kPWMMode2);  // OC1 Mode : PWM Mode 2
+    (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(kPWMMode2);  // OC2 Mode : PWM Mode 2
+    (&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(kPWMMode2);  // OC3 Mode : PWM Mode 2
+
+    // Force update event (if preload enabled)
+    (&PWMD1)->tim->EGR |= STM32_TIM_EGR_COMG;
+
+    gBrushCfg.Mode = kEndless;
+    gBrushCfg.StateIterator = 0;
+    commutation_zc_reset(&gBrushCfg);
+    gBrushCfg.ZCNextCommut = gBrushCfg.TimeBLDCCommut + 100;
+    brushcfg_SetZCFlag(&gBrushCfg);
 }
 
 
@@ -567,6 +591,7 @@ void pwm_cb_ch4(PWMDriver *pwmp)
 void commutation_cb(PWMDriver *pwmp)
 {
   (void) pwmp;
+  return;
   palClearLine(DEBUG_INT_LINE2);
   palSetLine(LD2_LINE);
   static uint8_t steps = 0;
@@ -581,9 +606,9 @@ void commutation_cb(PWMDriver *pwmp)
       /* Timer 1 config */
 
       /* Set all the OC output to same PWM */
-      (&PWMD1)->tim->CCR[kTimChannel1]  =  0.9 * PERIOD_PWM_32_KHZ - 1;  // Select the quarter-Period to overflow
-      (&PWMD1)->tim->CCR[kTimChannel2]  =  0.9 * PERIOD_PWM_32_KHZ - 1;  // Select the quarter-Period to overflow
-      (&PWMD1)->tim->CCR[kTimChannel3]  =  0.9 * PERIOD_PWM_32_KHZ - 1;  // Select the quarter-Period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel1]  =  0.9 * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel2]  =  0.9 * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
+      (&PWMD1)->tim->CCR[kTimChannel3]  =  0.9 * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
 
       // Force update event (if preload enabled)
       (&PWMD1)->tim->EGR |= STM32_TIM_EGR_UG;
@@ -640,9 +665,9 @@ void commutation_cb(PWMDriver *pwmp)
 
             gBrushCfg.Mode = kInitRamp;
             gBrushCfg.RampCurSpeed = gBrushCfg.RampMinSpeed;
-            (&PWMD1)->tim->CCR[kTimChannel1]  =  0.9 * PERIOD_PWM_32_KHZ - 1;  // Select the quarter-Period to overflow
-            (&PWMD1)->tim->CCR[kTimChannel2]  =  0.9 * PERIOD_PWM_32_KHZ - 1;  // Select the quarter-Period to overflow
-            (&PWMD1)->tim->CCR[kTimChannel3]  =  0.9 * PERIOD_PWM_32_KHZ - 1;  // Select the quarter-Period to overflow
+            (&PWMD1)->tim->CCR[kTimChannel1]  =  0.9 * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
+            (&PWMD1)->tim->CCR[kTimChannel2]  =  0.9 * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
+            (&PWMD1)->tim->CCR[kTimChannel3]  =  0.9 * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
           }else{
             //do the next step
             gBrushCfg.CalibrationState = 0;

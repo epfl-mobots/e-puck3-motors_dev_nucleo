@@ -164,11 +164,11 @@ static void cmd_sample_time(BaseSequentialStream *chp, int argc, char *argv[])
     }else if (width > 100){
     	width = 100;
     }
-    PWMD1.tim->CCXR[1] = (width * PERIOD_PWM_32_KHZ / 100) - 1;
+    PWMD1.tim->CCXR[1] = (width * PERIOD_PWM_52_KHZ / 100) - 1;
   }
   else
   {
-      chprintf(chp, "Sampling time: %d%" SHELL_NEWLINE_STR, (PWMD1.tim->CCXR[1]+1)*100/PERIOD_PWM_32_KHZ);
+      chprintf(chp, "Sampling time: %d%" SHELL_NEWLINE_STR, (PWMD1.tim->CCXR[1]+1)*100/PERIOD_PWM_52_KHZ);
   }
 }
 

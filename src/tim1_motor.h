@@ -238,7 +238,7 @@ void    brushcfg_ComputeZCPeriod    (BrushlessConfig* bcfg);
 /*===========================================================================*/
 /* Misc.                                                                     */
 /*===========================================================================*/
-
+void commutation_nextstep(BrushlessConfig *pBrushCfg);
 void commutation_cb (PWMDriver *pwmp);
 void pwm_cb_ch4(PWMDriver *pwmp);
 void timer_1_pwm_config (void);

@@ -122,9 +122,9 @@ void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
       // buffer[2] = adc_sample_1_copy[0];
       // buffer[3] = current2;
       //buffer[3] = adc_sample_1_copy[2];
-      buffer[0] = adc_sample_1_copy[0];
-      buffer[1] = adc_sample_1_copy[1];
-      buffer[2] = adc_sample_1_copy[2];
+      // buffer[0] = adc_sample_1_copy[0];
+      // buffer[1] = adc_sample_1_copy[1];
+      // buffer[2] = adc_sample_1_copy[2];
       Adt_Insert_Data(&gADT,buffer,n,zc_detect);
     }
 
