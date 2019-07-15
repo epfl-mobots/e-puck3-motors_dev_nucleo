@@ -50,6 +50,8 @@ BrushlessConfig gBrushCfg = {
     .kChannelStateArray[kPhaseWV] = {kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_High},
 
     .kChannelMeasureArray = {0, 1, 2, 0, 1, 2, 0},
+    .kchannelSlope         = {1, 0, 1, 0, 1 ,0, 1},
+    .kchannelOffset       = {0, 0, 15},
 
     /* PWM Double from scratch */
 /*    .kChannelStateArray[kPhaseUV] = {kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_Low,kTimCh_Low},
@@ -184,7 +186,11 @@ void brushcfg_ComputeZCPeriod (BrushlessConfig* bcfg)
   bcfg->ZCPeriod    = bcfg->ZCDetect - bcfg->ZCDetectOld;
   //bcfg->ZCPeriodMean = ((bcfg->ZCPeriodOld + bcfg->ZCPeriod) >> 1);
   bcfg->ZCPeriodMean = (0.95 * (float)bcfg->ZCPeriodMean + 0.05 * (float)bcfg->ZCPeriod);
+  // if(((float)bcfg->ZCPeriod / (float)bcfg->ZCPeriodOld) < 0.5){
+  //   bcfg->ZCPeriod = bcfg->ZCPeriodOld;
+  // }
   bcfg->ZCNextCommut = bcfg->TimeBLDCCommut + (bcfg->ZCPeriod * bcfg->ZCTiming);
+
 
 }
 
@@ -256,14 +262,14 @@ static void tim_1_oc_cmd(TimChannel aChannel,TimChannelState aState)
     {
       palClearLine(gBrushCfg.P_Channels[aChannel]);
       palSetLineMode(gBrushCfg.P_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
-      (&PWMD1)->tim->CCER &= (~lCCEnable);
+      //(&PWMD1)->tim->CCER &= (~lCCEnable);
       break;
     }
     case kTimCh_High:
     {
       palSetLine(gBrushCfg.P_Channels[aChannel]);
       palSetLineMode(gBrushCfg.P_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
-      (&PWMD1)->tim->CCER &= (~lCCEnable);
+      //(&PWMD1)->tim->CCER &= (~lCCEnable);
       break;
     }
     case kTimCh_PWM:
@@ -313,14 +319,14 @@ static void tim_1_ocn_cmd(TimChannel aChannel,TimChannelState aState)
     {
       palClearLine(gBrushCfg.N_Channels[aChannel]);
       palSetLineMode(gBrushCfg.N_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
-      (&PWMD1)->tim->CCER &= (~lCCNEnable);
+      //(&PWMD1)->tim->CCER &= (~lCCNEnable);
       break;
     }
     case kTimCh_High:
     {
       palSetLine(gBrushCfg.N_Channels[aChannel]);
       palSetLineMode(gBrushCfg.N_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
-      (&PWMD1)->tim->CCER &= (~lCCNEnable);
+      //(&PWMD1)->tim->CCER &= (~lCCNEnable);
       break;
     }
     case kTimCh_PWM:
@@ -408,7 +414,7 @@ void timer_1_pwm_config (void)
     pwmEnableChannel(&PWMD1, kTimChannel4 , 0.95 * PERIOD_PWM_32_KHZ - 1);                 // Enabled to allow HAL support
     pwmEnableChannelNotification(&PWMD1, kTimChannel4);         // Enable the callback to be called for the specific channel
   
-    pwmEnableChannel(&PWMD1, kTimChannel6 , 0.95 * PERIOD_PWM_32_KHZ - 1);                 // Enabled to allow HAL support
+    pwmEnableChannel(&PWMD1, kTimChannel6 , 0.86 * PERIOD_PWM_32_KHZ - 1);                 // Enabled to allow HAL support
     
     // Break stage configuration
 
@@ -463,6 +469,7 @@ void commutation_step(BrushlessConfig *pBrushCfg)
   pBrushCfg->InStepCount = 0;
 }
 
+extern uint8_t flag2;
 
 void commutation_nextstep(BrushlessConfig *pBrushCfg)
 {
@@ -488,10 +495,17 @@ void commutation_nextstep(BrushlessConfig *pBrushCfg)
         if(1== pBrushCfg->ZCFlag)
         {
           pBrushCfg->ZCFlag=0; // Reset zero-crossing flag
+          flag2 = 0;
           commutation_step(pBrushCfg);
           zcs_ext_reset();
           gBrushCfg.ZCVCount++;
           gBrushCfg.ZCNextCommut = gBrushCfg.TimeBLDCCommut + (COEF_MARGIN * gBrushCfg.ZCPeriodMean);
+          tim_1_oc_cmd(kTimChannel1 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][0]);
+          tim_1_ocn_cmd(kTimChannel1,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][1]);
+          tim_1_oc_cmd(kTimChannel2 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][2]);
+          tim_1_ocn_cmd(kTimChannel2,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][3]);
+          tim_1_oc_cmd(kTimChannel3 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][4]);
+          tim_1_ocn_cmd(kTimChannel3,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][5]);
         }
         else
         {
@@ -499,6 +513,16 @@ void commutation_nextstep(BrushlessConfig *pBrushCfg)
         }
       }
       break;
+      //     pBrushCfg->InStepCount++;
+      // if (pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount)
+      // {
+      //   commutation_step(pBrushCfg);
+      //   if(1==gBrushCfg.ZCFlag){
+      //     gBrushCfg.ZCFlag = 0;
+      //     gBrushCfg.ZCVCount++;
+      //   }
+      // }
+      // break;
     default:
       break;
   }
@@ -684,13 +708,6 @@ void commutation_cb(PWMDriver *pwmp)
     case kEndless:
     {
       gBrushCfg.TimeBLDCCommut++;
-
-      tim_1_oc_cmd(kTimChannel1 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][0]);
-      tim_1_ocn_cmd(kTimChannel1,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][1]);
-      tim_1_oc_cmd(kTimChannel2 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][2]);
-      tim_1_ocn_cmd(kTimChannel2,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][3]);
-      tim_1_oc_cmd(kTimChannel3 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][4]);
-      tim_1_ocn_cmd(kTimChannel3,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][5]);
 
       commutation_nextstep(&gBrushCfg);
       break;

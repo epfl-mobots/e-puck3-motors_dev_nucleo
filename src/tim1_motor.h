@@ -163,6 +163,8 @@ typedef struct
   int32_t StateIterator;
   const TimChannelState kChannelStateArray[NB_STATE][NB_CHANNELS]; // Each phase has a P and N channel
   const uint8_t kChannelMeasureArray[NB_STATE]; // To know which channel to measure
+  const uint8_t kchannelSlope[NB_STATE];
+  uint16_t kchannelOffset[NB_PHASE];
   uint16_t kChannelNeutralPoint[NB_STATE];  // To store the calibration values of the neutral points
 
   /* Ramp speed */

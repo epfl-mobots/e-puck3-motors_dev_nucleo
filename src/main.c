@@ -235,7 +235,7 @@ int main(void) {
 			//spawns the shell if the usb is connected
 			spawn_shell();
 		}
-		chThdSleepMilliseconds(1);
+		chThdSleepMilliseconds(10);
     data = encodersGetData();
 
     static float percent = 90;
@@ -248,12 +248,12 @@ int main(void) {
       (&PWMD1)->tim->CCR[kTimChannel1]  =  (percent/100) * PERIOD_PWM_32_KHZ - 1;  // Select the quarter-Period to overflow
       (&PWMD1)->tim->CCR[kTimChannel2]  =  (percent/100) * PERIOD_PWM_32_KHZ - 1;  // Select the quarter-Period to overflow
       (&PWMD1)->tim->CCR[kTimChannel3]  =  (percent/100) * PERIOD_PWM_32_KHZ - 1;  // Select the quarter-Period to overflow
-      PWMD1.tim->CCXR[1] = (((percent+100)/200) * PERIOD_PWM_32_KHZ) - 1;
+      PWMD1.tim->CCXR[1] = (((percent-4)/100) * PERIOD_PWM_32_KHZ) - 1;
 
       chprintf((BaseSequentialStream *)&USB_GDB, "duty cycle = %f\r\n",100-percent);
       chThdSleepMilliseconds(500);
     }
-
+    //chprintf((BaseSequentialStream *)&USB_GDB,"step = %d\n",gBrushCfg.ZCPeriod);
     //chprintf((BaseSequentialStream *) &USB_GDB, "Hi = %d, Lo = %d, Angle 1 = %.2f, Hi = %d, Lo = %d, Angle 2 = %.2f\n",data[0].alarm_hi, data[0].alarm_lo, data[0].angle, data[1].alarm_hi, data[1].alarm_lo, data[1].angle);
     //chprintf((BaseSequentialStream *)&USB_GDB, "averages : %d %d %d %d %d %d\r\n",gBrushCfg.kChannelNeutralPoint[1], gBrushCfg.kChannelNeutralPoint[2],gBrushCfg.kChannelNeutralPoint[3],gBrushCfg.kChannelNeutralPoint[4],gBrushCfg.kChannelNeutralPoint[5],gBrushCfg.kChannelNeutralPoint[6]);
    

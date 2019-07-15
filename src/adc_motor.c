@@ -63,9 +63,9 @@ static const ADCConversionGroup ADC1group = {
              ADC_SMPR2_SMP_AN2(ADC_SAMPLE_3),
     .sqr1 = ADC_SQR1_NUM_CH(3),
     .sqr2 = 0,
-    .sqr3 = ADC_SQR3_SQ1_N(ADC_CHANNEL_IN4)|
-            ADC_SQR3_SQ2_N(ADC_CHANNEL_IN5)|
-            ADC_SQR3_SQ3_N(ADC_CHANNEL_IN6),
+    .sqr3 = ADC_SQR3_SQ1_N(ADC_CHANNEL_IN0)|
+            ADC_SQR3_SQ2_N(ADC_CHANNEL_IN1)|
+            ADC_SQR3_SQ3_N(ADC_CHANNEL_IN2),
 };
 
 
@@ -107,7 +107,7 @@ void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
     }else{
         // Zero-crossing and slope detection
         Zcs_Insert_Data(&gZCS,buffer,n);
-        zc_detect = Zcs_Detect(&gZCS);
+        zc_detect = Zcs_Detect(&gZCS, adc_sample_1_copy);
     }
 
     // Data transmission
@@ -122,6 +122,9 @@ void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
       // buffer[2] = adc_sample_1_copy[0];
       // buffer[3] = current2;
       //buffer[3] = adc_sample_1_copy[2];
+      buffer[0] = adc_sample_1_copy[0];
+      buffer[1] = adc_sample_1_copy[1];
+      buffer[2] = adc_sample_1_copy[2];
       Adt_Insert_Data(&gADT,buffer,n,zc_detect);
     }
 

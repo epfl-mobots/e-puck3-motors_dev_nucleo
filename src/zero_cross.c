@@ -93,8 +93,8 @@ void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size)
 
 }
 
-
-uint8_t Zcs_Detect(ZCSDetect* zcs)
+uint8_t flag2 = 0;
+uint8_t Zcs_Detect(ZCSDetect* zcs, uint16_t * buffer)
 {
 
   static volatile uint8_t  MeasurementArrayHigh[NB_STATE] = {0,0,0,2,2,1,1};
@@ -109,6 +109,8 @@ uint8_t Zcs_Detect(ZCSDetect* zcs)
   static uint16_t lhalf_bus = ZC_HALF_BUS;
   static int32_t  lStateIterator = 0;
 
+  static uint8_t count2 = 0;
+
   uint16_t ret_val = 0;
 
   lStateIterator = brushcfg_GetStateIterator(&gBrushCfg);
@@ -119,25 +121,60 @@ uint8_t Zcs_Detect(ZCSDetect* zcs)
   lhalf_bus = LOW_PASS_COEFF_A * lhalf_bus + LOW_PASS_COEFF_B * (lhighest_voltage + llowest_voltage)/2;
 
 
-  // Check if the sign has changed between old measurement and actual
-  if(zcs->data_idx > TWO_ELEM_IDX && !gBrushCfg.ZCFlag)
-  {
-    // lCurMeasure = (int32_t) zcs->data[MeasureChannel][LATEST_DATA(zcs->data_idx)]   - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
-    // lOldMeasure = (int32_t) zcs->data[MeasureChannel][PREVIOUS_DATA(zcs->data_idx)] - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
-    lCurMeasure = (int32_t) zcs->data[MeasureChannel][LATEST_DATA(zcs->data_idx)]   - gBrushCfg.kChannelNeutralPoint[lStateIterator];
-    lOldMeasure = (int32_t) zcs->data[MeasureChannel][PREVIOUS_DATA(zcs->data_idx)] - gBrushCfg.kChannelNeutralPoint[lStateIterator];
-    
-    lChangeSign = ((lOldMeasure ^ lCurMeasure) < 0); // TRUE if sign has changed
-     //gBrushCfg.ZCFlag |= lChangeSign;
-    ret_val = (MeasureChannel + 1)*lChangeSign;
-  }
+  // if((((&PWMD1)->tim->CCR[kTimChannel1]+1)*100/PERIOD_PWM_32_KHZ) < 50){
+  //   // Check if the sign has changed between old measurement and actual
+  //   if(zcs->data_idx > TWO_ELEM_IDX && !gBrushCfg.ZCFlag)
+  //   {
+  //     lCurMeasure = (int32_t) zcs->data[MeasureChannel][LATEST_DATA(zcs->data_idx)]   - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
+  //     lOldMeasure = (int32_t) zcs->data[MeasureChannel][PREVIOUS_DATA(zcs->data_idx)] - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
+  //     // lCurMeasure = (int32_t) zcs->data[MeasureChannel][LATEST_DATA(zcs->data_idx)]   - gBrushCfg.kChannelNeutralPoint[lStateIterator];
+  //     // lOldMeasure = (int32_t) zcs->data[MeasureChannel][PREVIOUS_DATA(zcs->data_idx)] - gBrushCfg.kChannelNeutralPoint[lStateIterator];
+      
+  //     lChangeSign = ((lOldMeasure ^ lCurMeasure) < 0); // TRUE if sign has changed
+  //      //gBrushCfg.ZCFlag |= lChangeSign;
+  //     ret_val = (MeasureChannel + 1)*lChangeSign;
+
+  //     if(ret_val > 0)
+  //     {
+  //       brushcfg_ComputeZCPeriod(&gBrushCfg);
+  //       brushcfg_SetZCFlag(&gBrushCfg);
+  //     }
+  //   }
+  // }else{
+    ret_val = 0;
+    if(!gBrushCfg.ZCFlag)
+    {
+      if(count2 > 1){
+        if(gBrushCfg.kchannelSlope[lStateIterator] == 0){
+          if(buffer[MeasureChannel] > gBrushCfg.kchannelOffset[MeasureChannel]){
+            ret_val = (MeasureChannel + 1);
+            brushcfg_ComputeZCPeriod(&gBrushCfg);
+            brushcfg_SetZCFlag(&gBrushCfg);
+            count2 = 0;
+          }
+        }else{
+          if(buffer[MeasureChannel] <= gBrushCfg.kchannelOffset[MeasureChannel]){
+            ret_val = (MeasureChannel + 1);
+            brushcfg_ComputeZCPeriod(&gBrushCfg);
+            brushcfg_SetZCFlag(&gBrushCfg);
+            count2 = 0;
+          }
+        }
+      }else{
+        count2++;
+      }
+    }
+  // }
+  
+
+  
 
 
-  if(ret_val > 0)
-  {
-    brushcfg_ComputeZCPeriod(&gBrushCfg);
-    brushcfg_SetZCFlag(&gBrushCfg);
-  }
+  // if(ret_val > 0)
+  // {
+  //   brushcfg_ComputeZCPeriod(&gBrushCfg);
+  //   brushcfg_SetZCFlag(&gBrushCfg);
+  // }
 
   return ret_val;
 

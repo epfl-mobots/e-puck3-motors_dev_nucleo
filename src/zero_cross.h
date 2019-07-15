@@ -63,7 +63,7 @@ void Zcs_Reset_Average(void);
 void Zcs_Average(uint16_t* input_data, size_t size);
 void Zcs_Reset_Struct(ZCSDetect* zcs);
 void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size);
-uint8_t Zcs_Detect(ZCSDetect* zcs);
+uint8_t Zcs_Detect(ZCSDetect* zcs, uint16_t * buffer);
 void zcs_ext_reset(void);
 
 /*===========================================================================*/
