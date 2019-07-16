@@ -18,16 +18,18 @@ static adcsample_t adc_sample_1[3 * 2];
 static adcsample_t adc_sample_1_copy[3];
 
 
+//first four are on PMWon and the remaining four are on PWMoff of the next cycle...
+//phase1ON, phase2ON, phase3ON, neutralON, phase1+1OFF, phase2+1OFF, phase3+1OFF, neutral+1OFF,
 /* ADC 3 Configuration */
 static const ADCConversionGroup ADC3group = {
     .circular = true,
-    .num_channels = ADC_GRP3_NUM_CHANNELS,
+    .num_channels = ADC_GRP3_NUM_CHANNELS * 2,
     .end_cb = adc_3_cb,
     .error_cb = adc_3_err_cb,
-    .cr1 = ADC_CR1_EOCIE,   /*End of Conversion interruption ,No OVR int,12 bit resolution,no AWDG/JAWDG,*/
+    .cr1 = ADC_CR1_DISCEN | ((ADC_GRP3_NUM_CHANNELS-1) << ADC_CR1_DISCNUM_Pos),   /*End of Conversion interruption ,No OVR int,12 bit resolution,no AWDG/JAWDG,*/
     .cr2 = //ADC_CR2_SWSTART      | /* manual start of regular channels,EOC is set at end of each sequence^,no OVR detect */
            ADC_CR2_EXTEN_BOTH             |  /* We need both as OCxREF don't behave as expected */
-           ADC_CR2_EXTSEL_SRC(kTimer1_TRGO)|  /* External trigger is from Timer 1 TRGO 2*/
+           ADC_CR2_EXTSEL_SRC(kTimer1_TRGO2)|  /* External trigger is from Timer 1 TRGO 2*/
            0,                       /**/
     .htr = 0,
     .ltr = 0,
@@ -35,13 +37,20 @@ static const ADCConversionGroup ADC3group = {
     .smpr2 = ADC_SMPR2_SMP_AN0(ADC_SAMPLE_3)|
              ADC_SMPR2_SMP_AN1(ADC_SAMPLE_3)|
              ADC_SMPR2_SMP_AN2(ADC_SAMPLE_3)|
-             ADC_SMPR2_SMP_AN3(ADC_SAMPLE_3),
-    .sqr1 = ADC_SQR1_NUM_CH(ADC_GRP3_NUM_CHANNELS),
-    .sqr2 = 0,
+             ADC_SMPR2_SMP_AN3(ADC_SAMPLE_3)|
+             ADC_SMPR2_SMP_AN4(ADC_SAMPLE_3)|
+             ADC_SMPR2_SMP_AN5(ADC_SAMPLE_3)|
+             ADC_SMPR2_SMP_AN6(ADC_SAMPLE_3)|
+             ADC_SMPR2_SMP_AN7(ADC_SAMPLE_3),
+    .sqr1 = ADC_SQR1_NUM_CH(ADC_GRP3_NUM_CHANNELS * 2),
     .sqr3 = ADC_SQR3_SQ1_N(ADC_CHANNEL_IN0)|
             ADC_SQR3_SQ2_N(ADC_CHANNEL_IN1)|
             ADC_SQR3_SQ3_N(ADC_CHANNEL_IN2)|
-            ADC_SQR3_SQ4_N(ADC_CHANNEL_IN3),
+            ADC_SQR3_SQ4_N(ADC_CHANNEL_IN3)|
+            ADC_SQR3_SQ5_N(ADC_CHANNEL_IN0)|
+            ADC_SQR3_SQ6_N(ADC_CHANNEL_IN1),
+    .sqr2 = ADC_SQR2_SQ7_N(ADC_CHANNEL_IN2)|
+            ADC_SQR2_SQ8_N(ADC_CHANNEL_IN3),
 };
 
 /* ADC 1 Configuration */
@@ -53,7 +62,7 @@ static const ADCConversionGroup ADC1group = {
     .cr1 = ADC_CR1_EOCIE,   /*End of Conversion interruption ,No OVR int,12 bit resolution,no AWDG/JAWDG,*/
     .cr2 = //ADC_CR2_SWSTART      | /* manual start of regular channels,EOC is set at end of each sequence^,no OVR detect */
            ADC_CR2_EXTEN_BOTH             |  /* We need both as OCxREF don't behave as expected */
-           ADC_CR2_EXTSEL_SRC(kTimer1_TRGO2)|  /* External trigger is from Timer 1 TRGO 2*/
+           ADC_CR2_EXTSEL_SRC(kTimer1_TRGO)|  /* External trigger is from Timer 1 TRGO 2*/
            0,                       /**/
     .htr = 0,
     .ltr = 0,
@@ -107,7 +116,7 @@ void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
     }else{
         // Zero-crossing and slope detection
         Zcs_Insert_Data(&gZCS,buffer,n);
-        zc_detect = Zcs_Detect(&gZCS, adc_sample_1_copy);
+        zc_detect = Zcs_Detect(&gZCS);
     }
 
     // Data transmission
@@ -155,6 +164,6 @@ void adc3Start()
     /*
      * Launch the conversion (to get the buffer configured)
      */
-    adcStartConversion(&ADCD3, &ADC3group, adc_sample_3,ADC_GRP3_BUF_DEPTH);
-    adcStartConversion(&ADCD1, &ADC1group, adc_sample_1,1);
+    adcStartConversion(&ADCD3, &ADC3group, adc_sample_3,2);
+    //adcStartConversion(&ADCD1, &ADC1group, adc_sample_1,1);
 }

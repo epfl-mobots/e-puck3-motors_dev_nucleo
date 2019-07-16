@@ -24,7 +24,7 @@ BrushlessConfig gBrushCfg = {
     .RotationDir=kCCW,
     .StateIterator=0,
     .InStepCount = 0,
-    .kMaxStepCount = 55,
+    .kMaxStepCount = 100,
     .kDefaultIOConfig = PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1),
     .Mode = kInitCfg,
 
@@ -50,7 +50,7 @@ BrushlessConfig gBrushCfg = {
     .kChannelStateArray[kPhaseWV] = {kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_High},
 
     .kChannelMeasureArray = {0, 1, 2, 0, 1, 2, 0},
-    .kchannelSlope         = {0, 1, 0, 1, 0 ,1, 0},
+    .kchannelSlope         = {0, 1, 0, 1, 0 ,1, 0}, //invert for KCW
     .kchannelOffset       = {1, 8, 25},
 
     /* PWM Double from scratch */
@@ -398,7 +398,7 @@ void timer_1_pwm_config (void)
 
     (&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC6P);    // OC6  Polarity : Active High
     (&PWMD1)->tim->CR2  &= (~STM32_TIM_CR2_OIS6);     // OC6 Idle State (when MOE=0): 0
-    (&PWMD1)->tim->CCMR3|=  STM32_TIM_CCMR3_OC6M(kPWMMode2);  // OC6 Mode : PWM Mode 1
+    (&PWMD1)->tim->CCMR3|=  STM32_TIM_CCMR3_OC6M(kPWMMode1);  // OC6 Mode : PWM Mode 1
     (&PWMD1)->tim->CCMR3 |= STM32_TIM_CCMR3_OC6PE;    // Enable the Preload -> CCR is loaded in the active register at each update event
     (&PWMD1)->tim->CCMR3 &= (~STM32_TIM_CCMR3_OC6FE); // Disable the Fast Mode
 
@@ -411,10 +411,10 @@ void timer_1_pwm_config (void)
 
 
     // ChibiOS - Style
-    pwmEnableChannel(&PWMD1, kTimChannel4 , 0.75 * PERIOD_PWM_52_KHZ - 1);                 // Enabled to allow HAL support
+    pwmEnableChannel(&PWMD1, kTimChannel4 , 0.20 * PERIOD_PWM_52_KHZ - 1);                 // Enabled to allow HAL support
     pwmEnableChannelNotification(&PWMD1, kTimChannel4);         // Enable the callback to be called for the specific channel
   
-    pwmEnableChannel(&PWMD1, kTimChannel6 , 0.20 * PERIOD_PWM_52_KHZ - 1);                 // Enabled to allow HAL support
+    pwmEnableChannel(&PWMD1, kTimChannel6 , 0.75 * PERIOD_PWM_52_KHZ - 1);                 // Enabled to allow HAL support
     
     // Break stage configuration
 
@@ -429,9 +429,12 @@ void timer_1_pwm_config (void)
 
     // Select OC4REF as TRGO2
     //(&PWMD1)->tim->CR2 |= STM32_TIM_CR2_MMS2(7); // Master Mode Selection 2 : OC4REF
-    (&PWMD1)->tim->CR2 |= STM32_TIM_CR2_MMS(7); // Master Mode Selection 1 : OC4REF
-    (&PWMD1)->tim->CR2 |= STM32_TIM_CR2_MMS2(9); // Master Mode Selection 2 : OC6REF
-    //(&PWMD1)->tim->CR2 |= STM32_TIM_CR2_MMS2(13); // Master Mode Selection 2 : OC44REF Rising or OC6REF falling
+
+    // (&PWMD1)->tim->CR2 |= STM32_TIM_CR2_MMS(7); // Master Mode Selection 1 : OC4REF
+    // (&PWMD1)->tim->CR2 |= STM32_TIM_CR2_MMS2(9); // Master Mode Selection 2 : OC6REF
+
+    (&PWMD1)->tim->CR2 |= STM32_TIM_CR2_MMS(2); // Master Mode Selection 1 : Update event
+    (&PWMD1)->tim->CR2 |= STM32_TIM_CR2_MMS2(13); // Master Mode Selection 2 : OC4REF Rising or OC6REF falling
 
     // Force update event (if preload enabled)
     (&PWMD1)->tim->EGR |= STM32_TIM_EGR_UG;
@@ -541,6 +544,12 @@ void commutation_nextstep(BrushlessConfig *pBrushCfg)
       // if (pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount)
       // {
       //   commutation_step(pBrushCfg);
+      //   tim_1_oc_cmd(kTimChannel1 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][0]);
+      //   tim_1_ocn_cmd(kTimChannel1,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][1]);
+      //   tim_1_oc_cmd(kTimChannel2 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][2]);
+      //   tim_1_ocn_cmd(kTimChannel2,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][3]);
+      //   tim_1_oc_cmd(kTimChannel3 ,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][4]);
+      //   tim_1_ocn_cmd(kTimChannel3,gBrushCfg.kChannelStateArray[gBrushCfg.StateIterator][5]);
       //   if(1==gBrushCfg.ZCFlag){
       //     gBrushCfg.ZCFlag = 0;
       //     gBrushCfg.ZCVCount++;

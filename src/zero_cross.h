@@ -41,9 +41,9 @@
 /*===========================================================================*/
 typedef struct
 {
-  uint16_t data         [ZC_NUMBER_CHANNELS][ZC_NB_POINTS];
-  uint8_t  slope        [ZC_NUMBER_CHANNELS][ZC_NB_POINTS];
-  uint8_t  zero_crossing[ZC_NUMBER_CHANNELS];
+  uint16_t data         [ZC_NUMBER_CHANNELS * 2][ZC_NB_POINTS];
+  uint8_t  slope        [ZC_NUMBER_CHANNELS * 2][ZC_NB_POINTS];
+  uint8_t  zero_crossing[ZC_NUMBER_CHANNELS * 2];
 
   // DATA MGT
   const uint16_t nb_channels;
@@ -63,7 +63,7 @@ void Zcs_Reset_Average(void);
 void Zcs_Average(uint16_t* input_data, size_t size);
 void Zcs_Reset_Struct(ZCSDetect* zcs);
 void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size);
-uint8_t Zcs_Detect(ZCSDetect* zcs, uint16_t * buffer);
+uint8_t Zcs_Detect(ZCSDetect* zcs);
 void zcs_ext_reset(void);
 
 /*===========================================================================*/

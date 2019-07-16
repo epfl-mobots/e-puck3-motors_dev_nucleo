@@ -16,7 +16,7 @@
 
 
 #define ADC_GRP3_NUM_CHANNELS   ZC_NUMBER_CHANNELS
-#define ADC_GRP3_BUF_DEPTH      1
+#define ADC_GRP3_BUF_DEPTH      2
 
 #include "adc_tx.h"
 

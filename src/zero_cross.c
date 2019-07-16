@@ -12,7 +12,7 @@ ZCSDetect gZCS = {
     .data_idx  = 0,
     .data_left = ZC_NB_POINTS,
     // CST
-    .nb_channels = ZC_NUMBER_CHANNELS,
+    .nb_channels = ZC_NUMBER_CHANNELS * 2,
     .nb_points = ZC_NB_POINTS
 };
 
@@ -70,6 +70,10 @@ void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size)
           zcs->data[1][zcs->data_idx] = input_data[ zcs->nb_channels * i +1];
           zcs->data[2][zcs->data_idx] = input_data[ zcs->nb_channels * i +2];
           zcs->data[3][zcs->data_idx] = input_data[ zcs->nb_channels * i +3];
+          zcs->data[4][zcs->data_idx] = input_data[ zcs->nb_channels * i +4];
+          zcs->data[5][zcs->data_idx] = input_data[ zcs->nb_channels * i +5];
+          zcs->data[6][zcs->data_idx] = input_data[ zcs->nb_channels * i +6];
+          zcs->data[7][zcs->data_idx] = input_data[ zcs->nb_channels * i +7];
           zcs->data_idx += 1;
         }
         zcs->data_left -= size;
@@ -83,6 +87,10 @@ void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size)
         zcs->data[1][zcs->data_idx] = input_data[ zcs->nb_channels * i +1];
         zcs->data[2][zcs->data_idx] = input_data[ zcs->nb_channels * i +2];
         zcs->data[3][zcs->data_idx] = input_data[ zcs->nb_channels * i +3];
+        zcs->data[4][zcs->data_idx] = input_data[ zcs->nb_channels * i +4];
+        zcs->data[5][zcs->data_idx] = input_data[ zcs->nb_channels * i +5];
+        zcs->data[6][zcs->data_idx] = input_data[ zcs->nb_channels * i +6];
+        zcs->data[7][zcs->data_idx] = input_data[ zcs->nb_channels * i +7];
         zcs->data_idx += 1;
       }
       zcs->data_left -= zcs->data_left;
@@ -94,12 +102,13 @@ void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size)
 }
 
 uint8_t flag2 = 0;
-uint8_t Zcs_Detect(ZCSDetect* zcs, uint16_t * buffer)
+uint8_t Zcs_Detect(ZCSDetect* zcs)
 {
 
   static volatile uint8_t  MeasurementArrayHigh[NB_STATE] = {0,0,0,2,2,1,1};
   static volatile uint8_t  MeasurementArrayLow[NB_STATE] = {0,2,1,1,0,0,2};
-  static volatile uint8_t  MeasureChannel = 0;
+  static volatile uint8_t  MeasureChannelOff = 0;
+  uint8_t MeasureChannelOn = 0;
   int32_t lOldMeasure = 0;
   int32_t lCurMeasure = 0;
   uint8_t lChangeSign = 0; // 0 is FALSE, 1 is TRUE
@@ -114,7 +123,8 @@ uint8_t Zcs_Detect(ZCSDetect* zcs, uint16_t * buffer)
   uint16_t ret_val = 0;
 
   lStateIterator = brushcfg_GetStateIterator(&gBrushCfg);
-  MeasureChannel = gBrushCfg.kChannelMeasureArray[lStateIterator];
+  MeasureChannelOn = gBrushCfg.kChannelMeasureArray[lStateIterator];
+  MeasureChannelOff = MeasureChannelOn + 4;
 
   lhighest_voltage = zcs->data[MeasurementArrayHigh[lStateIterator]][LATEST_DATA(zcs->data_idx)];
   llowest_voltage = zcs->data[MeasurementArrayLow[lStateIterator]][LATEST_DATA(zcs->data_idx)];
@@ -125,14 +135,14 @@ uint8_t Zcs_Detect(ZCSDetect* zcs, uint16_t * buffer)
     // Check if the sign has changed between old measurement and actual
     if(zcs->data_idx > TWO_ELEM_IDX && !gBrushCfg.ZCFlag)
     {
-      lCurMeasure = (int32_t) zcs->data[MeasureChannel][LATEST_DATA(zcs->data_idx)]   - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
-      lOldMeasure = (int32_t) zcs->data[MeasureChannel][PREVIOUS_DATA(zcs->data_idx)] - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
-      // lCurMeasure = (int32_t) zcs->data[MeasureChannel][LATEST_DATA(zcs->data_idx)]   - gBrushCfg.kChannelNeutralPoint[lStateIterator];
-      // lOldMeasure = (int32_t) zcs->data[MeasureChannel][PREVIOUS_DATA(zcs->data_idx)] - gBrushCfg.kChannelNeutralPoint[lStateIterator];
+      lCurMeasure = (int32_t) zcs->data[MeasureChannelOn][LATEST_DATA(zcs->data_idx)]   - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
+      lOldMeasure = (int32_t) zcs->data[MeasureChannelOn][PREVIOUS_DATA(zcs->data_idx)] - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
+      // lCurMeasure = (int32_t) zcs->data[MeasureChannelOn][LATEST_DATA(zcs->data_idx)]   - gBrushCfg.kChannelNeutralPoint[lStateIterator];
+      // lOldMeasure = (int32_t) zcs->data[MeasureChannelOn][PREVIOUS_DATA(zcs->data_idx)] - gBrushCfg.kChannelNeutralPoint[lStateIterator];
       
       lChangeSign = ((lOldMeasure ^ lCurMeasure) < 0); // TRUE if sign has changed
        //gBrushCfg.ZCFlag |= lChangeSign;
-      ret_val = (MeasureChannel + 1)*lChangeSign;
+      ret_val = (MeasureChannelOn + 1)*lChangeSign;
 
       if(ret_val > 0)
       {
@@ -146,15 +156,15 @@ uint8_t Zcs_Detect(ZCSDetect* zcs, uint16_t * buffer)
     {
       if(count2 > 0){
         if(gBrushCfg.kchannelSlope[lStateIterator] == 0){
-          if(buffer[MeasureChannel] > gBrushCfg.kchannelOffset[MeasureChannel]){
-            ret_val = (MeasureChannel + 1);
+          if(zcs->data[MeasureChannelOff][LATEST_DATA(zcs->data_idx)] > gBrushCfg.kchannelOffset[MeasureChannelOn]){
+            ret_val = (MeasureChannelOn + 1);
             brushcfg_ComputeZCPeriod(&gBrushCfg);
             brushcfg_SetZCFlag(&gBrushCfg);
             count2 = 0;
           }
         }else{
-          if(buffer[MeasureChannel] <= gBrushCfg.kchannelOffset[MeasureChannel]){
-            ret_val = (MeasureChannel + 1);
+          if(zcs->data[MeasureChannelOff][LATEST_DATA(zcs->data_idx)] <= gBrushCfg.kchannelOffset[MeasureChannelOn]){
+            ret_val = (MeasureChannelOn + 1);
             brushcfg_ComputeZCPeriod(&gBrushCfg);
             brushcfg_SetZCFlag(&gBrushCfg);
             count2 = 0;
