@@ -52,6 +52,7 @@ BrushlessConfig gBrushCfg = {
     .kChannelMeasureArray = {0, 1, 2, 0, 1, 2, 0},
     .kchannelSlope         = {0, 1, 0, 1, 0 ,1, 0}, //invert for KCW
     .kchannelOffset       = {1, 8, 25},
+    .kchannelCurrentSense = {0, ADC_CHANNEL_IN6, ADC_CHANNEL_IN5, ADC_CHANNEL_IN5, ADC_CHANNEL_IN4, ADC_CHANNEL_IN4, ADC_CHANNEL_IN6},
 
     /* PWM Double from scratch */
 /*    .kChannelStateArray[kPhaseUV] = {kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_Low,kTimCh_Low},
@@ -261,14 +262,14 @@ static void tim_1_oc_cmd(TimChannel aChannel,TimChannelState aState)
     case kTimCh_Low:
     {
       palClearLine(gBrushCfg.P_Channels[aChannel]);
-      palSetLineMode(gBrushCfg.P_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
+      palSetLineMode(gBrushCfg.P_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
       //(&PWMD1)->tim->CCER &= (~lCCEnable);
       break;
     }
     case kTimCh_High:
     {
       palSetLine(gBrushCfg.P_Channels[aChannel]);
-      palSetLineMode(gBrushCfg.P_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
+      palSetLineMode(gBrushCfg.P_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
       //(&PWMD1)->tim->CCER &= (~lCCEnable);
       break;
     }

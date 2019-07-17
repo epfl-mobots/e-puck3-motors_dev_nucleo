@@ -166,6 +166,7 @@ typedef struct
   const uint8_t kchannelSlope[NB_STATE];
   uint16_t kchannelOffset[NB_PHASE];
   uint16_t kChannelNeutralPoint[NB_STATE];  // To store the calibration values of the neutral points
+  uint16_t kchannelCurrentSense[NB_STATE];
 
   /* Ramp speed */
 

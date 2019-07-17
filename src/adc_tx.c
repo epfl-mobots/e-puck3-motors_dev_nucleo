@@ -66,8 +66,8 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size,uint8_t zc)
     {
       adt->data[0][adt->data_idx] = input_data[ adt->nb_channels * i +0];
       adt->data[1][adt->data_idx] = input_data[ adt->nb_channels * i +1];
-      adt->data[2][adt->data_idx] = input_data[ adt->nb_channels * i +4];
-      adt->data[3][adt->data_idx] = input_data[ adt->nb_channels * i +5];
+      adt->data[2][adt->data_idx] = input_data[ adt->nb_channels * i +2];
+      adt->data[3][adt->data_idx] = input_data[ adt->nb_channels * i +3];
       // if(zc){
       //   adt->data[zc-1][adt->data_idx] = 0;
       // }
