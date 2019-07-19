@@ -41,16 +41,11 @@
 /*===========================================================================*/
 typedef struct
 {
-  uint16_t data         [ZC_NUMBER_CHANNELS * 2][ZC_NB_POINTS];
-  uint8_t  slope        [ZC_NUMBER_CHANNELS * 2][ZC_NB_POINTS];
-  uint8_t  zero_crossing[ZC_NUMBER_CHANNELS * 2];
+  uint16_t data        	[4][2][ZC_NB_POINTS];
 
-  // DATA MGT
-  const uint16_t nb_channels;
-  const uint16_t nb_points;
-  uint16_t data_left;
-  uint16_t data_idx;
-  uint8_t  data_full;
+  uint16_t data_left	[4];
+  uint16_t data_idx		[4];
+
 
 }ZCSDetect;
 
@@ -61,10 +56,10 @@ typedef struct
 uint16_t Zcs_Get_average(void);
 void Zcs_Reset_Average(void);
 void Zcs_Average(uint16_t* input_data, size_t size);
-void Zcs_Reset_Struct(ZCSDetect* zcs);
+void Zcs_Reset_Struct(ZCSDetect* zcs, uint8_t motorNb);
 void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size, uint8_t onOff);
-uint8_t Zcs_Detect(ZCSDetect* zcs, uint8_t motorNb);
-void zcs_ext_reset(void);
+uint8_t Zcs_Detect(ZCSDetect* zcs, BrushlessConfig* motor);
+void zcs_ext_reset(uint16_t motorNb);
 
 /*===========================================================================*/
 /* Export global variable                                                    */

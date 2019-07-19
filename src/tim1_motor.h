@@ -147,6 +147,8 @@ typedef enum
 /*===========================================================================*/
 typedef struct
 {
+  PWMDriver *pwmp;
+  uint8_t motorNb;
 
   Rotation RotationDir;
   uint32_t InStepCount;             // Count the number of iteration has done in a given step,determine the frequency of the 6 steps
@@ -243,12 +245,16 @@ void commutation_nextstep(BrushlessConfig *pBrushCfg);
 void commutation_cb (PWMDriver *pwmp);
 void pwm_cb_ch4(PWMDriver *pwmp);
 void timer_1_pwm_config (void);
-void timer1Start(void);
+void timersStart(void);
+void timer_8_pwm_config (void);
+
 
 /*===========================================================================*/
 /* Export global variable                                                    */
 /*===========================================================================*/
-extern BrushlessConfig gBrushCfg;
+extern BrushlessConfig motor1;
+extern BrushlessConfig motor4;
+
 
 
 #endif /* TIM1_MOTOR_H_ */

@@ -22,8 +22,6 @@
 #include "tim1_motor.h"
 
 
-extern BrushlessConfig gBrushCfg;
-
 static THD_WORKING_AREA(waShell,2048);
 
 static char sc_histbuf[SHELL_MAX_HIST_BUFF];
@@ -119,12 +117,12 @@ static void cmd_step_time(BaseSequentialStream *chp, int argc, char *argv[])
   {
     char *endptr;
     uint32_t lMaxStepCount = strtol(argv[0], &endptr, 0);
-    gBrushCfg.kMaxStepCount = lMaxStepCount;
+    motor1.kMaxStepCount = lMaxStepCount;
   }
   if(argc == 2)
   {
       //gives the actual step number timer and the step status
-      chprintf(chp, "Iteration per step : %d" SHELL_NEWLINE_STR, gBrushCfg.kMaxStepCount);
+      chprintf(chp, "Iteration per step : %d" SHELL_NEWLINE_STR, motor1.kMaxStepCount);
   }
   else
   {
@@ -142,7 +140,7 @@ static void cmd_motor_timing(BaseSequentialStream *chp, int argc, char *argv[])
     timing -= 30;
     timing *= -1;
     timing /= 60;
-    gBrushCfg.ZCTiming = timing;
+    motor1.ZCTiming = timing;
 
 
   }
@@ -182,12 +180,12 @@ static void cmd_dir(BaseSequentialStream *chp, int argc, char *argv[])
 
     if(kCW == lDirection)
     {
-        gBrushCfg.RotationDir = kCW;
+        motor1.RotationDir = kCW;
         chprintf(chp, "Motor direction : Clockwise" SHELL_NEWLINE_STR);
     }
     else
     {
-      gBrushCfg.RotationDir = kCCW;
+      motor1.RotationDir = kCCW;
        chprintf(chp, "Motor direction : CounterClockwise" SHELL_NEWLINE_STR);
     }
   }

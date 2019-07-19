@@ -180,7 +180,7 @@ int main(void) {
 	chBSemObjectInit(&dtx_ready,true);
 
 	Adt_Reset_Struct(&gADT);
-	Zcs_Reset_Struct(&gZCS);
+	//Zcs_Reset_Struct(&gZCS);
 
 	/* Debug IO for interrupt timings */
 	palSetLineMode(DEBUG_INT_LINE,PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
@@ -215,9 +215,7 @@ int main(void) {
 
 	adc3Start();
 
-  timer1Start();
-
-
+  timersStart();
 
 	// Configure the Thread that will blink the leds on the boards
 	chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO + 1, Thread1, NULL);

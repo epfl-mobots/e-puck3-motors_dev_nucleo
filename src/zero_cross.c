@@ -8,12 +8,8 @@
 #include "zero_cross.h"
 
 ZCSDetect gZCS = {
-    .data_full = 0,
-    .data_idx  = 0,
-    .data_left = ZC_NB_POINTS,
-    // CST
-    .nb_channels = ZC_NUMBER_CHANNELS * 2,
-    .nb_points = ZC_NB_POINTS
+    .data_left = {ZC_NB_POINTS, ZC_NB_POINTS, ZC_NB_POINTS, ZC_NB_POINTS},
+    .data_idx  = {0}, 
 };
 
 static uint32_t average = 0;
@@ -34,139 +30,144 @@ void Zcs_Reset_Average(void){
 
 void Zcs_Average(uint16_t* input_data, size_t size){
   for(uint16_t i = 0 ; i < size ; i++){
-    average += input_data[gBrushCfg.kChannelMeasureArray[gBrushCfg.StateIterator]];
+    average += input_data[motor1.kChannelMeasureArray[motor1.StateIterator]];
     count++;
   }
 }
 
-void Zcs_Reset_Struct(ZCSDetect* zcs)
+void Zcs_Reset_Struct(ZCSDetect* zcs, uint8_t motorNb)
 {
-  zcs->data_idx  = 0;
-  zcs->data_full = 0;
-  zcs->data_left = zcs->nb_points;
+  zcs->data_idx[motorNb]  = 0;
+  zcs->data_left[motorNb] = ZC_NB_POINTS;
 }
 
 void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size, uint8_t onOff)
 {
-  uint8_t offset = 0;
 
   // Check if full
-  if(0 == zcs->data_left || 1 == zcs->data_full)
+  if(0 == zcs->data_left[0])
   {
-    zcs->data_full = 1;
-    Zcs_Reset_Struct(zcs);
+    Zcs_Reset_Struct(zcs, 0);
   }
-  if(onOff){
-    offset = 4;
+  if(0 == zcs->data_left[1])
+  {
+    Zcs_Reset_Struct(zcs, 1);
+  }
+  if(0 == zcs->data_left[2])
+  {
+    Zcs_Reset_Struct(zcs, 2);
+  }
+  if(0 == zcs->data_left[3])
+  {
+    Zcs_Reset_Struct(zcs, 3);
   }
 
-  zcs->data[0 + offset][zcs->data_idx] = input_data[0];
-  zcs->data[1 + offset][zcs->data_idx] = input_data[1];
-  zcs->data[2 + offset][zcs->data_idx] = input_data[2];
-  zcs->data[3 + offset][zcs->data_idx] = input_data[3];
-  // zcs->data[4][zcs->data_idx] = input_data[4];
-  // zcs->data[5][zcs->data_idx] = input_data[5];
-  // zcs->data[6][zcs->data_idx] = input_data[6];
-  // zcs->data[7][zcs->data_idx] = input_data[7];
+  zcs->data[0][onOff][zcs->data_idx[0]] = input_data[0];
+  zcs->data[1][onOff][zcs->data_idx[1]] = input_data[1];
+  zcs->data[2][onOff][zcs->data_idx[2]] = input_data[2];
+  zcs->data[3][onOff][zcs->data_idx[3]] = input_data[3];
+
   if(onOff){
-    zcs->data_idx += 1;
-    zcs->data_left -= 1;
+    zcs->data_idx[0] += 1;
+    zcs->data_left[0] -= 1;
+
+    zcs->data_idx[1] += 1;
+    zcs->data_left[1] -= 1;
+
+    zcs->data_idx[2] += 1;
+    zcs->data_left[2] -= 1;
+
+    zcs->data_idx[3] += 1;
+    zcs->data_left[3] -= 1;
   }
 
 }
 
-uint8_t flag2 = 0;
-uint8_t Zcs_Detect(ZCSDetect* zcs, uint8_t motorNb)
+uint8_t Zcs_Detect(ZCSDetect* zcs, BrushlessConfig* motor)
 {
 
-  static volatile uint8_t  MeasurementArrayHigh[NB_STATE] = {0,0,0,2,2,1,1};
-  static volatile uint8_t  MeasurementArrayLow[NB_STATE] = {0,2,1,1,0,0,2};
-  static volatile uint8_t  MeasureChannelOff = 0;
-  uint8_t MeasureChannelOn = 0;
-  int32_t lOldMeasure = 0;
-  int32_t lCurMeasure = 0;
-  uint8_t lChangeSign = 0; // 0 is FALSE, 1 is TRUE
+  static uint8_t MeasureChannel = 0;
+  static int32_t lOldMeasure = 0;
+  static int32_t lCurMeasure = 0;
+  static uint8_t lChangeSign = 0; // 0 is FALSE, 1 is TRUE
 
-  static uint16_t lhighest_voltage = 0;
-  static uint16_t llowest_voltage = 0;
   static uint16_t lhalf_bus = ZC_HALF_BUS;
   static int32_t  lStateIterator = 0;
 
-  static uint8_t count2 = 0;
+  static uint8_t count2[4] = {0};
 
-  uint16_t ret_val = 0;
+  static uint16_t ret_val = 0;
+  static uint16_t motorNb = 0;
 
-  lStateIterator = brushcfg_GetStateIterator(&gBrushCfg);
-  MeasureChannelOff = gBrushCfg.kChannelMeasureArray[lStateIterator];
-  MeasureChannelOn = MeasureChannelOff + 4;
+  motorNb = motor->motorNb;
 
-  lhighest_voltage = zcs->data[MeasurementArrayHigh[lStateIterator]][LATEST_DATA(zcs->data_idx)];
-  llowest_voltage = zcs->data[MeasurementArrayLow[lStateIterator]][LATEST_DATA(zcs->data_idx)];
-  lhalf_bus = LOW_PASS_COEFF_A * lhalf_bus + LOW_PASS_COEFF_B * (lhighest_voltage + llowest_voltage)/2;
+  lStateIterator = brushcfg_GetStateIterator(motor);
+  MeasureChannel = motor->kChannelMeasureArray[lStateIterator];
 
 
-  if((((&PWMD1)->tim->CCR[kTimChannel1]+1)*100/PERIOD_PWM_52_KHZ) < 36){
+  if(((motor->pwmp->tim->CCR[kTimChannel1]+1)*100/PERIOD_PWM_52_KHZ) < 60){
     // Check if the sign has changed between old measurement and actual
-    if(zcs->data_idx > TWO_ELEM_IDX && !gBrushCfg.ZCFlag)
+    ret_val = 0;
+    if(zcs->data_idx[motorNb] > TWO_ELEM_IDX && !motor->ZCFlag)
     {
-      lCurMeasure = (int32_t) zcs->data[motorNb + 4][LATEST_DATA(zcs->data_idx)]   - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
-      lOldMeasure = (int32_t) zcs->data[motorNb + 4][PREVIOUS_DATA(zcs->data_idx)] - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
-      // lCurMeasure = (int32_t) zcs->data[motorNb][LATEST_DATA(zcs->data_idx)]   - gBrushCfg.kChannelNeutralPoint[lStateIterator];
-      // lOldMeasure = (int32_t) zcs->data[motorNb][PREVIOUS_DATA(zcs->data_idx)] - gBrushCfg.kChannelNeutralPoint[lStateIterator];
+      lCurMeasure = (int32_t) zcs->data[motorNb][1][LATEST_DATA(zcs->data_idx[motorNb])]   - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
+      lOldMeasure = (int32_t) zcs->data[motorNb][1][PREVIOUS_DATA(zcs->data_idx[motorNb])] - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
+      // lCurMeasure = (int32_t) zcs->data[motorNb][LATEST_DATA(zcs->data_idx)]   - motor1.kChannelNeutralPoint[lStateIterator];
+      // lOldMeasure = (int32_t) zcs->data[motorNb][PREVIOUS_DATA(zcs->data_idx)] - motor1.kChannelNeutralPoint[lStateIterator];
       
       lChangeSign = ((lOldMeasure ^ lCurMeasure) < 0); // TRUE if sign has changed
-       //gBrushCfg.ZCFlag |= lChangeSign;
-      ret_val = (MeasureChannelOff + 1)*lChangeSign;
+       //motor1.ZCFlag |= lChangeSign;
+      ret_val = (MeasureChannel + 1)*lChangeSign;
 
       if(ret_val > 0)
       {
-        brushcfg_ComputeZCPeriod(&gBrushCfg);
-        brushcfg_SetZCFlag(&gBrushCfg);
+        brushcfg_ComputeZCPeriod(motor);
+        brushcfg_SetZCFlag(motor);
       }
     }
   }else{
     ret_val = 0;
-    if(!gBrushCfg.ZCFlag)
+    if(!motor->ZCFlag)
     {
-      if(count2 > 0){
-        if(gBrushCfg.kchannelSlope[lStateIterator] == 0){
-          if(zcs->data[motorNb][LATEST_DATA(zcs->data_idx)] > gBrushCfg.kchannelOffset[gBrushCfg.kChannelMeasureArray[lStateIterator]]){
-            ret_val = (MeasureChannelOff + 1);
-            brushcfg_ComputeZCPeriod(&gBrushCfg);
-            brushcfg_SetZCFlag(&gBrushCfg);
-            count2 = 0;
+      if(count2[motorNb] > 1){
+        if(motor->kchannelSlope[lStateIterator] == 0){
+          if(zcs->data[motorNb][0][LATEST_DATA(zcs->data_idx[motorNb])] > motor->kchannelOffset[motor->kChannelMeasureArray[lStateIterator]]){
+            ret_val = (MeasureChannel + 1);
+            brushcfg_ComputeZCPeriod(motor);
+            brushcfg_SetZCFlag(motor);
+            count2[motorNb] = 0;
           }
         }else{
-          if(zcs->data[motorNb][LATEST_DATA(zcs->data_idx)] <= gBrushCfg.kchannelOffset[gBrushCfg.kChannelMeasureArray[lStateIterator]]){
-            ret_val = (MeasureChannelOff + 1);
-            brushcfg_ComputeZCPeriod(&gBrushCfg);
-            brushcfg_SetZCFlag(&gBrushCfg);
-            count2 = 0;
+          if(zcs->data[motorNb][0][LATEST_DATA(zcs->data_idx[motorNb])] <= motor->kchannelOffset[motor->kChannelMeasureArray[lStateIterator]]){
+            ret_val = (MeasureChannel + 1);
+            brushcfg_ComputeZCPeriod(motor);
+            brushcfg_SetZCFlag(motor);
+            count2[motorNb] = 0;
           }
         }
       }else{
-        count2++;
+        count2[motorNb]++;
       }
     }
   }
-    gBrushCfg.TimeBLDCCommut++;
-    commutation_nextstep(&gBrushCfg);
+    motor->TimeBLDCCommut++;
+    commutation_nextstep(motor);
 
-    (&PWMD1)->tim->EGR |= STM32_TIM_EGR_COMG;
+    motor->pwmp->tim->EGR |= STM32_TIM_EGR_COMG;
   
 
 
   // if(ret_val > 0)
   // {
-  //   brushcfg_ComputeZCPeriod(&gBrushCfg);
-  //   brushcfg_SetZCFlag(&gBrushCfg);
+  //   brushcfg_ComputeZCPeriod(&motor1);
+  //   brushcfg_SetZCFlag(&motor1);
   // }
 
   return ret_val;
 
 }
 
-void zcs_ext_reset(void)
+void zcs_ext_reset(uint16_t motorNb)
 {
-  Zcs_Reset_Struct(&gZCS);
+  Zcs_Reset_Struct(&gZCS, motorNb);
 }

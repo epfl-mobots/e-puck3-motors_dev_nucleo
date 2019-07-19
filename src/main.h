@@ -30,6 +30,5 @@
 #define NB_TRANSISTORS	2
 
 extern const ioline_t motor_pins[NB_MOTORS][NB_PHASES][NB_TRANSISTORS];
-void zcs_ext_reset(void);
 
 #endif  /* MAIN_H */

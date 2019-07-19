@@ -65,20 +65,22 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size,uint8_t zc)
     for(i = 0;i<nb_insertion;i++)
     {
       adt->data[0][adt->data_idx] = input_data[ adt->nb_channels * i +0];
-      adt->data[1][adt->data_idx] = input_data[ adt->nb_channels * i +1];
-      adt->data[2][adt->data_idx] = input_data[ adt->nb_channels * i +2];
-      //adt->data[3][adt->data_idx] = input_data[ adt->nb_channels * i +3];
+      //adt->data[1][adt->data_idx] = input_data[ adt->nb_channels * i +1];
+      //adt->data[2][adt->data_idx] = input_data[ adt->nb_channels * i +2];
+      adt->data[3][adt->data_idx] = input_data[ adt->nb_channels * i +3];
       // if(zc){
       //   adt->data[zc-1][adt->data_idx] = 0;
       // }
-      uint16_t StateIterator = brushcfg_GetStateIterator(&gBrushCfg);
-      adt->data[3][adt->data_idx] = (uint16_t)(gBrushCfg.kChannelMeasureArray[StateIterator]*100);
+      uint16_t StateIterator = brushcfg_GetStateIterator(&motor1);
+      adt->data[1][adt->data_idx] = (uint16_t)(motor1.kChannelMeasureArray[StateIterator]*100);
+      StateIterator = brushcfg_GetStateIterator(&motor4);
+      adt->data[2][adt->data_idx] = (uint16_t)(motor4.kChannelMeasureArray[StateIterator]*100);
       //adt->data[3][adt->data_idx] = (uint16_t)((uint32_t)input_data[ adt->nb_channels * i +2] + (uint32_t)input_data[ adt->nb_channels * i +1] + (uint32_t)input_data[ adt->nb_channels * i +0]);
       //adt->data[3][adt->data_idx] = (uint16_t)(encoders[0].angle*10);
-      //adt->data[3][adt->data_idx] = (uint16_t)(brushcfg_GetStateIterator(&gBrushCfg) * 100);
+      //adt->data[3][adt->data_idx] = (uint16_t)(brushcfg_GetStateIterator(&motor1) * 100);
       //adt->data[3][adt->data_idx] = (uint16_t)(count[6]);
-      //adt->data[3][adt->data_idx] = (uint16_t)(gBrushCfg.ZCPeriod * gBrushCfg.ZCTiming);
-      //adt->data[3][adt->data_idx] = (uint16_t)(gBrushCfg.ZCPeriodMean);
+      //adt->data[3][adt->data_idx] = (uint16_t)(motor1.ZCPeriod * motor1.ZCTiming);
+      //adt->data[3][adt->data_idx] = (uint16_t)(motor1.ZCPeriodMean);
 
       adt->data_idx += 1;
     }
