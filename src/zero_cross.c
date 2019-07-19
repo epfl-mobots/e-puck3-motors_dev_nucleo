@@ -46,9 +46,9 @@ void Zcs_Reset_Struct(ZCSDetect* zcs)
   zcs->data_left = zcs->nb_points;
 }
 
-void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size)
+void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size, uint8_t onOff)
 {
-  size_t i;
+  uint8_t offset = 0;
 
   // Check if full
   if(0 == zcs->data_left || 1 == zcs->data_full)
@@ -56,53 +56,27 @@ void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size)
     zcs->data_full = 1;
     Zcs_Reset_Struct(zcs);
   }
-
-  //
-  if(0==zcs->data_full)
-  {
-
-    // Enough space for all the data
-    if(zcs->data_left >= size)
-    {
-        for(i = 0;i<size;i++)
-        {
-          zcs->data[0][zcs->data_idx] = input_data[ zcs->nb_channels * i];
-          zcs->data[1][zcs->data_idx] = input_data[ zcs->nb_channels * i +1];
-          zcs->data[2][zcs->data_idx] = input_data[ zcs->nb_channels * i +2];
-          zcs->data[3][zcs->data_idx] = input_data[ zcs->nb_channels * i +3];
-          zcs->data[4][zcs->data_idx] = input_data[ zcs->nb_channels * i +4];
-          zcs->data[5][zcs->data_idx] = input_data[ zcs->nb_channels * i +5];
-          zcs->data[6][zcs->data_idx] = input_data[ zcs->nb_channels * i +6];
-          zcs->data[7][zcs->data_idx] = input_data[ zcs->nb_channels * i +7];
-          zcs->data_idx += 1;
-        }
-        zcs->data_left -= size;
-    }
-    // Fill it until maximum capacity
-    else
-    {
-      for(i = 0;i<zcs->data_left;i++)
-      {
-        zcs->data[0][zcs->data_idx] = input_data[ zcs->nb_channels * i];
-        zcs->data[1][zcs->data_idx] = input_data[ zcs->nb_channels * i +1];
-        zcs->data[2][zcs->data_idx] = input_data[ zcs->nb_channels * i +2];
-        zcs->data[3][zcs->data_idx] = input_data[ zcs->nb_channels * i +3];
-        zcs->data[4][zcs->data_idx] = input_data[ zcs->nb_channels * i +4];
-        zcs->data[5][zcs->data_idx] = input_data[ zcs->nb_channels * i +5];
-        zcs->data[6][zcs->data_idx] = input_data[ zcs->nb_channels * i +6];
-        zcs->data[7][zcs->data_idx] = input_data[ zcs->nb_channels * i +7];
-        zcs->data_idx += 1;
-      }
-      zcs->data_left -= zcs->data_left;
-    }
-
+  if(onOff){
+    offset = 4;
   }
 
+  zcs->data[0 + offset][zcs->data_idx] = input_data[0];
+  zcs->data[1 + offset][zcs->data_idx] = input_data[1];
+  zcs->data[2 + offset][zcs->data_idx] = input_data[2];
+  zcs->data[3 + offset][zcs->data_idx] = input_data[3];
+  // zcs->data[4][zcs->data_idx] = input_data[4];
+  // zcs->data[5][zcs->data_idx] = input_data[5];
+  // zcs->data[6][zcs->data_idx] = input_data[6];
+  // zcs->data[7][zcs->data_idx] = input_data[7];
+  if(onOff){
+    zcs->data_idx += 1;
+    zcs->data_left -= 1;
+  }
 
 }
 
 uint8_t flag2 = 0;
-uint8_t Zcs_Detect(ZCSDetect* zcs)
+uint8_t Zcs_Detect(ZCSDetect* zcs, uint8_t motorNb)
 {
 
   static volatile uint8_t  MeasurementArrayHigh[NB_STATE] = {0,0,0,2,2,1,1};
@@ -123,8 +97,8 @@ uint8_t Zcs_Detect(ZCSDetect* zcs)
   uint16_t ret_val = 0;
 
   lStateIterator = brushcfg_GetStateIterator(&gBrushCfg);
-  MeasureChannelOn = gBrushCfg.kChannelMeasureArray[lStateIterator];
-  MeasureChannelOff = MeasureChannelOn + 4;
+  MeasureChannelOff = gBrushCfg.kChannelMeasureArray[lStateIterator];
+  MeasureChannelOn = MeasureChannelOff + 4;
 
   lhighest_voltage = zcs->data[MeasurementArrayHigh[lStateIterator]][LATEST_DATA(zcs->data_idx)];
   llowest_voltage = zcs->data[MeasurementArrayLow[lStateIterator]][LATEST_DATA(zcs->data_idx)];
@@ -135,14 +109,14 @@ uint8_t Zcs_Detect(ZCSDetect* zcs)
     // Check if the sign has changed between old measurement and actual
     if(zcs->data_idx > TWO_ELEM_IDX && !gBrushCfg.ZCFlag)
     {
-      lCurMeasure = (int32_t) zcs->data[MeasureChannelOn][LATEST_DATA(zcs->data_idx)]   - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
-      lOldMeasure = (int32_t) zcs->data[MeasureChannelOn][PREVIOUS_DATA(zcs->data_idx)] - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
-      // lCurMeasure = (int32_t) zcs->data[MeasureChannelOn][LATEST_DATA(zcs->data_idx)]   - gBrushCfg.kChannelNeutralPoint[lStateIterator];
-      // lOldMeasure = (int32_t) zcs->data[MeasureChannelOn][PREVIOUS_DATA(zcs->data_idx)] - gBrushCfg.kChannelNeutralPoint[lStateIterator];
+      lCurMeasure = (int32_t) zcs->data[motorNb + 4][LATEST_DATA(zcs->data_idx)]   - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
+      lOldMeasure = (int32_t) zcs->data[motorNb + 4][PREVIOUS_DATA(zcs->data_idx)] - (int32_t)(CORR_FACTOR_HALF_BUS * lhalf_bus);
+      // lCurMeasure = (int32_t) zcs->data[motorNb][LATEST_DATA(zcs->data_idx)]   - gBrushCfg.kChannelNeutralPoint[lStateIterator];
+      // lOldMeasure = (int32_t) zcs->data[motorNb][PREVIOUS_DATA(zcs->data_idx)] - gBrushCfg.kChannelNeutralPoint[lStateIterator];
       
       lChangeSign = ((lOldMeasure ^ lCurMeasure) < 0); // TRUE if sign has changed
        //gBrushCfg.ZCFlag |= lChangeSign;
-      ret_val = (MeasureChannelOn + 1)*lChangeSign;
+      ret_val = (MeasureChannelOff + 1)*lChangeSign;
 
       if(ret_val > 0)
       {
@@ -156,15 +130,15 @@ uint8_t Zcs_Detect(ZCSDetect* zcs)
     {
       if(count2 > 0){
         if(gBrushCfg.kchannelSlope[lStateIterator] == 0){
-          if(zcs->data[MeasureChannelOff][LATEST_DATA(zcs->data_idx)] > gBrushCfg.kchannelOffset[MeasureChannelOn]){
-            ret_val = (MeasureChannelOn + 1);
+          if(zcs->data[motorNb][LATEST_DATA(zcs->data_idx)] > gBrushCfg.kchannelOffset[gBrushCfg.kChannelMeasureArray[lStateIterator]]){
+            ret_val = (MeasureChannelOff + 1);
             brushcfg_ComputeZCPeriod(&gBrushCfg);
             brushcfg_SetZCFlag(&gBrushCfg);
             count2 = 0;
           }
         }else{
-          if(zcs->data[MeasureChannelOff][LATEST_DATA(zcs->data_idx)] <= gBrushCfg.kchannelOffset[MeasureChannelOn]){
-            ret_val = (MeasureChannelOn + 1);
+          if(zcs->data[motorNb][LATEST_DATA(zcs->data_idx)] <= gBrushCfg.kchannelOffset[gBrushCfg.kChannelMeasureArray[lStateIterator]]){
+            ret_val = (MeasureChannelOff + 1);
             brushcfg_ComputeZCPeriod(&gBrushCfg);
             brushcfg_SetZCFlag(&gBrushCfg);
             count2 = 0;

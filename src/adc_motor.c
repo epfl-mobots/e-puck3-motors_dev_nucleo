@@ -16,15 +16,13 @@ static adcsample_t adc_sample_3[ADC_GRP3_NUM_CHANNELS * ADC_GRP3_BUF_DEPTH * 2];
 static adcsample_t adc_sample_1[12 * 2];
 
 
-//first four are on PMWon and the remaining four are on PWMoff of the next cycle...
-//phase1ON, phase2ON, phase3ON, neutralON, phase1+1OFF, phase2+1OFF, phase3+1OFF, neutral+1OFF,
 /* ADC 3 Configuration */
 static const ADCConversionGroup ADC3group = {
     .circular = true,
-    .num_channels = ADC_GRP3_NUM_CHANNELS * 2,
+    .num_channels = ADC_GRP3_NUM_CHANNELS,
     .end_cb = adc_3_cb,
     .error_cb = adc_3_err_cb,
-    .cr1 = ADC_CR1_DISCEN | ((ADC_GRP3_NUM_CHANNELS-1) << ADC_CR1_DISCNUM_Pos),   /*No OVR int,12 bit resolution,no AWDG/JAWDG, discontinuous 4 samples at each trigger*/
+    .cr1 = 0,//ADC_CR1_DISCEN | ((ADC_GRP3_NUM_CHANNELS-1) << ADC_CR1_DISCNUM_Pos),   /*No OVR int,12 bit resolution,no AWDG/JAWDG, discontinuous 4 samples at each trigger*/
     .cr2 = //ADC_CR2_SWSTART      | /* manual start of regular channels,EOC is set at end of each sequence^,no OVR detect */
            ADC_CR2_EXTEN_BOTH             |  /* We need both as OCxREF don't behave as expected */
            ADC_CR2_EXTSEL_SRC(kTimer1_TRGO2)|  /* External trigger is from Timer 1 TRGO 2*/
@@ -35,20 +33,13 @@ static const ADCConversionGroup ADC3group = {
     .smpr2 = ADC_SMPR2_SMP_AN0(ADC_SAMPLE_3)|
              ADC_SMPR2_SMP_AN1(ADC_SAMPLE_3)|
              ADC_SMPR2_SMP_AN2(ADC_SAMPLE_3)|
-             ADC_SMPR2_SMP_AN3(ADC_SAMPLE_3)|
-             ADC_SMPR2_SMP_AN4(ADC_SAMPLE_3)|
-             ADC_SMPR2_SMP_AN5(ADC_SAMPLE_3)|
-             ADC_SMPR2_SMP_AN6(ADC_SAMPLE_3)|
-             ADC_SMPR2_SMP_AN7(ADC_SAMPLE_3),
-    .sqr1 = ADC_SQR1_NUM_CH(ADC_GRP3_NUM_CHANNELS * 2),
-    .sqr3 = ADC_SQR3_SQ1_N(ADC_CHANNEL_IN0)|
-            ADC_SQR3_SQ2_N(ADC_CHANNEL_IN1)|
-            ADC_SQR3_SQ3_N(ADC_CHANNEL_IN2)|
-            ADC_SQR3_SQ4_N(ADC_CHANNEL_IN3)|
-            ADC_SQR3_SQ5_N(ADC_CHANNEL_IN0)|
-            ADC_SQR3_SQ6_N(ADC_CHANNEL_IN1),
-    .sqr2 = ADC_SQR2_SQ7_N(ADC_CHANNEL_IN2)|
-            ADC_SQR2_SQ8_N(ADC_CHANNEL_IN3),
+             ADC_SMPR2_SMP_AN3(ADC_SAMPLE_3),
+    .sqr1 =  ADC_SQR1_NUM_CH(ADC_GRP3_NUM_CHANNELS),
+    .sqr3 =  ADC_SQR3_SQ1_N(ADC_CHANNEL_IN0)|
+             ADC_SQR3_SQ2_N(ADC_CHANNEL_IN1)|
+             ADC_SQR3_SQ3_N(ADC_CHANNEL_IN2)|
+             ADC_SQR3_SQ4_N(ADC_CHANNEL_IN3),
+    .sqr2 = 0,
 };
 
 /* ADC 1 Configuration */
@@ -131,15 +122,15 @@ void adc_1_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
     }
     
     ADCD1.adc->CR2 |= ADC_CR2_SWSTART;
+    average = 0.99 * (float)average + 0.01 * (float)buffer[0];
+    average = 0.99 * (float)average + 0.01 * (float)buffer[4];
+    average = 0.99 * (float)average + 0.01 * (float)buffer[8];
+    average2 = 0.99 * average2 + 0.01 * average;
+    buffer[1] = buffer[5] = buffer[9] = (uint16_t)average2;
     // Data transmission
     if(0 == gADT.data_lock)
     { 
-      average = 0.99 * (float)average + 0.01 * (float)buffer[0];
-      average = 0.99 * (float)average + 0.01 * (float)buffer[4];
-      average = 0.99 * (float)average + 0.01 * (float)buffer[8];
-      average2 = 0.99 * average2 + 0.01 * average;
-      buffer[1] = buffer[5] = buffer[9] = (uint16_t)average2;
-      Adt_Insert_Data(&gADT,buffer,3,0);
+      //Adt_Insert_Data(&gADT,buffer,3,0);
     }
 
     //Zcs_Detect(&gZCS);
@@ -155,34 +146,51 @@ void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
     uint8_t zc_detect = 0;
 
     palSetLine(DEBUG_INT_LINE2);
-
-    if(gBrushCfg.Mode == kCalibrate){
-
-        Zcs_Average(buffer,n);
-    }else{
-        // Zero-crossing and slope detection
-        Zcs_Insert_Data(&gZCS,buffer,n);
-        zc_detect = Zcs_Detect(&gZCS);
+    static uint16_t StateIterator = 0;
+    if(StateIterator != brushcfg_GetStateIterator(&gBrushCfg)){
+      StateIterator = brushcfg_GetStateIterator(&gBrushCfg);
+      ADCD3.adc->SQR3 = ADC_SQR3_SQ1_N(ADC_CHANNEL_IN2)|
+                        ADC_SQR3_SQ2_N(ADC_CHANNEL_IN1)|
+                        ADC_SQR3_SQ3_N(gBrushCfg.kChannelMeasureArray[StateIterator])|
+                        ADC_SQR3_SQ4_N(ADC_CHANNEL_IN3);
     }
 
-    // // Data transmission
-    // if(0 == gADT.data_lock)
-    // {
-    //   //replaces the data by the ones of ADC1 
-    //   // if((gBrushCfg.StateIterator == 4) || (gBrushCfg.StateIterator == 5)){
-    //   //   current = (uint16_t)(0.99 * (float)current + 0.01 * (float)adc_sample_1_copy[0]);
-    //   //   current2 = (uint16_t)(0.99 * (float)current2 + 0.01 * (float)current);
-    //   // }
-    //   // buffer[1] = current;
-    //   // buffer[2] = adc_sample_1_copy[0];
-    //   // buffer[3] = current2;
-    //   //buffer[3] = adc_sample_1_copy[2];
-    //   // buffer[0] = adc_sample_1_copy[0];
-    //   // buffer[1] = adc_sample_1_copy[1];
-    //   // buffer[2] = adc_sample_1_copy[2];
-    //   Adt_Insert_Data(&gADT,buffer,n,zc_detect);
-    // }
+    static uint8_t i = 1;
+    if(i){
+      //we sampled OFF PWM
+      PWMD1.tim->CCR[3] = 0.75 * PERIOD_PWM_52_KHZ - 1;
+      Zcs_Insert_Data(&gZCS,buffer,n, 0);
 
+      // Data transmission
+      if(0 == gADT.data_lock)
+      {
+        //replaces the data by the ones of ADC1 
+        // if((gBrushCfg.StateIterator == 4) || (gBrushCfg.StateIterator == 5)){
+        //   current = (uint16_t)(0.99 * (float)current + 0.01 * (float)adc_sample_1_copy[0]);
+        //   current2 = (uint16_t)(0.99 * (float)current2 + 0.01 * (float)current);
+        // }
+        // buffer[1] = current;
+        // buffer[2] = adc_sample_1_copy[0];
+        // buffer[3] = current2;
+        //buffer[3] = adc_sample_1_copy[2];
+        // buffer[0] = adc_sample_1_copy[0];
+        // buffer[1] = adc_sample_1_copy[1];
+        // buffer[2] = adc_sample_1_copy[2];
+        Adt_Insert_Data(&gADT,buffer,n,zc_detect);
+      }
+    }else{
+      //we sampled ON PWM
+      PWMD1.tim->CCR[3] = 0.20 * PERIOD_PWM_52_KHZ - 1;
+      if(gBrushCfg.Mode == kCalibrate){
+
+          Zcs_Average(buffer,n);
+      }else{
+          // Zero-crossing and slope detection
+          Zcs_Insert_Data(&gZCS,buffer,n, 1);
+          zc_detect = Zcs_Detect(&gZCS, 2);
+      }
+    }
+    i = !i;
     palClearLine(DEBUG_INT_LINE2);
 }
 
