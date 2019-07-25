@@ -86,7 +86,7 @@ void Zcs_Insert_Data (ZCSDetect* zcs,uint16_t* input_data,size_t size, uint8_t o
 uint8_t Zcs_Detect(ZCSDetect* zcs, BrushlessConfig* motor)
 {
 
-  static uint8_t MeasureChannel = 0;
+  static uint8_t MeasurePhase = 0;
   static int32_t lOldMeasure = 0;
   static int32_t lCurMeasure = 0;
   static uint8_t lChangeSign = 0; // 0 is FALSE, 1 is TRUE
@@ -102,10 +102,10 @@ uint8_t Zcs_Detect(ZCSDetect* zcs, BrushlessConfig* motor)
   motorNb = motor->motorNb;
 
   lStateIterator = brushcfg_GetStateIterator(motor);
-  MeasureChannel = motor->kChannelMeasureArray[lStateIterator];
+  MeasurePhase = motor->kPhaseMeasureArray[lStateIterator];
 
 
-  if(((motor->pwmp->tim->CCR[kTimChannel1]+1)*100/PERIOD_PWM_52_KHZ) < 60){
+  if(((motor->pwmp->tim->CCR[kTimChannel1]+1)*100/motor->period) < 60){
     // Check if the sign has changed between old measurement and actual
     ret_val = 0;
     if(zcs->data_idx[motorNb] > TWO_ELEM_IDX && !motor->ZCFlag)
@@ -117,7 +117,7 @@ uint8_t Zcs_Detect(ZCSDetect* zcs, BrushlessConfig* motor)
       
       lChangeSign = ((lOldMeasure ^ lCurMeasure) < 0); // TRUE if sign has changed
        //motor1.ZCFlag |= lChangeSign;
-      ret_val = (MeasureChannel + 1)*lChangeSign;
+      ret_val = (MeasurePhase + 1)*lChangeSign;
 
       if(ret_val > 0)
       {
@@ -131,15 +131,15 @@ uint8_t Zcs_Detect(ZCSDetect* zcs, BrushlessConfig* motor)
     {
       if(count2[motorNb] > 1){
         if(motor->kchannelSlope[lStateIterator] == 0){
-          if(zcs->data[motorNb][0][LATEST_DATA(zcs->data_idx[motorNb])] > motor->kchannelOffset[motor->kChannelMeasureArray[lStateIterator]]){
-            ret_val = (MeasureChannel + 1);
+          if(zcs->data[motorNb][0][LATEST_DATA(zcs->data_idx[motorNb])] > motor->kPhaseOffset[motor->kPhaseMeasureArray[lStateIterator]]){
+            ret_val = (MeasurePhase + 1);
             brushcfg_ComputeZCPeriod(motor);
             brushcfg_SetZCFlag(motor);
             count2[motorNb] = 0;
           }
         }else{
-          if(zcs->data[motorNb][0][LATEST_DATA(zcs->data_idx[motorNb])] <= motor->kchannelOffset[motor->kChannelMeasureArray[lStateIterator]]){
-            ret_val = (MeasureChannel + 1);
+          if(zcs->data[motorNb][0][LATEST_DATA(zcs->data_idx[motorNb])] <= motor->kPhaseOffset[motor->kPhaseMeasureArray[lStateIterator]]){
+            ret_val = (MeasurePhase + 1);
             brushcfg_ComputeZCPeriod(motor);
             brushcfg_SetZCFlag(motor);
             count2[motorNb] = 0;

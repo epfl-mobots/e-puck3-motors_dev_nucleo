@@ -246,6 +246,18 @@ int main(void) {
       (&PWMD1)->tim->CCR[kTimChannel1]  =  (percent/100) * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
       (&PWMD1)->tim->CCR[kTimChannel2]  =  (percent/100) * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
       (&PWMD1)->tim->CCR[kTimChannel3]  =  (percent/100) * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
+      (&PWMD2)->tim->CCR[kTimChannel1]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
+      (&PWMD2)->tim->CCR[kTimChannel2]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
+      (&PWMD2)->tim->CCR[kTimChannel3]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
+      (&PWMD2)->tim->CCR[kTimChannel4]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
+      (&PWMD3)->tim->CCR[kTimChannel1]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
+      (&PWMD3)->tim->CCR[kTimChannel2]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
+      (&PWMD3)->tim->CCR[kTimChannel3]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
+      (&PWMD3)->tim->CCR[kTimChannel4]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
+      (&PWMD4)->tim->CCR[kTimChannel1]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
+      (&PWMD4)->tim->CCR[kTimChannel2]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
+      (&PWMD4)->tim->CCR[kTimChannel3]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
+      (&PWMD4)->tim->CCR[kTimChannel4]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
       //PWMD1.tim->CCXR[1] = (((percent-4)/100) * PERIOD_PWM_52_KHZ) - 1;
 
       chprintf((BaseSequentialStream *)&USB_GDB, "duty cycle = %f\r\n",100-percent);

@@ -22,12 +22,17 @@
 BrushlessConfig motor1 = {
 
     .pwmp = &PWMD1,
+    .period = PERIOD_PWM_52_KHZ,
     .motorNb = 0,
     .RotationDir=kCCW,
     .StateIterator=0,
     .InStepCount = 0,
     .kMaxStepCount = 150,
     .kDefaultIOConfig = PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1),
+    .timerAttributionHigh  = {0, 0, 0},
+    .timerAttributionLow   = {0, 0, 0},
+    .channelMappingHigh = {kTimChannel1, kTimChannel2, kTimChannel3},
+    .channelMappingLow =  {kTimChannel1, kTimChannel2, kTimChannel3},
     .Mode = kInitCfg,
 
     /** Configuration of the commutation steps of the brushless motor **/
@@ -51,10 +56,11 @@ BrushlessConfig motor1 = {
     /* C1 - C1C - C2 - C2C : ENABLE - C3 : ENABLE - C3C */
     .kChannelStateArray[kPhaseWV] = {kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_High},
 
-    .kChannelMeasureArray = {0, ADC_CHANNEL_IN1, ADC_CHANNEL_IN2, ADC_CHANNEL_IN0, ADC_CHANNEL_IN1, ADC_CHANNEL_IN2, ADC_CHANNEL_IN0},
+    .kChannelMeasureArray = {ADC_CHANNEL_IN1, ADC_CHANNEL_IN1, ADC_CHANNEL_IN2, ADC_CHANNEL_IN0, ADC_CHANNEL_IN1, ADC_CHANNEL_IN2, ADC_CHANNEL_IN0},
+    .kPhaseMeasureArray    = {0, 1, 2, 0, 1, 2, 0},
     .kchannelSlope         = {0, 1, 0, 1, 0 ,1, 0}, //invert for KCW
-    .kchannelOffset       = {1, 1, 1},
-    .kchannelCurrentSense = {0, ADC_CHANNEL_IN6, ADC_CHANNEL_IN5, ADC_CHANNEL_IN5, ADC_CHANNEL_IN4, ADC_CHANNEL_IN4, ADC_CHANNEL_IN6},
+    .kPhaseOffset          = {1, 1, 1},
+    .kchannelCurrentSense = {ADC_CHANNEL_IN6, ADC_CHANNEL_IN6, ADC_CHANNEL_IN5, ADC_CHANNEL_IN5, ADC_CHANNEL_IN4, ADC_CHANNEL_IN4, ADC_CHANNEL_IN6},
 
     /* PWM Double from scratch */
 /*    .kChannelStateArray[kPhaseUV] = {kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_Low,kTimCh_Low},
@@ -96,15 +102,23 @@ BrushlessConfig motor1 = {
     .N_Channels = {LINE_OUT_MOT1_PH1_N,LINE_OUT_MOT1_PH2_N,LINE_OUT_MOT1_PH3_N}
 };
 
-BrushlessConfig motor4 = {
+BrushlessConfig motor2 = {
 
-    .pwmp = &PWMD8,
-    .motorNb = 3,
+    .pwmp = &PWMD2,
+    .pwmp2 = &PWMD3,
+    .period = PERIOD_PWM_52_KHZ_LOW,
+    .motorNb = 1,
     .RotationDir=kCCW,
     .StateIterator=0,
     .InStepCount = 0,
     .kMaxStepCount = 150,
-    .kDefaultIOConfig = PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(3),
+    .kDefaultIOConfig = PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1),
+    .kDefaultIOConfig2 = PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(2),
+    //0 for the first timer, 1 for the second
+    .timerAttributionHigh  = {0, 0, 1},
+    .timerAttributionLow   = {0, 0, 1},
+    .channelMappingHigh = {kTimChannel1, kTimChannel3, kTimChannel1},
+    .channelMappingLow =  {kTimChannel2, kTimChannel4, kTimChannel2},
     .Mode = kInitCfg,
 
     /** Configuration of the commutation steps of the brushless motor **/
@@ -128,10 +142,180 @@ BrushlessConfig motor4 = {
     /* C1 - C1C - C2 - C2C : ENABLE - C3 : ENABLE - C3C */
     .kChannelStateArray[kPhaseWV] = {kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_High},
 
-    .kChannelMeasureArray = {0, ADC_CHANNEL_IN13, ADC_CHANNEL_IN14, ADC_CHANNEL_IN12, ADC_CHANNEL_IN13, ADC_CHANNEL_IN14, ADC_CHANNEL_IN12},
+    .kChannelMeasureArray = {ADC_CHANNEL_IN5, ADC_CHANNEL_IN5, ADC_CHANNEL_IN6, ADC_CHANNEL_IN4, ADC_CHANNEL_IN5, ADC_CHANNEL_IN6, ADC_CHANNEL_IN4},
+    .kPhaseMeasureArray    = {0, 1, 2, 0, 1, 2, 0},
     .kchannelSlope         = {0, 1, 0, 1, 0 ,1, 0}, //invert for KCW
-    .kchannelOffset       = {9, 7, 11},
-    .kchannelCurrentSense = {0, ADC_CHANNEL_IN15, ADC_CHANNEL_IN14, ADC_CHANNEL_IN14, ADC_CHANNEL_IN9, ADC_CHANNEL_IN9, ADC_CHANNEL_IN15},
+    .kPhaseOffset          = {10, 10, 10},
+    .kchannelCurrentSense = {ADC_CHANNEL_IN6, ADC_CHANNEL_IN6, ADC_CHANNEL_IN5, ADC_CHANNEL_IN5, ADC_CHANNEL_IN4, ADC_CHANNEL_IN4, ADC_CHANNEL_IN6},
+
+    /* PWM Double from scratch */
+/*    .kChannelStateArray[kPhaseUV] = {kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_Low,kTimCh_Low},
+    .kChannelStateArray[kPhaseUW] = {kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_PWM},
+    .kChannelStateArray[kPhaseVW] = {kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_PWM},
+    .kChannelStateArray[kPhaseVU] = {kTimCh_Low,kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_Low},
+    .kChannelStateArray[kPhaseWU] = {kTimCh_Low,kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_Low},
+    .kChannelStateArray[kPhaseWV] = {kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_PWM,kTimCh_Low},*/
+
+    /** Ramp speed **/
+
+    .RampInterval = TIME_MS2I(10),
+    .CalibrationInterval = TIME_MS2I(100),
+    .CalibrationTimeout = 1,
+    .CalibrationState = 0,
+    .RampMaxSpeed = 26,
+    .RampTimeout  = 0,
+    .RampMinSpeed = 100,
+    .RampCurSpeed = 0,
+    .RampStep = 1,
+    .RampTime = 0,
+    .kMaxRampTime = 2,
+
+    /* Zero-crossing valid */
+    .ZCVCount       =0,
+
+    /* Zero-crossing conf */
+    .ZCFlag         = 0,
+    .ZCDetect       = 0,
+    .ZCDetectOld    = 0,
+    .ZCPeriod       = 0,
+    .ZCPeriodOld    = 0,
+    .ZCNextCommut   = 0,
+    .ZCTimeout      = 0,
+    .ZCTiming       = 0.5,
+
+    /** IO Configuration **/
+    .P_Channels = {LINE_OUT_MOT2_PH1_P,LINE_OUT_MOT2_PH2_P,LINE_OUT_MOT2_PH3_P},
+    .N_Channels = {LINE_OUT_MOT2_PH1_N,LINE_OUT_MOT2_PH2_N,LINE_OUT_MOT2_PH3_N}
+};
+
+BrushlessConfig motor3 = {
+
+    .pwmp = &PWMD3,
+    .pwmp2 = &PWMD4,
+    .period = PERIOD_PWM_52_KHZ_LOW,
+    .motorNb = 2,
+    .RotationDir=kCCW,
+    .StateIterator=0,
+    .InStepCount = 0,
+    .kMaxStepCount = 150,
+    .kDefaultIOConfig = PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(2),
+    .kDefaultIOConfig2 = PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(2),
+    //0 for the first timer, 1 for the second
+    .timerAttributionHigh  = {0, 1, 1},
+    .timerAttributionLow   = {0, 1, 1},
+    .channelMappingHigh = {kTimChannel3, kTimChannel1, kTimChannel3},
+    .channelMappingLow =  {kTimChannel4, kTimChannel2, kTimChannel4},
+    .Mode = kInitCfg,
+
+    /** Configuration of the commutation steps of the brushless motor **/
+
+    /* Channel 1 - Channel 1 Comp - Channel 2 - Channel 2 Comp - Channel 3 - Channel 3 Comp */
+
+    /* ALL CHANNELS OFF */
+    .kChannelStateArray[kStop] =    {kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_Low},
+
+    /* PWM Simple from DRV 8323 */
+    /* C1 : ENABLE - C1C - C2 - C2C : ENABLE - C3 - C3C */
+    .kChannelStateArray[kPhaseUV] = {kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_High},
+    /* C1 : ENABLE - C1C - C2 - C2C - C3 - C3C : ENABLE */
+    .kChannelStateArray[kPhaseUW] = {kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_High,kTimCh_Low,kTimCh_Low},
+    /* C1 - C1C - C2 : ENABLE - C2C - C3 - C3C : ENABLE */
+    .kChannelStateArray[kPhaseVW] = {kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_High,kTimCh_PWM,kTimCh_PWM},
+    /* C1 - C1C : ENABLE - C2 : ENABLE - C2C - C3 - C3C */
+    .kChannelStateArray[kPhaseVU] = {kTimCh_Low,kTimCh_High,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_PWM},
+    /* C1 - C1C : ENABLE - C2 - C2C - C3 : ENABLE - C3C */
+    .kChannelStateArray[kPhaseWU] = {kTimCh_Low,kTimCh_High,kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_Low},
+    /* C1 - C1C - C2 - C2C : ENABLE - C3 : ENABLE - C3C */
+    .kChannelStateArray[kPhaseWV] = {kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_High},
+
+    .kChannelMeasureArray = {ADC_CHANNEL_IN9, ADC_CHANNEL_IN9, ADC_CHANNEL_IN10, ADC_CHANNEL_IN8, ADC_CHANNEL_IN9, ADC_CHANNEL_IN10, ADC_CHANNEL_IN8},
+    .kPhaseMeasureArray    = {0, 1, 2, 0, 1, 2, 0},
+    .kchannelSlope         = {0, 1, 0, 1, 0 ,1, 0}, //invert for KCW
+    .kPhaseOffset          = {16, 9, 21},
+    .kchannelCurrentSense = {ADC_CHANNEL_IN6, ADC_CHANNEL_IN6, ADC_CHANNEL_IN5, ADC_CHANNEL_IN5, ADC_CHANNEL_IN4, ADC_CHANNEL_IN4, ADC_CHANNEL_IN6},
+
+    /* PWM Double from scratch */
+/*    .kChannelStateArray[kPhaseUV] = {kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_Low,kTimCh_Low},
+    .kChannelStateArray[kPhaseUW] = {kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_PWM},
+    .kChannelStateArray[kPhaseVW] = {kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_PWM},
+    .kChannelStateArray[kPhaseVU] = {kTimCh_Low,kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_Low},
+    .kChannelStateArray[kPhaseWU] = {kTimCh_Low,kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_Low},
+    .kChannelStateArray[kPhaseWV] = {kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_PWM,kTimCh_Low},*/
+
+    /** Ramp speed **/
+
+    .RampInterval = TIME_MS2I(10),
+    .CalibrationInterval = TIME_MS2I(100),
+    .CalibrationTimeout = 1,
+    .CalibrationState = 0,
+    .RampMaxSpeed = 26,
+    .RampTimeout  = 0,
+    .RampMinSpeed = 100,
+    .RampCurSpeed = 0,
+    .RampStep = 1,
+    .RampTime = 0,
+    .kMaxRampTime = 2,
+
+    /* Zero-crossing valid */
+    .ZCVCount       =0,
+
+    /* Zero-crossing conf */
+    .ZCFlag         = 0,
+    .ZCDetect       = 0,
+    .ZCDetectOld    = 0,
+    .ZCPeriod       = 0,
+    .ZCPeriodOld    = 0,
+    .ZCNextCommut   = 0,
+    .ZCTimeout      = 0,
+    .ZCTiming       = 0.5,
+
+    /** IO Configuration **/
+    .P_Channels = {LINE_OUT_MOT3_PH1_P,LINE_OUT_MOT3_PH2_P,LINE_OUT_MOT3_PH3_P},
+    .N_Channels = {LINE_OUT_MOT3_PH1_N,LINE_OUT_MOT3_PH2_N,LINE_OUT_MOT3_PH3_N}
+};
+
+BrushlessConfig motor4 = {
+
+    .pwmp = &PWMD8,
+    .period = PERIOD_PWM_52_KHZ,
+    .motorNb = 3,
+    .RotationDir=kCCW,
+    .StateIterator=0,
+    .InStepCount = 0,
+    .kMaxStepCount = 150,
+    .kDefaultIOConfig = PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(3),
+    .timerAttributionHigh  = {0, 0, 0},
+    .timerAttributionLow   = {0, 0, 0},
+    .channelMappingHigh = {kTimChannel1, kTimChannel2, kTimChannel3},
+    .channelMappingLow =  {kTimChannel1, kTimChannel2, kTimChannel3},
+    .Mode = kInitCfg,
+
+    /** Configuration of the commutation steps of the brushless motor **/
+
+    /* Channel 1 - Channel 1 Comp - Channel 2 - Channel 2 Comp - Channel 3 - Channel 3 Comp */
+
+    /* ALL CHANNELS OFF */
+    .kChannelStateArray[kStop] =    {kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_Low},
+
+    /* PWM Simple from DRV 8323 */
+    /* C1 : ENABLE - C1C - C2 - C2C : ENABLE - C3 - C3C */
+    .kChannelStateArray[kPhaseUV] = {kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_High},
+    /* C1 : ENABLE - C1C - C2 - C2C - C3 - C3C : ENABLE */
+    .kChannelStateArray[kPhaseUW] = {kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_High,kTimCh_Low,kTimCh_Low},
+    /* C1 - C1C - C2 : ENABLE - C2C - C3 - C3C : ENABLE */
+    .kChannelStateArray[kPhaseVW] = {kTimCh_Low,kTimCh_Low,kTimCh_Low,kTimCh_High,kTimCh_PWM,kTimCh_PWM},
+    /* C1 - C1C : ENABLE - C2 : ENABLE - C2C - C3 - C3C */
+    .kChannelStateArray[kPhaseVU] = {kTimCh_Low,kTimCh_High,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_PWM},
+    /* C1 - C1C : ENABLE - C2 - C2C - C3 : ENABLE - C3C */
+    .kChannelStateArray[kPhaseWU] = {kTimCh_Low,kTimCh_High,kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_Low},
+    /* C1 - C1C - C2 - C2C : ENABLE - C3 : ENABLE - C3C */
+    .kChannelStateArray[kPhaseWV] = {kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_PWM,kTimCh_Low,kTimCh_High},
+
+    .kChannelMeasureArray = {ADC_CHANNEL_IN13, ADC_CHANNEL_IN13, ADC_CHANNEL_IN14, ADC_CHANNEL_IN12, ADC_CHANNEL_IN13, ADC_CHANNEL_IN14, ADC_CHANNEL_IN12},
+    .kPhaseMeasureArray    = {0, 1, 2, 0, 1, 2, 0},
+    .kchannelSlope         = {0, 1, 0, 1, 0 ,1, 0}, //invert for KCW
+    .kPhaseOffset          = {9, 7, 11},
+    .kchannelCurrentSense = {ADC_CHANNEL_IN6, ADC_CHANNEL_IN15, ADC_CHANNEL_IN14, ADC_CHANNEL_IN14, ADC_CHANNEL_IN9, ADC_CHANNEL_IN9, ADC_CHANNEL_IN15},
 
     /* PWM Double from scratch */
 /*    .kChannelStateArray[kPhaseUV] = {kTimCh_PWM,kTimCh_Low,kTimCh_Low,kTimCh_PWM,kTimCh_Low,kTimCh_Low},
@@ -220,6 +404,27 @@ static PWMConfig tim_8_cfg = {
   .dier = 0
 };
 
+/*
+ * Use PWM_Config only to configure the callback definitions
+ * */
+static PWMConfig tim_234_cfg = {
+  .frequency = 10000,                        /* PWM clock frequency.   */
+  .period    = 4096,                         /* PWM period in ticks  (here 0.4096 second)  */
+  commutation_cb,                            /* Callback called when UIF is set*/
+                                             /* PWM Channels configuration */
+  // Complete configuration is done after the call of PWmStart
+  // Channels Callback are called when the counter matches the compare value (CCxIF)
+  {
+   {PWM_OUTPUT_DISABLED, NULL},
+   {PWM_OUTPUT_DISABLED, NULL},
+   {PWM_OUTPUT_DISABLED, NULL},
+   {PWM_OUTPUT_DISABLED, NULL}
+  },
+  .cr2  = 0,
+  .bdtr = 0,
+  .dier = 0
+};
+
 
 
 /*===========================================================================*/
@@ -260,6 +465,74 @@ void initTIM1MotorIo(void)
   palClearLine(LINE_OUT_MOT1_PH3_N);                            // Set to 0
   // Set back to alternate function
   palSetLineMode(LINE_OUT_MOT1_PH3_N,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+
+  //motor2
+  /* Phase 1 P */
+  palSetLineMode(LINE_OUT_MOT2_PH1_P,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT2_PH1_P);                            // Set to 0
+  // Set back to alternate function
+  palSetLineMode(LINE_OUT_MOT2_PH1_P,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+  /* Phase 1 N */
+  palSetLineMode(LINE_OUT_MOT2_PH1_N,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT2_PH1_N);                            // Set to 0
+  // Set back to alternate function
+  palSetLineMode(LINE_OUT_MOT2_PH1_N,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+
+  /* Phase 2 P */
+  palSetLineMode(LINE_OUT_MOT2_PH2_P,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT2_PH2_P);                            // Set to 0
+  // Set back to alternate function
+  palSetLineMode(LINE_OUT_MOT2_PH2_P,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+  /* Phase 2 N */
+  palSetLineMode(LINE_OUT_MOT2_PH2_N,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT2_PH2_N);                            // Set to 0
+  // Set back to alternate function
+  palSetLineMode(LINE_OUT_MOT2_PH2_N,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(1));
+
+  /* Phase 3 P */
+  palSetLineMode(LINE_OUT_MOT2_PH3_P,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT2_PH3_P);                            // Set to 0
+  // Set back to alternate function
+  palSetLineMode(LINE_OUT_MOT2_PH3_P,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(2));
+  /* Phase 3 N */
+  palSetLineMode(LINE_OUT_MOT2_PH3_N,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT2_PH3_N);                            // Set to 0
+  // Set back to alternate function
+  palSetLineMode(LINE_OUT_MOT2_PH3_N,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(2));
+
+   //motor3
+  /* Phase 1 P */
+  palSetLineMode(LINE_OUT_MOT3_PH1_P,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT3_PH1_P);                            // Set to 0
+  // Set back to alternate function
+  palSetLineMode(LINE_OUT_MOT3_PH1_P,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(2));
+  /* Phase 1 N */
+  palSetLineMode(LINE_OUT_MOT3_PH1_N,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT3_PH1_N);                            // Set to 0
+  // Set back to alternate function
+  palSetLineMode(LINE_OUT_MOT3_PH1_N,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(2));
+
+  /* Phase 2 P */
+  palSetLineMode(LINE_OUT_MOT3_PH2_P,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT3_PH2_P);                            // Set to 0
+  // Set back to alternate function
+  palSetLineMode(LINE_OUT_MOT3_PH2_P,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(2));
+  /* Phase 2 N */
+  palSetLineMode(LINE_OUT_MOT3_PH2_N,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT3_PH2_N);                            // Set to 0
+  // Set back to alternate function
+  palSetLineMode(LINE_OUT_MOT3_PH2_N,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(2));
+
+  /* Phase 3 P */
+  palSetLineMode(LINE_OUT_MOT3_PH3_P,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT3_PH3_P);                            // Set to 0
+  // Set back to alternate function
+  palSetLineMode(LINE_OUT_MOT3_PH3_P,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(2));
+  /* Phase 3 N */
+  palSetLineMode(LINE_OUT_MOT3_PH3_N,PAL_MODE_OUTPUT_PUSHPULL); // Set to IO Output mode
+  palClearLine(LINE_OUT_MOT3_PH3_N);                            // Set to 0
+  // Set back to alternate function
+  palSetLineMode(LINE_OUT_MOT3_PH3_N,PAL_STM32_MODE_ALTERNATE | PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLDOWN | PAL_STM32_ALTERNATE(2));
 
   //motor4
   /* Phase 1 P */
@@ -365,11 +638,53 @@ static void timer8Start(void)
     pwmDisablePeriodicNotification(&PWMD8); // Enable the Update Event interruption
 }
 
+static void timer234Start(void)
+{
+  /*
+     * Starting PWM driver 1 and enabling the notifications.
+     */
+    // TIMER 1 Config
+    pwmStart(&PWMD2, &tim_234_cfg);
+    pwmStart(&PWMD3, &tim_234_cfg);
+    pwmStart(&PWMD4, &tim_234_cfg);
+    timer_234_pwm_config(&PWMD2);
+    timer_234_pwm_config(&PWMD3);
+    timer_234_pwm_config(&PWMD4);
+    pwmDisablePeriodicNotification(&PWMD2); // Enable the Update Event interruption
+    pwmDisablePeriodicNotification(&PWMD3); // Enable the Update Event interruption
+    pwmDisablePeriodicNotification(&PWMD4); // Enable the Update Event interruption
+}
+
 void timersStart(void){
   timer1Start();
+  timer234Start();
   timer8Start();
 
-  //(&PWMD8)->tim->CR1 |= STM32_TIM_CR1_CEN;
+  motor1.Mode = kEndless;
+  motor1.StateIterator = 0;
+  commutation_zc_reset(&motor1);
+  motor1.ZCNextCommut = motor1.TimeBLDCCommut + 100;
+  brushcfg_SetZCFlag(&motor1);
+
+  motor2.Mode = kEndless;
+  motor2.StateIterator = 0;
+  commutation_zc_reset(&motor2);
+  motor2.ZCNextCommut = motor2.TimeBLDCCommut + 100;
+  brushcfg_SetZCFlag(&motor2);
+
+  motor3.Mode = kEndless;
+  motor3.StateIterator = 0;
+  commutation_zc_reset(&motor3);
+  motor3.ZCNextCommut = motor3.TimeBLDCCommut + 100;
+  brushcfg_SetZCFlag(&motor3);
+
+  motor4.Mode = kEndless;
+  motor4.StateIterator = 0;
+  commutation_zc_reset(&motor4);
+  motor4.ZCNextCommut = motor4.TimeBLDCCommut + 100;
+  brushcfg_SetZCFlag(&motor4);
+
+  //starts the every timer synchronously
   (&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CEN;
 
 }
@@ -381,7 +696,9 @@ void timersStart(void){
 void tim_1_oc_cmd(TimChannel aChannel,TimChannelState aState, BrushlessConfig* bcfg)
 {
   uint32_t lCCEnable;
-  switch(aChannel)
+  uint8_t channel = bcfg->channelMappingHigh[aChannel];
+
+  switch(channel)
   {
     case kTimChannel1:
     {
@@ -440,9 +757,14 @@ void tim_1_oc_cmd(TimChannel aChannel,TimChannelState aState, BrushlessConfig* b
       break;
     }
     case kTimCh_PWM:
-    {
-      palSetLineMode(bcfg->P_Channels[aChannel],bcfg->kDefaultIOConfig);
-      bcfg->pwmp->tim->CCER |= lCCEnable;
+    { 
+      if(!bcfg->timerAttributionHigh[aChannel]){
+        palSetLineMode(bcfg->P_Channels[aChannel],bcfg->kDefaultIOConfig);
+        bcfg->pwmp->tim->CCER |= lCCEnable;
+      }else{
+        palSetLineMode(bcfg->P_Channels[aChannel],bcfg->kDefaultIOConfig2);
+        bcfg->pwmp2->tim->CCER |= lCCEnable;
+      }
       break;
     }
   }
@@ -451,32 +773,70 @@ void tim_1_oc_cmd(TimChannel aChannel,TimChannelState aState, BrushlessConfig* b
 void tim_1_ocn_cmd(TimChannel aChannel,TimChannelState aState, BrushlessConfig* bcfg)
 {
   uint32_t lCCNEnable;
-  switch(aChannel)
-  {
-    case kTimChannel1:
+  uint8_t channel = bcfg->channelMappingLow[aChannel];
+
+
+  if(bcfg == &motor2 || bcfg == &motor3){
+    switch(channel)
     {
-      lCCNEnable = STM32_TIM_CCER_CC1NE;
-      break;
+      case kTimChannel1:
+      {
+        lCCNEnable = STM32_TIM_CCER_CC1E;
+        break;
+      }
+
+      case kTimChannel2:
+      {
+        lCCNEnable = STM32_TIM_CCER_CC2E;
+        break;
+      }
+
+      case kTimChannel3:
+      {
+        lCCNEnable = STM32_TIM_CCER_CC3E;
+        break;
+      }
+
+      case kTimChannel4:
+      {
+        lCCNEnable = STM32_TIM_CCER_CC4E;
+        break;
+      }
+      case kTimChannel5:
+      case kTimChannel6:
+      default:
+      {
+
+      }
     }
-
-    case kTimChannel2:
+  }else{
+    switch(channel)
     {
-      lCCNEnable = STM32_TIM_CCER_CC2NE;
-      break;
-    }
+      case kTimChannel1:
+      {
+        lCCNEnable = STM32_TIM_CCER_CC1NE;
+        break;
+      }
 
-    case kTimChannel3:
-    {
-      lCCNEnable = STM32_TIM_CCER_CC3NE;
-      break;
-    }
+      case kTimChannel2:
+      {
+        lCCNEnable = STM32_TIM_CCER_CC2NE;
+        break;
+      }
 
-    case kTimChannel4:
-    case kTimChannel5:
-    case kTimChannel6:
-    default:
-    {
+      case kTimChannel3:
+      {
+        lCCNEnable = STM32_TIM_CCER_CC3NE;
+        break;
+      }
 
+      case kTimChannel4:
+      case kTimChannel5:
+      case kTimChannel6:
+      default:
+      {
+
+      }
     }
   }
 
@@ -498,8 +858,13 @@ void tim_1_ocn_cmd(TimChannel aChannel,TimChannelState aState, BrushlessConfig* 
     }
     case kTimCh_PWM:
     {
-      palSetLineMode(bcfg->N_Channels[aChannel],bcfg->kDefaultIOConfig);
-      bcfg->pwmp->tim->CCER |= lCCNEnable;
+       if(!bcfg->timerAttributionLow[aChannel]){
+        palSetLineMode(bcfg->N_Channels[aChannel],bcfg->kDefaultIOConfig);
+        bcfg->pwmp->tim->CCER |= lCCNEnable;
+      }else{
+        palSetLineMode(bcfg->N_Channels[aChannel],bcfg->kDefaultIOConfig2);
+        bcfg->pwmp2->tim->CCER |= lCCNEnable;
+      }
       break;
     }
   }
@@ -530,7 +895,7 @@ void timer_1_pwm_config (void)
     (&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC1NP);   // OC1N Polarity : Active High
     (&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS1);    // OC1 Idle State (when MOE=0) : 0
     (&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS1N);   // OC1N Idle State (when MOE=0): 0
-    (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kFrozen);  // OC1 Mode : Frozen
+    (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kPWMMode2);  // OC1 Mode : Frozen
     (&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC1FE); // Disable the Fast Mode
     (&PWMD1)->tim->CCMR1 |= STM32_TIM_CCMR1_OC1PE;    // Enable the Preload -> CCR is loaded in the active register at each update event
     // (&PWMD1)->tim->CCR[kTimChannel1] =  PERIOD_PWM_52_KHZ/2 - 1;  // Select the Half-period to overflow
@@ -540,7 +905,7 @@ void timer_1_pwm_config (void)
     (&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC2NP);   // OC2N Polarity : Active High
     (&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS2);    // OC2 Idle State (when MOE=0) : 0
     (&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS2N);   // OC2N Idle State (when MOE=0): 0
-    (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(kFrozen);  // OC2 Mode : Frozen
+    (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(kPWMMode2);  // OC2 Mode : Frozen
     (&PWMD1)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC2FE); // Disable the Fast Mode
     (&PWMD1)->tim->CCMR1 |= STM32_TIM_CCMR1_OC2PE;    // Enable the Preload
     // (&PWMD1)->tim->CCR[kTimChannel2] =  PERIOD_PWM_52_KHZ/4 - 1;  // Select the Quarter-period to overflow
@@ -550,7 +915,7 @@ void timer_1_pwm_config (void)
     (&PWMD1)->tim->CCER &= (~STM32_TIM_CCER_CC3NP);   // OC3N Polarity : Active High
     (&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS3);    // OC3 Idle State (when MOE=0) : 0
     (&PWMD1)->tim->CR2  &=  (~STM32_TIM_CR2_OIS3N);   // OC3N Idle State (when MOE=0): 0
-    (&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(kFrozen);  // OC3 Mode : Frozen
+    (&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(kPWMMode2);  // OC3 Mode : Frozen
     (&PWMD1)->tim->CCMR2 &= (~STM32_TIM_CCMR2_OC3FE); // Disable the Fast Mode
     (&PWMD1)->tim->CCMR2 |= STM32_TIM_CCMR2_OC3PE;    // Enable the Preload
     // (&PWMD1)->tim->CCR[kTimChannel3]  =  PERIOD_PWM_52_KHZ/8 - 1;  // Select the 1/8 period to overflow
@@ -621,20 +986,9 @@ void timer_1_pwm_config (void)
 
     // Force update event (if preload enabled)
     (&PWMD1)->tim->EGR |= STM32_TIM_EGR_UG;
-
-    /* Configure the mode of each channel */
-    (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kPWMMode2);  // OC1 Mode : PWM Mode 2
-    (&PWMD1)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(kPWMMode2);  // OC2 Mode : PWM Mode 2
-    (&PWMD1)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(kPWMMode2);  // OC3 Mode : PWM Mode 2
-
     // Force update event (if preload enabled)
     (&PWMD1)->tim->EGR |= STM32_TIM_EGR_COMG;
 
-    motor1.Mode = kEndless;
-    motor1.StateIterator = 0;
-    commutation_zc_reset(&motor1);
-    motor1.ZCNextCommut = motor1.TimeBLDCCommut + 100;
-    brushcfg_SetZCFlag(&motor1);
 
     //  // Enable the Timer
     //(&PWMD1)->tim->CR1 |= STM32_TIM_CR1_CEN;     // Enable the counter in correct configuration
@@ -666,7 +1020,7 @@ void timer_8_pwm_config (void)
     (&PWMD8)->tim->CCER &= (~STM32_TIM_CCER_CC1NP);   // OC1N Polarity : Active High
     (&PWMD8)->tim->CR2  &=  (~STM32_TIM_CR2_OIS1);    // OC1 Idle State (when MOE=0) : 0
     (&PWMD8)->tim->CR2  &=  (~STM32_TIM_CR2_OIS1N);   // OC1N Idle State (when MOE=0): 0
-    (&PWMD8)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kFrozen);  // OC1 Mode : Frozen
+    (&PWMD8)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kPWMMode2);  // OC1 Mode : Frozen
     (&PWMD8)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC1FE); // Disable the Fast Mode
     (&PWMD8)->tim->CCMR1 |= STM32_TIM_CCMR1_OC1PE;    // Enable the Preload -> CCR is loaded in the active register at each update event
     // (&PWMD8)->tim->CCR[kTimChannel1] =  PERIOD_PWM_52_KHZ/2 - 1;  // Select the Half-period to overflow
@@ -676,7 +1030,7 @@ void timer_8_pwm_config (void)
     (&PWMD8)->tim->CCER &= (~STM32_TIM_CCER_CC2NP);   // OC2N Polarity : Active High
     (&PWMD8)->tim->CR2  &=  (~STM32_TIM_CR2_OIS2);    // OC2 Idle State (when MOE=0) : 0
     (&PWMD8)->tim->CR2  &=  (~STM32_TIM_CR2_OIS2N);   // OC2N Idle State (when MOE=0): 0
-    (&PWMD8)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(kFrozen);  // OC2 Mode : Frozen
+    (&PWMD8)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(kPWMMode2);  // OC2 Mode : Frozen
     (&PWMD8)->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC2FE); // Disable the Fast Mode
     (&PWMD8)->tim->CCMR1 |= STM32_TIM_CCMR1_OC2PE;    // Enable the Preload
     // (&PWMD8)->tim->CCR[kTimChannel2] =  PERIOD_PWM_52_KHZ/4 - 1;  // Select the Quarter-period to overflow
@@ -686,7 +1040,7 @@ void timer_8_pwm_config (void)
     (&PWMD8)->tim->CCER &= (~STM32_TIM_CCER_CC3NP);   // OC3N Polarity : Active High
     (&PWMD8)->tim->CR2  &=  (~STM32_TIM_CR2_OIS3);    // OC3 Idle State (when MOE=0) : 0
     (&PWMD8)->tim->CR2  &=  (~STM32_TIM_CR2_OIS3N);   // OC3N Idle State (when MOE=0): 0
-    (&PWMD8)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(kFrozen);  // OC3 Mode : Frozen
+    (&PWMD8)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(kPWMMode2);  // OC3 Mode : Frozen
     (&PWMD8)->tim->CCMR2 &= (~STM32_TIM_CCMR2_OC3FE); // Disable the Fast Mode
     (&PWMD8)->tim->CCMR2 |= STM32_TIM_CCMR2_OC3PE;    // Enable the Preload
     // (&PWMD8)->tim->CCR[kTimChannel3]  =  PERIOD_PWM_52_KHZ/8 - 1;  // Select the 1/8 period to overflow
@@ -732,23 +1086,79 @@ void timer_8_pwm_config (void)
 
     // Force update event (if preload enabled)
     (&PWMD8)->tim->EGR |= STM32_TIM_EGR_UG;
-
-    /* Configure the mode of each channel */
-    (&PWMD8)->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kPWMMode2);  // OC1 Mode : PWM Mode 2
-    (&PWMD8)->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(kPWMMode2);  // OC2 Mode : PWM Mode 2
-    (&PWMD8)->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(kPWMMode2);  // OC3 Mode : PWM Mode 2
-
     // Force update event (if preload enabled)
     (&PWMD8)->tim->EGR |= STM32_TIM_EGR_COMG;
 
-    motor4.Mode = kEndless;
-    motor4.StateIterator = 0;
-    commutation_zc_reset(&motor4);
-    motor4.ZCNextCommut = motor4.TimeBLDCCommut + 100;
-    brushcfg_SetZCFlag(&motor4);
-
     // Enable the Timer
     //(&PWMD8)->tim->CR1 |= STM32_TIM_CR1_CEN;     // Enable the counter in correct configuration
+}
+
+void timer_234_pwm_config(PWMDriver *pwmp)
+{
+    pwmp->tim->CR1 &= (~STM32_TIM_CR1_CEN);     // Disable the counter until correct configuration
+    pwmp->tim->CR1 &= (~STM32_TIM_CR1_CMS(0));  // Edge-aligned mode
+    pwmp->tim->CR1 &= (~STM32_TIM_CR1_DIR);     // Direction : upcounter
+    pwmp->tim->PSC =  0;                        // Set the prescaler to 0 TIM_FREQ = 216 MHz
+    pwmp->tim->ARR =  PERIOD_PWM_52_KHZ_LOW - 1;    // Set the period of our PWM
+
+    pwmp->tim->CR1 &= (~STM32_TIM_CR1_ARPE);    // Remove the ARPE
+
+    pwmp->tim->CCER = 0; // Reset Capture/Compare Register
+    //
+
+    //external trigger mode and TIM1 master
+    pwmp->tim->SMCR = STM32_TIM_SMCR_SMS(6) | STM32_TIM_SMCR_TS(0);
+    // 1 : Output channels configuration
+    // General Config
+    pwmp->tim->CCMR1 = 0;                         // Reset OC 1 and OC2 configuration
+    pwmp->tim->CCMR2 = 0;                         // Reset OC 3 and OC4 configuration
+
+    // Channel 1 Config
+    pwmp->tim->CCER &= (~STM32_TIM_CCER_CC1P);    // OC1 Polarity  : Active High
+    //pwmp->tim->CCER |= (STM32_TIM_CCER_CC1E);    // OC1 Polarity  : Active High
+    pwmp->tim->CCMR1|=  STM32_TIM_CCMR1_OC1M(kPWMMode2);  // OC1 Mode : Frozen
+    pwmp->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC1FE); // Disable the Fast Mode
+    pwmp->tim->CCMR1 |= STM32_TIM_CCMR1_OC1PE;    // Enable the Preload -> CCR is loaded in the active register at each update event
+    // pwmp->tim->CCR[kTimChannel1] =  PERIOD_PWM_52_KHZ_LOW/2 - 1;  // Select the Half-period to overflow
+
+    // Channel 2 Config
+    pwmp->tim->CCER |= (STM32_TIM_CCER_CC2P);    // OC1 Polarity  : Active Low
+    //pwmp->tim->CCER |= (STM32_TIM_CCER_CC2E);    // OC1 Polarity  : Active High
+    pwmp->tim->CCMR1|=  STM32_TIM_CCMR1_OC2M(kPWMMode2);  // OC1 Mode : Frozen
+    pwmp->tim->CCMR1 &= (~STM32_TIM_CCMR1_OC2FE); // Disable the Fast Mode
+    pwmp->tim->CCMR1 |= STM32_TIM_CCMR1_OC2PE;    // Enable the Preload -> CCR is loaded in the active register at each update event
+    // pwmp->tim->CCR[kTimChannel1] =  PERIOD_PWM_52_KHZ_LOW/2 - 1;  // Select the Half-period to overflow
+
+    // Channel 3 Config
+    pwmp->tim->CCER &= (~STM32_TIM_CCER_CC3P);    // OC1 Polarity  : Active High
+    //pwmp->tim->CCER |= (STM32_TIM_CCER_CC3E);    // OC1 Polarity  : Active High
+    pwmp->tim->CCMR2|=  STM32_TIM_CCMR2_OC3M(kPWMMode2);  // OC1 Mode : Frozen
+    pwmp->tim->CCMR2 &= (~STM32_TIM_CCMR2_OC3FE); // Disable the Fast Mode
+    pwmp->tim->CCMR2 |= STM32_TIM_CCMR2_OC3PE;    // Enable the Preload -> CCR is loaded in the active register at each update event
+    // pwmp->tim->CCR[kTimChannel1] =  PERIOD_PWM_52_KHZ_LOW/2 - 1;  // Select the Half-period to overflow
+
+    // Channel 4 Config
+    pwmp->tim->CCER |= (STM32_TIM_CCER_CC4P);    // OC1 Polarity  : Active Low
+    //pwmp->tim->CCER |= (STM32_TIM_CCER_CC4E);    // OC1 Polarity  : Active High
+    pwmp->tim->CCMR2|=  STM32_TIM_CCMR2_OC4M(kPWMMode2);  // OC1 Mode : Frozen
+    pwmp->tim->CCMR2 &= (~STM32_TIM_CCMR2_OC4FE); // Disable the Fast Mode
+    pwmp->tim->CCMR2 |= STM32_TIM_CCMR2_OC4PE;    // Enable the Preload -> CCR is loaded in the active register at each update event
+    // pwmp->tim->CCR[kTimChannel1] =  PERIOD_PWM_52_KHZ_LOW/2 - 1;  // Select the Half-period to overflow
+
+    pwmp->tim->CR1 |= STM32_TIM_CR1_CKD(0);     // Modification of the CR1 CKD in order to have a bigger period for the dead times
+                                                    // OSSR and OSSI not needed
+
+    // Force update event (if preload enabled)
+    pwmp->tim->EGR |= STM32_TIM_EGR_UG;
+
+    /* Set all the OC output to same PWM */
+    pwmp->tim->CCR[kTimChannel1]  =  0.9 * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
+    pwmp->tim->CCR[kTimChannel2]  =  0.9 * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
+    pwmp->tim->CCR[kTimChannel3]  =  0.9 * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
+    pwmp->tim->CCR[kTimChannel4]  =  0.9 * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
+
+    // Force update event (if preload enabled)
+    pwmp->tim->EGR |= STM32_TIM_EGR_UG;
 }
 
 
@@ -815,22 +1225,23 @@ void commutation_nextstep(BrushlessConfig *pBrushCfg)
         }
       }
       break;
-      //     pBrushCfg->InStepCount++;
-      // if (pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount)
-      // {
-      //   commutation_step(pBrushCfg);
-      //   tim_1_oc_cmd(kTimChannel1 ,pBrushCfg->kChannelStateArray[pBrushCfg->StateIterator][0], pBrushCfg);
-      //   tim_1_ocn_cmd(kTimChannel1,pBrushCfg->kChannelStateArray[pBrushCfg->StateIterator][1], pBrushCfg);
-      //   tim_1_oc_cmd(kTimChannel2 ,pBrushCfg->kChannelStateArray[pBrushCfg->StateIterator][2], pBrushCfg);
-      //   tim_1_ocn_cmd(kTimChannel2,pBrushCfg->kChannelStateArray[pBrushCfg->StateIterator][3], pBrushCfg);
-      //   tim_1_oc_cmd(kTimChannel3 ,pBrushCfg->kChannelStateArray[pBrushCfg->StateIterator][4], pBrushCfg);
-      //   tim_1_ocn_cmd(kTimChannel3,pBrushCfg->kChannelStateArray[pBrushCfg->StateIterator][5], pBrushCfg);
-      //   if(1==pBrushCfg->ZCFlag){
-      //     pBrushCfg->ZCFlag = 0;
-      //     pBrushCfg->ZCVCount++;
-      //   }
-      // }
-      // break;
+    case kForced:
+          pBrushCfg->InStepCount++;
+      if (pBrushCfg->kMaxStepCount <= pBrushCfg->InStepCount)
+      {
+        commutation_step(pBrushCfg);
+        tim_1_oc_cmd(kTimChannel1 ,pBrushCfg->kChannelStateArray[pBrushCfg->StateIterator][0], pBrushCfg);
+        tim_1_ocn_cmd(kTimChannel1,pBrushCfg->kChannelStateArray[pBrushCfg->StateIterator][1], pBrushCfg);
+        tim_1_oc_cmd(kTimChannel2 ,pBrushCfg->kChannelStateArray[pBrushCfg->StateIterator][2], pBrushCfg);
+        tim_1_ocn_cmd(kTimChannel2,pBrushCfg->kChannelStateArray[pBrushCfg->StateIterator][3], pBrushCfg);
+        tim_1_oc_cmd(kTimChannel3 ,pBrushCfg->kChannelStateArray[pBrushCfg->StateIterator][4], pBrushCfg);
+        tim_1_ocn_cmd(kTimChannel3,pBrushCfg->kChannelStateArray[pBrushCfg->StateIterator][5], pBrushCfg);
+        if(1==pBrushCfg->ZCFlag){
+          pBrushCfg->ZCFlag = 0;
+          pBrushCfg->ZCVCount++;
+        }
+      }
+      break;
     default:
       break;
   }

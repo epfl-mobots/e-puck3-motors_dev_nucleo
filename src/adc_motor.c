@@ -105,16 +105,16 @@ void adc_1_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
     static float average = 0;
     static float average2 = 0;
     ADCD1.adc->SQR3 =   ADC_SQR3_SQ1_N(motor1.kchannelCurrentSense[brushcfg_GetStateIterator(&motor1)]) |
-                        ADC_SQR3_SQ2_N(ADC_CHANNEL_IN9)|
-                        ADC_SQR3_SQ3_N(ADC_CHANNEL_IN9)|
+                        ADC_SQR3_SQ2_N(motor2.kchannelCurrentSense[brushcfg_GetStateIterator(&motor2)])|
+                        ADC_SQR3_SQ3_N(motor3.kchannelCurrentSense[brushcfg_GetStateIterator(&motor3)])|
                         ADC_SQR3_SQ4_N(motor4.kchannelCurrentSense[brushcfg_GetStateIterator(&motor4)])| //dummy to simulate 4 channels sampling
                         ADC_SQR3_SQ5_N(motor1.kchannelCurrentSense[brushcfg_GetStateIterator(&motor1)])|
-                        ADC_SQR3_SQ6_N(ADC_CHANNEL_IN9);
-    ADCD1.adc->SQR2 =   ADC_SQR2_SQ7_N(ADC_CHANNEL_IN9)|
+                        ADC_SQR3_SQ6_N(motor2.kchannelCurrentSense[brushcfg_GetStateIterator(&motor2)]);
+    ADCD1.adc->SQR2 =   ADC_SQR2_SQ7_N(motor3.kchannelCurrentSense[brushcfg_GetStateIterator(&motor3)])|
                         ADC_SQR2_SQ8_N(motor4.kchannelCurrentSense[brushcfg_GetStateIterator(&motor4)])| //dummy to simulate 4 channels sampling
                         ADC_SQR2_SQ9_N(motor1.kchannelCurrentSense[brushcfg_GetStateIterator(&motor1)])|
-                        ADC_SQR2_SQ10_N(ADC_CHANNEL_IN9)|
-                        ADC_SQR2_SQ11_N(ADC_CHANNEL_IN9)|
+                        ADC_SQR2_SQ10_N(motor2.kchannelCurrentSense[brushcfg_GetStateIterator(&motor2)])|
+                        ADC_SQR2_SQ11_N(motor3.kchannelCurrentSense[brushcfg_GetStateIterator(&motor3)])|
                         ADC_SQR2_SQ12_N(motor4.kchannelCurrentSense[brushcfg_GetStateIterator(&motor4)]);
     
     ADCD1.adc->CR2 |= ADC_CR2_SWSTART;
@@ -143,11 +143,6 @@ void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 
     palSetLine(DEBUG_INT_LINE2);
 
-    ADCD3.adc->SQR3 =   ADC_SQR3_SQ1_N(motor1.kChannelMeasureArray[brushcfg_GetStateIterator(&motor1)])|
-                        ADC_SQR3_SQ2_N(ADC_CHANNEL_IN1)|
-                        ADC_SQR3_SQ3_N(ADC_CHANNEL_IN2)|
-                        ADC_SQR3_SQ4_N(motor4.kChannelMeasureArray[brushcfg_GetStateIterator(&motor4)]);
-
     static uint8_t i = 1;
     if(i){
       //we sampled OFF PWM
@@ -174,14 +169,20 @@ void adc_3_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n)
     }else{
       //we sampled ON PWM
       PWMD1.tim->CCR[3] = 0.20 * PERIOD_PWM_52_KHZ - 1;
+      ADCD3.adc->SQR3 =   ADC_SQR3_SQ1_N(motor1.kChannelMeasureArray[brushcfg_GetStateIterator(&motor1)])|
+                        ADC_SQR3_SQ2_N(motor2.kChannelMeasureArray[brushcfg_GetStateIterator(&motor2)])|
+                        ADC_SQR3_SQ3_N(motor3.kChannelMeasureArray[brushcfg_GetStateIterator(&motor3)])|
+                        ADC_SQR3_SQ4_N(motor4.kChannelMeasureArray[brushcfg_GetStateIterator(&motor4)]);
       // if(motor1.Mode == kCalibrate){
 
       //     Zcs_Average(buffer,n);
       // }else{
           // Zero-crossing and slope detection
           Zcs_Insert_Data(&gZCS,buffer,n, 1);
-          zc_detect = Zcs_Detect(&gZCS, &motor4);
           zc_detect = Zcs_Detect(&gZCS, &motor1);
+          zc_detect = Zcs_Detect(&gZCS, &motor2);
+          zc_detect = Zcs_Detect(&gZCS, &motor3);
+          zc_detect = Zcs_Detect(&gZCS, &motor4);
       // }
     }
     i = !i;

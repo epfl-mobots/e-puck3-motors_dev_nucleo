@@ -15,6 +15,7 @@
 
 #define PERIOD_PWM_32_KHZ       6750
 #define PERIOD_PWM_52_KHZ       4096
+#define PERIOD_PWM_52_KHZ_LOW   2048
 #define PERIOD_PWM_20_KHZ       10800
 #define PERIOD_100_MS_INT       5273
 
@@ -89,6 +90,7 @@ typedef enum
   kCalibrate    = 1,
   kInitRamp = 2,
   kValidSensorless = 3,
+  kForced   = 4,
   kEndless  = 255
 }CmdMode;
 
@@ -148,12 +150,19 @@ typedef enum
 typedef struct
 {
   PWMDriver *pwmp;
+  PWMDriver *pwmp2;
+  uint32_t period;
   uint8_t motorNb;
 
   Rotation RotationDir;
   uint32_t InStepCount;             // Count the number of iteration has done in a given step,determine the frequency of the 6 steps
   uint32_t kMaxStepCount;           // Maximum number of iteration inside a step
   const iomode_t kDefaultIOConfig;
+  const iomode_t kDefaultIOConfig2;
+  const uint8_t timerAttributionHigh[NB_PHASE];
+  const uint8_t timerAttributionLow[NB_PHASE];
+  const uint8_t channelMappingHigh[NB_PHASE];
+  const uint8_t channelMappingLow[NB_PHASE];
   ioline_t P_Channels[NB_PHASE];
   ioline_t N_Channels[NB_PHASE];
 
@@ -165,8 +174,9 @@ typedef struct
   int32_t StateIterator;
   const TimChannelState kChannelStateArray[NB_STATE][NB_CHANNELS]; // Each phase has a P and N channel
   const uint8_t kChannelMeasureArray[NB_STATE]; // To know which channel to measure
+  const uint8_t kPhaseMeasureArray[NB_STATE];
   const uint8_t kchannelSlope[NB_STATE];
-  uint16_t kchannelOffset[NB_PHASE];
+  uint16_t kPhaseOffset[NB_PHASE];
   uint16_t kChannelNeutralPoint[NB_STATE];  // To store the calibration values of the neutral points
   uint16_t kchannelCurrentSense[NB_STATE];
 
@@ -247,12 +257,15 @@ void pwm_cb_ch4(PWMDriver *pwmp);
 void timer_1_pwm_config (void);
 void timersStart(void);
 void timer_8_pwm_config (void);
+void timer_234_pwm_config (PWMDriver *pwmp);
 
 
 /*===========================================================================*/
 /* Export global variable                                                    */
 /*===========================================================================*/
 extern BrushlessConfig motor1;
+extern BrushlessConfig motor2;
+extern BrushlessConfig motor3;
 extern BrushlessConfig motor4;
 
 
