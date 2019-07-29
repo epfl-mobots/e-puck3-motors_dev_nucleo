@@ -314,7 +314,7 @@ BrushlessConfig motor4 = {
     .kChannelMeasureArray = {ADC_CHANNEL_IN13, ADC_CHANNEL_IN13, ADC_CHANNEL_IN14, ADC_CHANNEL_IN12, ADC_CHANNEL_IN13, ADC_CHANNEL_IN14, ADC_CHANNEL_IN12},
     .kPhaseMeasureArray    = {0, 1, 2, 0, 1, 2, 0},
     .kchannelSlope         = {0, 1, 0, 1, 0 ,1, 0}, //invert for KCW
-    .kPhaseOffset          = {9, 7, 11},
+    .kPhaseOffset          = {8, 8, 8},
     .kchannelCurrentSense = {ADC_CHANNEL_IN6, ADC_CHANNEL_IN15, ADC_CHANNEL_IN14, ADC_CHANNEL_IN14, ADC_CHANNEL_IN9, ADC_CHANNEL_IN9, ADC_CHANNEL_IN15},
 
     /* PWM Double from scratch */
@@ -430,6 +430,18 @@ static PWMConfig tim_234_cfg = {
 /*===========================================================================*/
 /* IO                                                                        */
 /*===========================================================================*/
+
+void changeModeGpio(ioline_t line, uint8_t mode){
+
+    if(mode == PAL_STM32_MODE_OUTPUT){
+        PAL_PORT(line)->MODER &= ~(3 << (2 * PAL_PAD(line)));
+        PAL_PORT(line)->MODER |= (1 << (2 * PAL_PAD(line)));
+    }else if(mode == PAL_STM32_MODE_ALTERNATE){
+        PAL_PORT(line)->MODER &= ~(3 << (2 * PAL_PAD(line)));
+        PAL_PORT(line)->MODER |= (2 << (2 * PAL_PAD(line)));
+    }
+}
+
 void initTIM1MotorIo(void)
 {
   //motor1
@@ -594,11 +606,11 @@ void brushcfg_ComputeZCPeriod (BrushlessConfig* bcfg)
   bcfg->ZCPeriodOld = bcfg->ZCPeriod;
   bcfg->ZCPeriod    = bcfg->ZCDetect - bcfg->ZCDetectOld;
   //bcfg->ZCPeriodMean = ((bcfg->ZCPeriodOld + bcfg->ZCPeriod) >> 1);
-  bcfg->ZCPeriodMean = (0.95 * (float)bcfg->ZCPeriodMean + 0.05 * (float)bcfg->ZCPeriod);
+  bcfg->ZCPeriodMean = (0.6 * (float)bcfg->ZCPeriodMean + 0.4 * (float)bcfg->ZCPeriod);
   // if(((float)bcfg->ZCPeriod / (float)bcfg->ZCPeriodOld) < 0.5){
   //   bcfg->ZCPeriod = bcfg->ZCPeriodOld;
   // }
-  bcfg->ZCNextCommut = bcfg->TimeBLDCCommut + (bcfg->ZCPeriod * bcfg->ZCTiming);
+  bcfg->ZCNextCommut = bcfg->TimeBLDCCommut + (bcfg->ZCPeriodMean * bcfg->ZCTiming);
 
 
 }
@@ -745,24 +757,24 @@ void tim_1_oc_cmd(TimChannel aChannel,TimChannelState aState, BrushlessConfig* b
     case kTimCh_Low:
     {
       palClearLine(bcfg->P_Channels[aChannel]);
-      palSetLineMode(bcfg->P_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+      changeModeGpio(bcfg->P_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
       //(&PWMD1)->tim->CCER &= (~lCCEnable);
       break;
     }
     case kTimCh_High:
     {
       palSetLine(bcfg->P_Channels[aChannel]);
-      palSetLineMode(bcfg->P_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+      changeModeGpio(bcfg->P_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
       //(&PWMD1)->tim->CCER &= (~lCCEnable);
       break;
     }
     case kTimCh_PWM:
     { 
       if(!bcfg->timerAttributionHigh[aChannel]){
-        palSetLineMode(bcfg->P_Channels[aChannel],bcfg->kDefaultIOConfig);
+        changeModeGpio(bcfg->P_Channels[aChannel],PAL_STM32_MODE_ALTERNATE);
         bcfg->pwmp->tim->CCER |= lCCEnable;
       }else{
-        palSetLineMode(bcfg->P_Channels[aChannel],bcfg->kDefaultIOConfig2);
+        changeModeGpio(bcfg->P_Channels[aChannel],PAL_STM32_MODE_ALTERNATE);
         bcfg->pwmp2->tim->CCER |= lCCEnable;
       }
       break;
@@ -845,24 +857,24 @@ void tim_1_ocn_cmd(TimChannel aChannel,TimChannelState aState, BrushlessConfig* 
     case kTimCh_Low:
     {
       palClearLine(bcfg->N_Channels[aChannel]);
-      palSetLineMode(bcfg->N_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
+      changeModeGpio(bcfg->N_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
       //(&PWMD1)->tim->CCER &= (~lCCNEnable);
       break;
     }
     case kTimCh_High:
     {
       palSetLine(bcfg->N_Channels[aChannel]);
-      palSetLineMode(bcfg->N_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
+      changeModeGpio(bcfg->N_Channels[aChannel],PAL_MODE_OUTPUT_PUSHPULL);
       //(&PWMD1)->tim->CCER &= (~lCCNEnable);
       break;
     }
     case kTimCh_PWM:
     {
        if(!bcfg->timerAttributionLow[aChannel]){
-        palSetLineMode(bcfg->N_Channels[aChannel],bcfg->kDefaultIOConfig);
+        changeModeGpio(bcfg->N_Channels[aChannel],PAL_STM32_MODE_ALTERNATE);
         bcfg->pwmp->tim->CCER |= lCCNEnable;
       }else{
-        palSetLineMode(bcfg->N_Channels[aChannel],bcfg->kDefaultIOConfig2);
+        changeModeGpio(bcfg->N_Channels[aChannel],PAL_STM32_MODE_ALTERNATE);
         bcfg->pwmp2->tim->CCER |= lCCNEnable;
       }
       break;

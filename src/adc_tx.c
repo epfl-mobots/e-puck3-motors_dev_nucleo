@@ -51,9 +51,9 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size,uint8_t zc)
   if(0==adt->data_full)
   {
 
-    adt->data[0][adt->data_idx] = input_data[1];
-    adt->data[1][adt->data_idx] = input_data[2];
-    adt->data[2][adt->data_idx] = input_data[3];
+    adt->data[0][adt->data_idx] = input_data[0];
+    adt->data[1][adt->data_idx] = input_data[1];
+    adt->data[2][adt->data_idx] = input_data[2];
     //adt->data[3][adt->data_idx] = input_data[3];
     // if(zc){
     //   adt->data[zc-1][adt->data_idx] = 0;
@@ -78,6 +78,7 @@ void Adt_Insert_Data(AdcDataTx* adt,uint16_t* input_data,size_t size,uint8_t zc)
   if(0 == adt->data_left || 1 == adt->data_full)
   {
     adt->data_full = 1;
+    gADT.data_lock = 1;
     chSysLockFromISR();
     chBSemSignalI(&dtx_ready);
     chSysUnlockFromISR();

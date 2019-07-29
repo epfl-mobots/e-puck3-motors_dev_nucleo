@@ -115,7 +115,6 @@ static THD_FUNCTION(Thread2,arg) {
   while(true){
 
     chBSemWait(&dtx_ready);
-    gADT.data_lock = 1;
     Send_ADT_Uart(&gADT);
     Adt_Reset_Struct(&gADT);
   }
@@ -258,6 +257,9 @@ int main(void) {
       (&PWMD4)->tim->CCR[kTimChannel2]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
       (&PWMD4)->tim->CCR[kTimChannel3]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
       (&PWMD4)->tim->CCR[kTimChannel4]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
+      (&PWMD8)->tim->CCR[kTimChannel1]  =  (percent/100) * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
+      (&PWMD8)->tim->CCR[kTimChannel2]  =  (percent/100) * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
+      (&PWMD8)->tim->CCR[kTimChannel3]  =  (percent/100) * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
       //PWMD1.tim->CCXR[1] = (((percent-4)/100) * PERIOD_PWM_52_KHZ) - 1;
 
       chprintf((BaseSequentialStream *)&USB_GDB, "duty cycle = %f\r\n",100-percent);

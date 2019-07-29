@@ -105,7 +105,7 @@ uint8_t Zcs_Detect(ZCSDetect* zcs, BrushlessConfig* motor)
   MeasurePhase = motor->kPhaseMeasureArray[lStateIterator];
 
 
-  if(((motor->pwmp->tim->CCR[kTimChannel1]+1)*100/motor->period) < 60){
+  if(((motor->pwmp->tim->CCR[kTimChannel1]+1)*100/motor->period) < 70){
     // Check if the sign has changed between old measurement and actual
     ret_val = 0;
     if(zcs->data_idx[motorNb] > TWO_ELEM_IDX && !motor->ZCFlag)
