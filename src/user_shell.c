@@ -19,7 +19,6 @@
 #include "uc_usage.h"
 #include "gate_drivers.h"
 #include "usb_pd_controller.h"
-#include "tim1_motor.h"
 
 
 static THD_WORKING_AREA(waShell,2048);
@@ -73,19 +72,19 @@ static void cmd_power_drivers(BaseSequentialStream *chp, int argc, char *argv[])
 	if(argc == 2){
 		uint8_t motNumber = (char)*argv[0]-'0';
 		uint8_t onOff = (char)*argv[1]-'0';
-		ioline_t pin = 0;
+		//ioline_t pin = 0;
 		gateDriver_id device_id;
 		if(motNumber == 1){
-			pin = LINE_EN_DRIVER_1;
+			//pin = LINE_EN_DRIVER_1;
 			device_id = 0;
 		}else if(motNumber == 2){
-			pin = LINE_EN_DRIVER_2;
+			//pin = LINE_EN_DRIVER_2;
 			device_id = 1;
 		}else if(motNumber == 3){
-			pin = LINE_EN_DRIVER_3;
+			//pin = LINE_EN_DRIVER_3;
 			device_id = 2;
 		}else if(motNumber == 4){
-			pin = LINE_EN_DRIVER_4;
+			//pin = LINE_EN_DRIVER_4;
 			device_id = 3;
 		}else{
 			return;
@@ -117,16 +116,18 @@ static void cmd_step_time(BaseSequentialStream *chp, int argc, char *argv[])
   {
     char *endptr;
     uint32_t lMaxStepCount = strtol(argv[0], &endptr, 0);
-    motor1.kMaxStepCount = lMaxStepCount;
+    (void)lMaxStepCount;
+    //motor1.kMaxStepCount = lMaxStepCount;
   }
   if(argc == 2)
   {
       //gives the actual step number timer and the step status
-      chprintf(chp, "Iteration per step : %d" SHELL_NEWLINE_STR, motor1.kMaxStepCount);
+      //chprintf(chp, "Iteration per step : %d" SHELL_NEWLINE_STR, motor1.kMaxStepCount);
   }
   else
-  {
-      shellUsage(chp, "set_step_time 0-65535");
+  { 
+    chprintf(chp, "Not Implemented" SHELL_NEWLINE_STR);
+    //shellUsage(chp, "set_step_time 0-65535");
   }
 }
 
@@ -140,13 +141,14 @@ static void cmd_motor_timing(BaseSequentialStream *chp, int argc, char *argv[])
     timing -= 30;
     timing *= -1;
     timing /= 60;
-    motor1.ZCTiming = timing;
+    //motor1.ZCTiming = timing;
 
 
   }
   else
   {
-      shellUsage(chp, "set_motor_timing -30 to 30 degrees");
+      chprintf(chp, "Not Implemented" SHELL_NEWLINE_STR);
+      //shellUsage(chp, "set_motor_timing -30 to 30 degrees");
   }
 }
 
@@ -157,16 +159,15 @@ static void cmd_sample_time(BaseSequentialStream *chp, int argc, char *argv[])
   {
   	char *endptr;
     uint32_t width = strtol(argv[0], &endptr, 0);
-    if(width < 0){
-    	width = 0;
-    }else if (width > 100){
-    	width = 100;
+    if (width > 100){
+      width = 100;
     }
-    PWMD1.tim->CCXR[1] = (width * PERIOD_PWM_52_KHZ / 100) - 1;
+    //PWMD1.tim->CCXR[1] = (width * PERIOD_PWM_52_KHZ / 100) - 1;
   }
   else
-  {
-      chprintf(chp, "Sampling time: %d%" SHELL_NEWLINE_STR, (PWMD1.tim->CCXR[1]+1)*100/PERIOD_PWM_52_KHZ);
+  { 
+    chprintf(chp, "Not Implemented" SHELL_NEWLINE_STR);
+    //chprintf(chp, "Sampling time: %d%" SHELL_NEWLINE_STR, (PWMD1.tim->CCXR[1]+1)*100/PERIOD_PWM_52_KHZ);
   }
 }
 
@@ -178,20 +179,22 @@ static void cmd_dir(BaseSequentialStream *chp, int argc, char *argv[])
     char *endptr;
     uint32_t lDirection = strtol(argv[0], &endptr, 0);
 
-    if(kCW == lDirection)
-    {
-        motor1.RotationDir = kCW;
-        chprintf(chp, "Motor direction : Clockwise" SHELL_NEWLINE_STR);
-    }
-    else
-    {
-      motor1.RotationDir = kCCW;
-       chprintf(chp, "Motor direction : CounterClockwise" SHELL_NEWLINE_STR);
-    }
+    (void)lDirection;
+    // if(kCW == lDirection)
+    // {
+    //     motor1.RotationDir = kCW;
+    //     chprintf(chp, "Motor direction : Clockwise" SHELL_NEWLINE_STR);
+    // }
+    // else
+    // {
+    //    motor1.RotationDir = kCCW;
+    //    chprintf(chp, "Motor direction : CounterClockwise" SHELL_NEWLINE_STR);
+    // }
   }
   else
   {
-      shellUsage(chp, "set_direction 0=Clockwise|1=CounterCW");
+      chprintf(chp, "Not Implemented" SHELL_NEWLINE_STR);
+      //shellUsage(chp, "set_direction 0=Clockwise|1=CounterCW");
   }
 }
 

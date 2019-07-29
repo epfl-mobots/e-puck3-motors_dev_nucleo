@@ -18,9 +18,6 @@
 #include "power_button.h"
 #include "usb_pd_controller.h"
 #include "custom_io.h"
-#include "tim1_motor.h"
-#include "adc_motor.h"
-#include "adc_tx.h"
 #include "encoders.h"
 
 
@@ -48,18 +45,11 @@
 /*===========================================================================*/
 
 
-extern binary_semaphore_t dtx_ready;
-
-
-
 
 /*===========================================================================*/
 /* Prototypes				                                                 */
 /*===========================================================================*/
 
-
-// UART
-void Send_ADT_Uart(AdcDataTx* adt);
 
 /*===========================================================================*/
 /* Threads				                                                 */
@@ -108,47 +98,6 @@ static THD_FUNCTION(Thread1,arg) {
   }
 }
 
-static THD_WORKING_AREA(waThread2,128);
-static THD_FUNCTION(Thread2,arg) {
-  (void)arg;
-  chRegSetThreadName("sender");
-  while(true){
-
-    chBSemWait(&dtx_ready);
-    Send_ADT_Uart(&gADT);
-    Adt_Reset_Struct(&gADT);
-  }
-}
-
-
-/*===========================================================================*/
-/* UART Communication                                                        */
-/*===========================================================================*/
-
-void Send_ADT_Uart(AdcDataTx* adt)
-{
-
-  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"START", 5);
-
-  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"CH0", 3);
-  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&(adt->nb_points), sizeof(uint16_t));
-  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&(adt->data[0]), sizeof(uint16_t) * adt->nb_points);
-
-  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"CH1", 3);
-  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->nb_points, sizeof(uint16_t));
-  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->data[1], sizeof(uint16_t) * adt->nb_points);
-
-  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"CH2", 3);
-  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->nb_points, sizeof(uint16_t));
-  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->data[2], sizeof(uint16_t) * adt->nb_points);
-
-  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)"CH3", 3);
-  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->nb_points, sizeof(uint16_t));
-  streamWrite((BaseSequentialStream *) &USB_SERIAL, (uint8_t*)&adt->data[3], sizeof(uint16_t) * adt->nb_points);
-
-}
-
-
 /*===========================================================================*/
 /* Main.                                                       */
 /*===========================================================================*/
@@ -175,11 +124,8 @@ int main(void) {
 	usbPDControllerStart();
 
 	// Debug MCU Config
-	DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM1_STOP; // Clock and outputs of TIM 1 are disabled when the core is halted
-	chBSemObjectInit(&dtx_ready,true);
-
-	Adt_Reset_Struct(&gADT);
-	//Zcs_Reset_Struct(&gZCS);
+	DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM1_STOP | DBGMCU_APB2_FZ_DBG_TIM8_STOP; // Clock and outputs of TIM 1 are disabled when the core is halted
+  DBGMCU->APB1FZ |= DBGMCU_APB1_FZ_DBG_TIM2_STOP | DBGMCU_APB1_FZ_DBG_TIM3_STOP | DBGMCU_APB1_FZ_DBG_TIM4_STOP;
 
 	/* Debug IO for interrupt timings */
 	palSetLineMode(DEBUG_INT_LINE,PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
@@ -191,17 +137,6 @@ int main(void) {
   palSetLineMode(DEBUG_INT_LINE4,PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
   palClearLine(DEBUG_INT_LINE4);
 
-  /* Motor 1 IO configuration when High-Impedance due to TIM 1
-   * Phase 1 P : PA8  AF : 1
-   * Phase 1 N : PB13 AF : 1
-   * Phase 2 P : PE11 AF : 1
-   * Phase 2 N : PE10 AF : 1
-   * Phase 3 P : PA10 AF : 1
-   * Phase 3 N : PE12 AF : 1
-   *
-   * */
-  initTIM1MotorIo();
-
 	/*
 	* Initializes two serial-over-USB CDC drivers and starts and connects the USB.
 	*/
@@ -212,17 +147,8 @@ int main(void) {
 
   encodersStartReading();
 
-	adc3Start();
-
-  timersStart();
-
 	// Configure the Thread that will blink the leds on the boards
 	chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO + 1, Thread1, NULL);
-
-  // Configure the Thread that will blink the leds on the boards
-  chThdCreateStatic(waThread2, sizeof(waThread2), NORMALPRIO + 2, Thread2, NULL);
-
-  encoders_data_t *data;
   
 	while (true)
 	{
@@ -233,7 +159,6 @@ int main(void) {
 			spawn_shell();
 		}
 		chThdSleepMilliseconds(10);
-    data = encodersGetData();
 
     static float percent = 90;
 
@@ -242,25 +167,6 @@ int main(void) {
       if(percent < 0){
         percent = 90;
       }
-      (&PWMD1)->tim->CCR[kTimChannel1]  =  (percent/100) * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
-      (&PWMD1)->tim->CCR[kTimChannel2]  =  (percent/100) * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
-      (&PWMD1)->tim->CCR[kTimChannel3]  =  (percent/100) * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
-      (&PWMD2)->tim->CCR[kTimChannel1]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
-      (&PWMD2)->tim->CCR[kTimChannel2]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
-      (&PWMD2)->tim->CCR[kTimChannel3]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
-      (&PWMD2)->tim->CCR[kTimChannel4]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
-      (&PWMD3)->tim->CCR[kTimChannel1]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
-      (&PWMD3)->tim->CCR[kTimChannel2]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
-      (&PWMD3)->tim->CCR[kTimChannel3]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
-      (&PWMD3)->tim->CCR[kTimChannel4]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
-      (&PWMD4)->tim->CCR[kTimChannel1]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
-      (&PWMD4)->tim->CCR[kTimChannel2]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
-      (&PWMD4)->tim->CCR[kTimChannel3]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
-      (&PWMD4)->tim->CCR[kTimChannel4]  =  (percent/100) * PERIOD_PWM_52_KHZ_LOW - 1;  // Select the quarter-Period to overflow
-      (&PWMD8)->tim->CCR[kTimChannel1]  =  (percent/100) * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
-      (&PWMD8)->tim->CCR[kTimChannel2]  =  (percent/100) * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
-      (&PWMD8)->tim->CCR[kTimChannel3]  =  (percent/100) * PERIOD_PWM_52_KHZ - 1;  // Select the quarter-Period to overflow
-      //PWMD1.tim->CCXR[1] = (((percent-4)/100) * PERIOD_PWM_52_KHZ) - 1;
 
       chprintf((BaseSequentialStream *)&USB_GDB, "duty cycle = %f\r\n",100-percent);
       chThdSleepMilliseconds(500);

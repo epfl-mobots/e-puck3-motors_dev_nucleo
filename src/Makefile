@@ -143,10 +143,6 @@ CSRC = $(ALLCSRC) \
        power_button.c \
        device_policy_manager.c \
        usb_pd_controller.c \
-       tim1_motor.c \
-       zero_cross.c \
-       adc_motor.c  \
-       adc_tx.c \
        as5055.c \
        encoders.c
 
