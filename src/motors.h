@@ -9,14 +9,11 @@
 #ifndef MOTORS_H
 #define MOTORS_H
 
-#define NB_OF_HALF_BRIDGES	12
 
-
-#define PERIOD_PWM_52_KHZ_APB2_216MHZ	4096
-#define PERIOD_PWM_52_KHZ_APB1_108MHZ	2048
-
-typedef enum
-{
+/**
+ * Timer's channels list
+ */
+typedef enum{
     TIM_CHANNEL_1 = 0,
     TIM_CHANNEL_2,
     TIM_CHANNEL_3,
@@ -26,17 +23,21 @@ typedef enum
 }tim_channel_t;
 
 /**
- * @brief   Structure representing a physical half_bridge.
+ * Possible rotation directions
  */
-typedef struct {
-	ioline_t 		p_control_pin;
-	ioline_t 		n_control_pin;
-	PWMDriver		*pwmp;
-	tim_channel_t	PWM_p_channel;
-	tim_channel_t	PWM_n_channel;
-	uint8_t			ADCVoltageMeasureChannel;
-	uint8_t			ADCCurrentMeasureChannel;
-} half_bridge_t;
+typedef enum{
+    CW = 0,
+    CCW,
+}rotation_dir_t;
+
+/**
+ * Commutation's scheme list
+ */
+typedef enum{
+    DOUBLE_PWM = 0,
+    SIMPLE_PWM,
+    NB_OF_COMMUTATION_SCHEME
+}commutation_schemes_t;
 
 
 #include "motors_conf.h"

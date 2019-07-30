@@ -144,7 +144,8 @@ CSRC = $(ALLCSRC) \
        device_policy_manager.c \
        usb_pd_controller.c \
        as5055.c \
-       encoders.c
+       encoders.c \
+       motors.c
 
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
