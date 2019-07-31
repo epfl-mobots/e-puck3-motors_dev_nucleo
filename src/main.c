@@ -19,6 +19,7 @@
 #include "usb_pd_controller.h"
 #include "custom_io.h"
 #include "encoders.h"
+#include "motors.h"
 
 
 /*===========================================================================*/
@@ -144,6 +145,8 @@ int main(void) {
 
 	shellInit();
 	gateDriversEnableAll();
+
+  motorsStart();
 
   encodersStartReading();
 

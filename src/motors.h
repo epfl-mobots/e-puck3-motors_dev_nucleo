@@ -28,8 +28,8 @@ typedef enum{
  * Possible rotation directions
  */
 typedef enum{
-    CW = 0,
-    CCW,
+    CCW = -1,
+    CW  = 1,
 }rotation_dir_t;
 
 /**

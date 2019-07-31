@@ -198,6 +198,7 @@ typedef enum{
  */
 typedef struct{
     bool 			flag;
+    uint32_t		time;
     uint16_t 		detection_time;
     uint16_t		previous_detection_time;
     uint16_t		period;
@@ -223,17 +224,20 @@ typedef struct {
  * Structure representing a brushless motor
  */
 typedef struct {
-	const half_bridge_t*	phases[NB_BRUSHLESS_PHASES];
-	commutation_schemes_t	commutation_scheme;
-	uint8_t 				step_iterator;
-	rotation_dir_t			direction;
-	zero_crossing_t			zero_crossing;
+	const half_bridge_t*		phases[NB_BRUSHLESS_PHASES];
+	const commutation_schemes_t	commutation_scheme;
+	int8_t 						step_iterator;
+	rotation_dir_t				direction;
+	zero_crossing_t				zero_crossing;
 } brushless_motor_t;
 
 /********************         PRIVATE FUCNTION DECLARATIONS         ********************/
 
 void _adc1_current_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
 void _adc3_voltage_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
+void _adcStart(void);
+void _timersStart(void);
+void _motorsInit(void);
 
 /********************               INTERNAL VARIABLES              ********************/
 
@@ -591,8 +595,8 @@ static PWMConfig tim_234_cfg = {
  * Changes the sequence of the ADC1
  */
 #define UPDATE_ADC1_SEQUENCE(x, y) {\
-									ADCD1.adc->SQR3 = x; \
-									ADCD1.adc->SQR2 = y; \
+										ADCD1.adc->SQR3 = x; \
+										ADCD1.adc->SQR2 = y; \
 									}
 /**
  * Starts the ADC1 for one sequence
@@ -601,37 +605,225 @@ static PWMConfig tim_234_cfg = {
 
 #if (NB_OF_BRUSHLESS_MOTOR > 0)
 /**
- * Gives the ADC3 channel to measure given the motor number
+ * Gives the ADC3 channel to measure given the motor 
  */
-#define GET_VOLTAGE_MEASUREMENT_CHANNEL(x) (brushless_motors[x].phases[pwm_commutation_schemes[brushless_motors[x].commutation_scheme][brushless_motors[x].step_iterator][VOLT_MEASURE_CHANNEL]]->ADC3VoltageMeasureChannel)
+#define GET_VOLTAGE_MEASUREMENT_CHANNEL(x) ((x)->phases[pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator][VOLT_MEASURE_CHANNEL]]->ADC3VoltageMeasureChannel)
 /**
- * Gives the ADC1 channel to measure given the motor number
+ * Gives the ADC1 channel to measure given the motor
  */
-#define GET_CURRENT_MEASUREMENT_CHANNEL(x) (brushless_motors[x].phases[pwm_commutation_schemes[brushless_motors[x].commutation_scheme][brushless_motors[x].step_iterator][CURR_MEASURE_CHANNEL]]->ADC1CurrentMeasureChannel)
+#define GET_CURRENT_MEASUREMENT_CHANNEL(x) ((x)->phases[pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator][CURR_MEASURE_CHANNEL]]->ADC1CurrentMeasureChannel)
+
+#define GET_COMMUTATION_STATE(x, y) (pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator][y])
+
+#define SET_OUT_LOW(x) {\
+							palClearLine(x);	\
+							SET_GPIO_OUTPUT_MODE(x);\
+						}
+
+#define SET_OUT_HIGH(x) {\
+							palSetLine(x);	\
+							SET_GPIO_OUTPUT_MODE(x);\
+						}
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 0) */
 
+/**
+ * Sets the GPIO mode of the given line to Alternate
+ * The alternate NB should already have been set because it only changes the mode
+ */
+#define SET_GPIO_ALTERNATE_MODE(x){\
+									PAL_PORT(x)->MODER &= ~(3 << (2 * PAL_PAD(x))); \
+        							PAL_PORT(x)->MODER |= (2 << (2 * PAL_PAD(x))); \
+								  }
+/**
+ * Sets the GPIO mode of the given line to Output
+ */
+#define SET_GPIO_OUTPUT_MODE(x){\
+									PAL_PORT(x)->MODER &= ~(3 << (2 * PAL_PAD(x))); \
+        							PAL_PORT(x)->MODER |= (1 << (2 * PAL_PAD(x))); \
+								  }
+
+/**
+ * @brief 		Computes the next commutation time for the given zero crossing structure
+ * 
+ * @param zc 	Zero crossing structure to update. See zero_crossing_t
+ */
+void _compute_next_commutation(zero_crossing_t *zc)
+{
+	zc->previous_detection_time = zc->detection_time;
+	zc->detection_time    		= zc->time;
+	zc->period 					= zc->detection_time - zc->previous_detection_time;
+	zc->period_filtered 		= (0.6 * (float)zc->period_filtered + 0.4 * (float)zc->period);
+	zc->next_commutation_time 	= zc->time + zc->period_filtered - zc->advance_timing;
+}
+
+/**
+ * @brief 			Updates the phases lines accordingly to the commutation state and the commutation table
+ * 
+ * @param motor 	Motor to update
+ */
+void _update_brushless_phases(brushless_motor_t *motor){
+
+	switch(GET_COMMUTATION_STATE(motor, PHASE1_P)){
+		case OUT_LOW:
+		{	
+			SET_OUT_LOW(motor->phases[PHASE1]->p_control_line);
+			break;
+		}
+		case OUT_HIGH:
+		{	
+			SET_OUT_HIGH(motor->phases[PHASE1]->p_control_line);
+			break;
+		}
+		case OUT_PWM:
+		{	
+			SET_GPIO_ALTERNATE_MODE(motor->phases[PHASE1]->p_control_line);
+			break;
+		}
+	}
+
+	switch(GET_COMMUTATION_STATE(motor, PHASE1_N)){
+		case OUT_LOW:
+		{	
+			SET_OUT_LOW(motor->phases[PHASE1]->n_control_line);
+			break;
+		}
+		case OUT_HIGH:
+		{	
+			SET_OUT_HIGH(motor->phases[PHASE1]->n_control_line);
+			break;
+		}
+		case OUT_PWM:
+		{	
+			SET_GPIO_ALTERNATE_MODE(motor->phases[PHASE1]->n_control_line);
+			break;
+		}
+	}
+
+	switch(GET_COMMUTATION_STATE(motor, PHASE2_P)){
+		case OUT_LOW:
+		{	
+			SET_OUT_LOW(motor->phases[PHASE2]->p_control_line);
+			break;
+		}
+		case OUT_HIGH:
+		{	
+			SET_OUT_HIGH(motor->phases[PHASE2]->p_control_line);
+			break;
+		}
+		case OUT_PWM:
+		{	
+			SET_GPIO_ALTERNATE_MODE(motor->phases[PHASE2]->p_control_line);
+			break;
+		}
+	}
+
+	switch(GET_COMMUTATION_STATE(motor, PHASE2_N)){
+		case OUT_LOW:
+		{	
+			SET_OUT_LOW(motor->phases[PHASE2]->n_control_line);
+			break;
+		}
+		case OUT_HIGH:
+		{	
+			SET_OUT_HIGH(motor->phases[PHASE2]->n_control_line);
+			break;
+		}
+		case OUT_PWM:
+		{	
+			SET_GPIO_ALTERNATE_MODE(motor->phases[PHASE2]->n_control_line);
+			break;
+		}
+	}
+
+	switch(GET_COMMUTATION_STATE(motor, PHASE3_P)){
+		case OUT_LOW:
+		{	
+			SET_OUT_LOW(motor->phases[PHASE3]->p_control_line);
+			break;
+		}
+		case OUT_HIGH:
+		{	
+			SET_OUT_HIGH(motor->phases[PHASE3]->p_control_line);
+			break;
+		}
+		case OUT_PWM:
+		{	
+			SET_GPIO_ALTERNATE_MODE(motor->phases[PHASE3]->p_control_line);
+			break;
+		}
+	}
+
+	switch(GET_COMMUTATION_STATE(motor, PHASE3_N)){
+		case OUT_LOW:
+		{	
+			SET_OUT_LOW(motor->phases[PHASE3]->n_control_line);
+			break;
+		}
+		case OUT_HIGH:
+		{	
+			SET_OUT_HIGH(motor->phases[PHASE3]->n_control_line);
+			break;
+		}
+		case OUT_PWM:
+		{	
+			SET_GPIO_ALTERNATE_MODE(motor->phases[PHASE3]->n_control_line);
+			break;
+		}
+	}
+}
+
+/**
+ * @brief 			Does one commutation step for the given brushless motor
+ * 
+ * @param motor 	Motor to commute. See brushless_motor_t
+ */
+void _do_brushless_commutation(brushless_motor_t *motor){
+	motor->step_iterator += motor->direction;
+
+	if(motor->step_iterator > NB_STEPS_BRUSHLESS){
+		motor->step_iterator = 0;
+	}else if(motor->step_iterator < 0){
+		motor->step_iterator = NB_STEPS_BRUSHLESS;
+	}
+	_update_brushless_phases(motor);
+
+}
+
+/**
+ * @brief 			ADC1 callback. Used to gather the currents from the four motors
+ * @param adcp 		Not used
+ * @param buffer 	Buffer containing the new data
+ * @param n 		Not used
+ */
 void _adc1_current_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n){
 	(void) adcp;
 	(void) n;
 
 	UPDATE_ADC1_SEQUENCE(
-		ADC_SQR3_SQ1_N (GET_CURRENT_MEASUREMENT_CHANNEL(BRUSHLESS_MOTOR_1))|
-		ADC_SQR3_SQ2_N (GET_CURRENT_MEASUREMENT_CHANNEL(BRUSHLESS_MOTOR_2))|
-		ADC_SQR3_SQ3_N (GET_CURRENT_MEASUREMENT_CHANNEL(BRUSHLESS_MOTOR_3))|
-		ADC_SQR3_SQ4_N (GET_CURRENT_MEASUREMENT_CHANNEL(BRUSHLESS_MOTOR_4))|
-		ADC_SQR3_SQ5_N (GET_CURRENT_MEASUREMENT_CHANNEL(BRUSHLESS_MOTOR_1))|
-		ADC_SQR3_SQ6_N (GET_CURRENT_MEASUREMENT_CHANNEL(BRUSHLESS_MOTOR_2)),
-		ADC_SQR2_SQ7_N (GET_CURRENT_MEASUREMENT_CHANNEL(BRUSHLESS_MOTOR_3))|
-		ADC_SQR2_SQ8_N (GET_CURRENT_MEASUREMENT_CHANNEL(BRUSHLESS_MOTOR_4))|
-		ADC_SQR2_SQ9_N (GET_CURRENT_MEASUREMENT_CHANNEL(BRUSHLESS_MOTOR_1))|
-		ADC_SQR2_SQ10_N(GET_CURRENT_MEASUREMENT_CHANNEL(BRUSHLESS_MOTOR_2))|
-		ADC_SQR2_SQ11_N(GET_CURRENT_MEASUREMENT_CHANNEL(BRUSHLESS_MOTOR_3))|
-		ADC_SQR2_SQ12_N(GET_CURRENT_MEASUREMENT_CHANNEL(BRUSHLESS_MOTOR_4))
+		ADC_SQR3_SQ1_N (GET_CURRENT_MEASUREMENT_CHANNEL(&brushless_motors[BRUSHLESS_MOTOR_1]))|
+		ADC_SQR3_SQ2_N (GET_CURRENT_MEASUREMENT_CHANNEL(&brushless_motors[BRUSHLESS_MOTOR_2]))|
+		ADC_SQR3_SQ3_N (GET_CURRENT_MEASUREMENT_CHANNEL(&brushless_motors[BRUSHLESS_MOTOR_3]))|
+		ADC_SQR3_SQ4_N (GET_CURRENT_MEASUREMENT_CHANNEL(&brushless_motors[BRUSHLESS_MOTOR_4]))|
+		ADC_SQR3_SQ5_N (GET_CURRENT_MEASUREMENT_CHANNEL(&brushless_motors[BRUSHLESS_MOTOR_1]))|
+		ADC_SQR3_SQ6_N (GET_CURRENT_MEASUREMENT_CHANNEL(&brushless_motors[BRUSHLESS_MOTOR_2])),
+		ADC_SQR2_SQ7_N (GET_CURRENT_MEASUREMENT_CHANNEL(&brushless_motors[BRUSHLESS_MOTOR_3]))|
+		ADC_SQR2_SQ8_N (GET_CURRENT_MEASUREMENT_CHANNEL(&brushless_motors[BRUSHLESS_MOTOR_4]))|
+		ADC_SQR2_SQ9_N (GET_CURRENT_MEASUREMENT_CHANNEL(&brushless_motors[BRUSHLESS_MOTOR_1]))|
+		ADC_SQR2_SQ10_N(GET_CURRENT_MEASUREMENT_CHANNEL(&brushless_motors[BRUSHLESS_MOTOR_2]))|
+		ADC_SQR2_SQ11_N(GET_CURRENT_MEASUREMENT_CHANNEL(&brushless_motors[BRUSHLESS_MOTOR_3]))|
+		ADC_SQR2_SQ12_N(GET_CURRENT_MEASUREMENT_CHANNEL(&brushless_motors[BRUSHLESS_MOTOR_4]))
 	);
 	
 	DO_ONE_SEQUENCE_ADC1();
 }
 
+/**
+ * @brief 			ADC3 callback. Used to gather the voltages from the four motors.
+ * 					Also runs the brushless zero crossing algorithms and commutations
+ * @param adcp 		Not used
+ * @param buffer 	Buffer containing the new data
+ * @param n 		Not used
+ */
 void _adc3_voltage_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n){
 	(void) adcp;
 	(void) n;
@@ -645,18 +837,20 @@ void _adc3_voltage_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n){
 		UPDATE_ADC3_TRIGGER(ADC3_OFF_SAMPLE_TIME);
 #if (NB_OF_BRUSHLESS_MOTOR > 0)
 		UPDATE_ADC3_SEQUENCE(
-		ADC_SQR3_SQ1_N(GET_VOLTAGE_MEASUREMENT_CHANNEL(BRUSHLESS_MOTOR_1))|
+		ADC_SQR3_SQ1_N(GET_VOLTAGE_MEASUREMENT_CHANNEL(&brushless_motors[BRUSHLESS_MOTOR_1]))|
 #if (NB_OF_BRUSHLESS_MOTOR > 1)
-    	ADC_SQR3_SQ2_N(GET_VOLTAGE_MEASUREMENT_CHANNEL(BRUSHLESS_MOTOR_2))|
+    	ADC_SQR3_SQ2_N(GET_VOLTAGE_MEASUREMENT_CHANNEL(&brushless_motors[BRUSHLESS_MOTOR_2]))|
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 1) */
 #if (NB_OF_BRUSHLESS_MOTOR > 2)
-    	ADC_SQR3_SQ3_N(GET_VOLTAGE_MEASUREMENT_CHANNEL(BRUSHLESS_MOTOR_3))|
+    	ADC_SQR3_SQ3_N(GET_VOLTAGE_MEASUREMENT_CHANNEL(&brushless_motors[BRUSHLESS_MOTOR_3]))|
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 2) */
 #if (NB_OF_BRUSHLESS_MOTOR > 3)
-    	ADC_SQR3_SQ4_N(GET_VOLTAGE_MEASUREMENT_CHANNEL(BRUSHLESS_MOTOR_4))|
+    	ADC_SQR3_SQ4_N(GET_VOLTAGE_MEASUREMENT_CHANNEL(&brushless_motors[BRUSHLESS_MOTOR_4]))|
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 3) */
     	0);
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 0) */
+
+
 	}
 	//switches the state
 	state = !state;
@@ -721,8 +915,13 @@ void _timersStart(void){
 	PWMD1.tim->CR1 |= STM32_TIM_CR1_CEN;
 }
 
+void _motorsInit(void){
+
+}
+
 /********************               PUBLIC FUNCTIONS                ********************/
 void motorsStart(void){
+	_motorsInit();
 	_adcStart();
 	_timersStart();
 }
