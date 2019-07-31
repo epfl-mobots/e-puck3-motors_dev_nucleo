@@ -254,6 +254,12 @@
 #define STM32_PWM_TIM8_IRQ_PRIORITY         7
 #define STM32_PWM_TIM9_IRQ_PRIORITY         7
 
+#define STM32_TIM1_SUPPRESS_ISR
+#define STM32_TIM2_SUPPRESS_ISR
+#define STM32_TIM3_SUPPRESS_ISR
+#define STM32_TIM4_SUPPRESS_ISR
+#define STM32_TIM8_SUPPRESS_ISR
+
 /*
  * SDC driver system settings.
  */

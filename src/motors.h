@@ -10,6 +10,8 @@
 #define MOTORS_H
 
 
+#define MAX_NB_OF_BRUSHLESS_MOTOR   4
+
 /**
  * Timer's channels list
  */
