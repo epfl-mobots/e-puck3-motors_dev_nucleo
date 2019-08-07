@@ -21,8 +21,8 @@
 #define DEGAUSS_TICKS_ZC_OFF	1
 #define HALF_BUS_VOLTAGE		962
 
-#define PERIOD_PWM_52_KHZ_APB2  (STM32_TIMCLK2/52000)
-#define PERIOD_PWM_52_KHZ_APB1 	(STM32_TIMCLK1/52000)
+#define PERIOD_PWM_52_KHZ_APB2  4154	// STM32_TIMCLK2/52000 rounded to an even number to be divisible by 2
+#define PERIOD_PWM_52_KHZ_APB1 	PERIOD_PWM_52_KHZ_APB2/2
 
 /**
  * Possible phases for a brushless motor
@@ -279,7 +279,6 @@ void _motorsInit(void);
  * Commutation table for Double PWM
  * (comes from the DRV8323 Datasheet)
  */
-
 static const uint8_t pwm_commutation_schemes[NB_OF_COMMUTATION_SCHEME] 			// 2 Schemes
 											[NB_STEPS_BRUSHLESS]				// 6 steps
 											[2 * NB_BRUSHLESS_PHASES + 3] = {	// 2 * 3 Phases + 3 measures infos
@@ -307,7 +306,18 @@ static const uint8_t pwm_commutation_schemes[NB_OF_COMMUTATION_SCHEME] 			// 2 S
 		{OUT_LOW, 	OUT_HIGH,	OUT_LOW,	OUT_LOW,	OUT_PWM,	OUT_LOW,	PHASE2, 	PHASE1, 	BEMF_POSITIVE},
 		{OUT_LOW, 	OUT_HIGH,	OUT_PWM,	OUT_LOW,	OUT_LOW,	OUT_LOW,	PHASE3,		PHASE1, 	BEMF_NEGATIVE},
 		{OUT_LOW, 	OUT_LOW,	OUT_PWM,	OUT_LOW,	OUT_LOW,	OUT_HIGH,	PHASE1,		PHASE3, 	BEMF_POSITIVE}
-	}
+	},
+	/**
+	 * Connected to ground
+	 */
+	{
+		{OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	PHASE2,		PHASE3, 	BEMF_NEGATIVE},
+		{OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	PHASE3, 	PHASE2, 	BEMF_POSITIVE},
+		{OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	PHASE1, 	PHASE2, 	BEMF_NEGATIVE},
+		{OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	PHASE2, 	PHASE1, 	BEMF_POSITIVE},
+		{OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	PHASE3,		PHASE1, 	BEMF_NEGATIVE},
+		{OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	PHASE1,		PHASE3, 	BEMF_POSITIVE}
+	},
 };
 
 /**
@@ -463,7 +473,8 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
 		.phases[PHASE3] 	= &half_bridges[BRUSHLESS_MOTOR_1_PHASE3],
 		.commutation_scheme = BRUSHLESS_MOTOR_1_COMMUTATION,
 		.direction 			= BRUSHLESS_MOTOR_1_DIRECTION,
-		.duty_cycle			= 10
+		.duty_cycle			= 10,
+		.ADC_offset_off		= {1, 1, 1}
 	},
 #if (NB_OF_BRUSHLESS_MOTOR > 1)
 #if (NB_OF_HALF_BRIDGES < 6)
@@ -475,7 +486,8 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
 		.phases[PHASE3] 	= &half_bridges[BRUSHLESS_MOTOR_2_PHASE3],
 		.commutation_scheme = BRUSHLESS_MOTOR_2_COMMUTATION,
 		.direction 			= BRUSHLESS_MOTOR_2_DIRECTION,
-		.duty_cycle			= 10
+		.duty_cycle			= 10,
+		.ADC_offset_off		= {10, 10, 10}
 	},
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 1) */
 #if (NB_OF_BRUSHLESS_MOTOR > 2)
@@ -488,7 +500,8 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
 		.phases[PHASE3] 	= &half_bridges[BRUSHLESS_MOTOR_3_PHASE3],
 		.commutation_scheme = BRUSHLESS_MOTOR_3_COMMUTATION,
 		.direction 			= BRUSHLESS_MOTOR_3_DIRECTION,
-		.duty_cycle			= 10
+		.duty_cycle			= 10,
+		.ADC_offset_off		= {0, 0, 0}
 	},
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 2) */
 #if (NB_OF_BRUSHLESS_MOTOR > 3)
@@ -501,7 +514,8 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
 		.phases[PHASE3] 	= &half_bridges[BRUSHLESS_MOTOR_4_PHASE3],
 		.commutation_scheme = BRUSHLESS_MOTOR_4_COMMUTATION,
 		.direction 			= BRUSHLESS_MOTOR_4_DIRECTION,
-		.duty_cycle			= 10
+		.duty_cycle			= 10,
+		.ADC_offset_off		= {8, 8, 8}
 	},
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 3) */
 };
@@ -513,7 +527,7 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
  */
 
 /* circular buffer */
-static adcsample_t adc1_buffer[MAX_NB_OF_BRUSHLESS_MOTOR * ADC3_BUFFER_DEPTH] = {0};
+static adcsample_t adc1_buffer[ADC1_NB_ELEMENT_SEQ * MAX_NB_OF_BRUSHLESS_MOTOR * ADC1_BUFFER_DEPTH] = {0};
 
 /* ADC 1 Configuration */
 static const ADCConversionGroup ADC1Config = {
@@ -610,9 +624,9 @@ static PWMConfig tim_234_cfg = {
   /* PWM Channels configuration */
   {
    {PWM_OUTPUT_ACTIVE_HIGH, NULL},
-   {PWM_OUTPUT_ACTIVE_LOW, NULL},
+   {PWM_OUTPUT_ACTIVE_LOW, NULL},	//active low to act as the complementary output of channel 1
    {PWM_OUTPUT_ACTIVE_HIGH, NULL},
-   {PWM_OUTPUT_ACTIVE_LOW, NULL}
+   {PWM_OUTPUT_ACTIVE_LOW, NULL}	//active low to act as the complementary output of channel 3
   },
   .cr2  = 0,
   .bdtr = 0,
