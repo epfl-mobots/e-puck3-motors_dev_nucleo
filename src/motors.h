@@ -49,7 +49,6 @@ typedef enum{
 typedef enum{
     DOUBLE_PWM = 0,
     SIMPLE_PWM,
-    GROUND_PWM,
     NB_OF_COMMUTATION_SCHEME
 }commutation_schemes_t;
 

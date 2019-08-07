@@ -24,6 +24,12 @@
 #define PERIOD_PWM_52_KHZ_APB2  4154	// STM32_TIMCLK2/52000 rounded to an even number to be divisible by 2
 #define PERIOD_PWM_52_KHZ_APB1 	PERIOD_PWM_52_KHZ_APB2/2
 
+
+/**
+ * NB of steps for a 6-steps commutation scheme 
+ */
+#define NB_STEPS_BRUSHLESS			6
+
 /**
  * Possible phases for a brushless motor
  */
@@ -62,8 +68,7 @@ typedef enum{
 /**
  * Half Bridges list
  */
-typedef enum
-{
+typedef enum{
     HALF_BRIDGE_1 = 0,
     HALF_BRIDGE_2,
     HALF_BRIDGE_3,
@@ -78,17 +83,15 @@ typedef enum
     HALF_BRIDGE_12,
 }half_bridges_names_t;
 
+/**
+ * Motor states
+ */
 typedef enum{
-	PHASE1_P = 0,
-	PHASE1_N,
-	PHASE2_P,
-	PHASE2_N,
-	PHASE3_P,
-	PHASE3_N,
-	FLOATING_PHASE,
-	LOW_SIDE_CONDUCTING_PHASE,
-	BEMF_SLOPE
-}commutation_schemes_fields_t;
+	RUNNING = 0,
+	FREE_WHELLING,
+	TIED_TO_GROUND,
+	NB_MOTOR_STATES
+}motor_states_t;
 
 /**
  *  ADC external triggers list for STM32F746
@@ -201,9 +204,19 @@ typedef enum{
 }tim_oc_modes_t;
 
 /**
- * NB of steps for a 6-steps commutation scheme 
+ * Structure representing a commutation scheme
  */
-#define NB_STEPS_BRUSHLESS			6
+typedef struct {
+	timer_output_states_t		phase1_p;
+	timer_output_states_t		phase1_n;
+	timer_output_states_t		phase2_p;
+	timer_output_states_t		phase2_n;
+	timer_output_states_t		phase3_p;
+	timer_output_states_t		phase3_n;
+	brushless_phases_t			floating_phase;
+	brushless_phases_t			low_side_conducting_phase;
+	bemf_slope_list_t			bemf_slope;
+} brushless_commutation_scheme_line_t;
 
 /**
  * Zero Crossing variables
@@ -242,11 +255,12 @@ typedef struct {
  * Structure representing a brushless motor
  */
 typedef struct {
-	half_bridge_t*				phases[NB_BRUSHLESS_PHASES];
+	const half_bridge_t*		phases[NB_BRUSHLESS_PHASES];
 	const commutation_schemes_t	commutation_scheme;
 	int8_t 						step_iterator;
 	float						duty_cycle;
 	rotation_dir_t				direction;
+	motor_states_t				state;
 	zero_crossing_t				zero_crossing;
 	uint16_t					ADC_offset_off[NB_BRUSHLESS_PHASES];
 } brushless_motor_t;
@@ -254,24 +268,19 @@ typedef struct {
 /********************         PRIVATE FUCNTION DECLARATIONS         ********************/
 void _detect_zero_crossing(brushless_motor_t *motor);
 void _compute_next_commutation(zero_crossing_t *zc);
+void _update_brushless_line(timer_output_states_t state, ioline_t line);
 void _update_brushless_phases(brushless_motor_t *motor);
 void _do_brushless_commutation(brushless_motor_t *motor);
 void _adc1_current_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
 void _adc3_voltage_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
-void _motorsSetDutyCycle(brushless_motor_t *motor, uint8_t duty_cycle);
+void _set_duty_cycle(brushless_motor_t *motor, uint8_t duty_cycle);
 void _adcStart(void);
 void _timersStart(void);
 void _motorsInit(void);
 
 /********************               INTERNAL VARIABLES              ********************/
 
-/**
- * Commutation table for Double PWM
- * (comes from the DRV8323 Datasheet)
- */
-static const uint8_t pwm_commutation_schemes[NB_OF_COMMUTATION_SCHEME] 			// 2 Schemes
-											[NB_STEPS_BRUSHLESS]				// 6 steps
-											[2 * NB_BRUSHLESS_PHASES + 3] = {	// 2 * 3 Phases + 3 measures infos
+static const brushless_commutation_scheme_line_t pwm_commutation_schemes[NB_OF_COMMUTATION_SCHEME][NB_STEPS_BRUSHLESS] ={
 	/*	Phase1 P	Phase1 N	Phase2 P	Phase2 N	Phase3 P	Phase3 N	Floating 	Low side	BEMF slope
 																				phase 		conducting
 																						 	phase 	*/
@@ -296,25 +305,24 @@ static const uint8_t pwm_commutation_schemes[NB_OF_COMMUTATION_SCHEME] 			// 2 S
 		{OUT_LOW, 	OUT_HIGH,	OUT_LOW,	OUT_LOW,	OUT_PWM,	OUT_LOW,	PHASE2, 	PHASE1, 	BEMF_POSITIVE},
 		{OUT_LOW, 	OUT_HIGH,	OUT_PWM,	OUT_LOW,	OUT_LOW,	OUT_LOW,	PHASE3,		PHASE1, 	BEMF_NEGATIVE},
 		{OUT_LOW, 	OUT_LOW,	OUT_PWM,	OUT_LOW,	OUT_LOW,	OUT_HIGH,	PHASE1,		PHASE3, 	BEMF_POSITIVE}
-	},
-	/**
-	 * Connected to ground
-	 */
-	{
-		{OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	PHASE2,		PHASE3, 	BEMF_NEGATIVE},
-		{OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	PHASE3, 	PHASE2, 	BEMF_POSITIVE},
-		{OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	PHASE1, 	PHASE2, 	BEMF_NEGATIVE},
-		{OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	PHASE2, 	PHASE1, 	BEMF_POSITIVE},
-		{OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	PHASE3,		PHASE1, 	BEMF_NEGATIVE},
-		{OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	OUT_LOW,	OUT_HIGH,	PHASE1,		PHASE3, 	BEMF_POSITIVE}
-	},
+	}
+};
+
+static const brushless_commutation_scheme_line_t pwm_free_wheeling = 
+{ 
+	OUT_LOW, OUT_LOW, OUT_LOW, OUT_LOW, OUT_LOW, OUT_LOW, 0, 0, 0
+};
+
+static const brushless_commutation_scheme_line_t pwm_ground = 
+{ 
+	OUT_LOW, OUT_HIGH, OUT_LOW, OUT_HIGH, OUT_LOW, OUT_HIGH, 0, 0, 0
 };
 
 /**
  *	Half bridges structure
  */
 #if (NB_OF_HALF_BRIDGES > 0)
-static half_bridge_t half_bridges[NB_OF_HALF_BRIDGES] = {
+static const half_bridge_t half_bridges[NB_OF_HALF_BRIDGES] = {
 	{
 		.p_control_line					= P_CONTROL_LINE_1,
 		.n_control_line					= N_CONTROL_LINE_1,
@@ -646,22 +654,15 @@ static PWMConfig tim_234_cfg = {
 /**
  * Gives the floating phase 
  */
-#define GET_FLOATING_PHASE(x) (pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator][FLOATING_PHASE])
+#define GET_FLOATING_PHASE(x) (pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator].floating_phase)
 /**
  * Gives the ADC3 channel to measure given the motor 
  */
-#define GET_FLOATING_PHASE_CHANNEL(x) ((x)->phases[pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator][FLOATING_PHASE]]->ADC3FloatingMeasureChannel)
+#define GET_FLOATING_PHASE_CHANNEL(x) ((x)->phases[pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator].floating_phase]->ADC3FloatingMeasureChannel)
 /**
  * Gives the ADC1 channel to measure given the motor
  */
-#define GET_LOW_SIDE_CONDUCTING_PHASE_CHANNEL(x) ((x)->phases[pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator][LOW_SIDE_CONDUCTING_PHASE]]->ADC1ConductingMeasureChannel)
-
-#define GET_COMMUTATION_STATE(x, y) (pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator][y])
-
-#define SET_OUT_LOW(x) {\
-							palClearLine(x);	\
-							SET_GPIO_OUTPUT_MODE(x);\
-						}
+#define GET_LOW_SIDE_CONDUCTING_PHASE_CHANNEL(x) ((x)->phases[pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator].low_side_conducting_phase]->ADC1ConductingMeasureChannel)
 
 #define SET_OUT_HIGH(x) {\
 							palSetLine(x);	\
@@ -702,7 +703,7 @@ static PWMConfig tim_234_cfg = {
 
 #define TIME_TO_COMMUTE(x)	((((x)->time >= (x)->next_commutation_time) && (x)->flag))
 
-#define IS_BEMF_SLOPE_POSITIVE(x) (((x)->direction > 0) ? pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator][BEMF_SLOPE] : !pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator][BEMF_SLOPE])
+#define IS_BEMF_SLOPE_POSITIVE(x) (((x)->direction > 0) ? pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator].bemf_slope : !pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator].bemf_slope)
 
 void _detect_zero_crossing(brushless_motor_t *motor){
 	static zero_crossing_t *zc = NULL;
@@ -770,119 +771,67 @@ void _compute_next_commutation(zero_crossing_t *zc)
 }
 
 /**
+ * @brief 			Updates the given line to the given state
+ * 
+ * @param state 	see timer_output_states_t
+ * @param line 		line to update
+ */
+void _update_brushless_line(timer_output_states_t state, ioline_t line){
+	switch(state){
+		case OUT_LOW:
+		{	
+			palClearLine(line);
+			SET_GPIO_OUTPUT_MODE(line);
+			break;
+		}
+		case OUT_HIGH:
+		{	
+			palSetLine(line);
+			SET_GPIO_OUTPUT_MODE(line);
+			break;
+		}
+		case OUT_PWM:
+		{	
+			SET_GPIO_ALTERNATE_MODE(line);
+			break;
+		}
+	}
+}
+
+/**
  * @brief 			Updates the phases lines accordingly to the commutation state and the commutation table
  * 
  * @param motor 	Motor to update
  */
 void _update_brushless_phases(brushless_motor_t *motor){
 
-	switch(GET_COMMUTATION_STATE(motor, PHASE1_P)){
-		case OUT_LOW:
-		{	
-			SET_OUT_LOW(motor->phases[PHASE1]->p_control_line);
-			break;
-		}
-		case OUT_HIGH:
-		{	
-			SET_OUT_HIGH(motor->phases[PHASE1]->p_control_line);
-			break;
-		}
-		case OUT_PWM:
-		{	
-			SET_GPIO_ALTERNATE_MODE(motor->phases[PHASE1]->p_control_line);
-			break;
-		}
-	}
+	static const brushless_commutation_scheme_line_t* comm_line = NULL;
 
-	switch(GET_COMMUTATION_STATE(motor, PHASE1_N)){
-		case OUT_LOW:
-		{	
-			SET_OUT_LOW(motor->phases[PHASE1]->n_control_line);
+	switch(motor->state){
+		case RUNNING:
+		{
+			comm_line = &pwm_commutation_schemes[motor->commutation_scheme][motor->step_iterator];
 			break;
 		}
-		case OUT_HIGH:
-		{	
-			SET_OUT_HIGH(motor->phases[PHASE1]->n_control_line);
+		case FREE_WHELLING:
+		{
+			comm_line = &pwm_free_wheeling;
 			break;
 		}
-		case OUT_PWM:
-		{	
-			SET_GPIO_ALTERNATE_MODE(motor->phases[PHASE1]->n_control_line);
-			break;
+		case TIED_TO_GROUND:
+		{
+			comm_line = &pwm_ground;
 		}
+		default:
+		return;
 	}
-
-	switch(GET_COMMUTATION_STATE(motor, PHASE2_P)){
-		case OUT_LOW:
-		{	
-			SET_OUT_LOW(motor->phases[PHASE2]->p_control_line);
-			break;
-		}
-		case OUT_HIGH:
-		{	
-			SET_OUT_HIGH(motor->phases[PHASE2]->p_control_line);
-			break;
-		}
-		case OUT_PWM:
-		{	
-			SET_GPIO_ALTERNATE_MODE(motor->phases[PHASE2]->p_control_line);
-			break;
-		}
-	}
-
-	switch(GET_COMMUTATION_STATE(motor, PHASE2_N)){
-		case OUT_LOW:
-		{	
-			SET_OUT_LOW(motor->phases[PHASE2]->n_control_line);
-			break;
-		}
-		case OUT_HIGH:
-		{	
-			SET_OUT_HIGH(motor->phases[PHASE2]->n_control_line);
-			break;
-		}
-		case OUT_PWM:
-		{	
-			SET_GPIO_ALTERNATE_MODE(motor->phases[PHASE2]->n_control_line);
-			break;
-		}
-	}
-
-	switch(GET_COMMUTATION_STATE(motor, PHASE3_P)){
-		case OUT_LOW:
-		{	
-			SET_OUT_LOW(motor->phases[PHASE3]->p_control_line);
-			break;
-		}
-		case OUT_HIGH:
-		{	
-			SET_OUT_HIGH(motor->phases[PHASE3]->p_control_line);
-			break;
-		}
-		case OUT_PWM:
-		{	
-			SET_GPIO_ALTERNATE_MODE(motor->phases[PHASE3]->p_control_line);
-			break;
-		}
-	}
-
-	switch(GET_COMMUTATION_STATE(motor, PHASE3_N)){
-		case OUT_LOW:
-		{	
-			SET_OUT_LOW(motor->phases[PHASE3]->n_control_line);
-			break;
-		}
-		case OUT_HIGH:
-		{	
-			SET_OUT_HIGH(motor->phases[PHASE3]->n_control_line);
-			break;
-		}
-		case OUT_PWM:
-		{	
-			SET_GPIO_ALTERNATE_MODE(motor->phases[PHASE3]->n_control_line);
-			break;
-		}
-	}
+	
+	_update_brushless_line(comm_line->phase1_p, motor->phases[PHASE1]->p_control_line);
+	_update_brushless_line(comm_line->phase1_n, motor->phases[PHASE1]->n_control_line);
+	_update_brushless_line(comm_line->phase2_p, motor->phases[PHASE2]->p_control_line);
+	_update_brushless_line(comm_line->phase2_n, motor->phases[PHASE2]->n_control_line);
+	_update_brushless_line(comm_line->phase3_p, motor->phases[PHASE3]->p_control_line);
+	_update_brushless_line(comm_line->phase3_n, motor->phases[PHASE3]->n_control_line);
 }
 
 /**
@@ -900,6 +849,21 @@ void _do_brushless_commutation(brushless_motor_t *motor){
 	}
 	_update_brushless_phases(motor);
 
+}
+
+void _set_running(brushless_motor_t *motor){
+	motor->state = RUNNING;
+	_update_brushless_phases(motor);
+}
+
+void _set_free_wheeling(brushless_motor_t *motor){
+	motor->state = FREE_WHELLING;
+	_update_brushless_phases(motor);
+}
+
+void _set_tied_to_ground(brushless_motor_t *motor){
+	motor->state = TIED_TO_GROUND;
+	_update_brushless_phases(motor);
 }
 
 /**
@@ -990,10 +954,10 @@ void _adc3_voltage_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n){
  * @param duty_cycle 	duty cycle to set. Between 0 and 100. No check is made 
  * 						in this function !
  */	
-void _motorsSetDutyCycle(brushless_motor_t *motor, uint8_t duty_cycle){
-	static half_bridge_t* phase1 = NULL;
-	static half_bridge_t* phase2 = NULL;
-	static half_bridge_t* phase3 = NULL;
+void _set_duty_cycle(brushless_motor_t *motor, uint8_t duty_cycle){
+	static const half_bridge_t* phase1 = NULL;
+	static const half_bridge_t* phase2 = NULL;
+	static const half_bridge_t* phase3 = NULL;
 	static float dc = 0;
 
 	phase1 = motor->phases[PHASE1];
@@ -1002,6 +966,12 @@ void _motorsSetDutyCycle(brushless_motor_t *motor, uint8_t duty_cycle){
 
 	/* stores the duty cycle */ 
 	motor->duty_cycle = duty_cycle;
+
+	if(duty_cycle == 0){
+		_set_free_wheeling(motor);
+	}else if (motor->state != RUNNING){
+		_set_running(motor);
+	}
 
 	/* 
 	 * We invert the value because we use a PWM_mode 2 in the timers
@@ -1100,7 +1070,7 @@ void motorSetDutyCycle(brushless_motors_names_t motor_name, uint8_t duty_cycle){
 		duty_cycle = 100;
 	}
 
-	_motorsSetDutyCycle(&brushless_motors[motor_name], duty_cycle);
+	_set_duty_cycle(&brushless_motors[motor_name], duty_cycle);
 }
 
 
