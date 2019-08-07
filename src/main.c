@@ -145,6 +145,7 @@ int main(void) {
 
 	shellInit();
 	gateDriversEnableAll();
+  gateDriversDisable(GATE_DRIVER_3);
 
   motorsStart();
 

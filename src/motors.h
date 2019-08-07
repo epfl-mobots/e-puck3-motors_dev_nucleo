@@ -41,6 +41,7 @@ typedef enum{
     NB_OF_COMMUTATION_SCHEME
 }commutation_schemes_t;
 
+void motorsStart(void);
 
 #include "motors_conf.h"
 
