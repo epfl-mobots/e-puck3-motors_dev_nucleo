@@ -78,17 +78,6 @@ typedef enum
     HALF_BRIDGE_12,
 }half_bridges_names_t;
 
-/**
- * Brushless motors list
- */
-typedef enum
-{
-    BRUSHLESS_MOTOR_1 = 0,
-    BRUSHLESS_MOTOR_2,
-    BRUSHLESS_MOTOR_3,
-    BRUSHLESS_MOTOR_4,
-}brushless_motors_names_t;
-
 typedef enum{
 	PHASE1_P = 0,
 	PHASE1_N,
@@ -253,7 +242,7 @@ typedef struct {
  * Structure representing a brushless motor
  */
 typedef struct {
-	const half_bridge_t*		phases[NB_BRUSHLESS_PHASES];
+	half_bridge_t*				phases[NB_BRUSHLESS_PHASES];
 	const commutation_schemes_t	commutation_scheme;
 	int8_t 						step_iterator;
 	float						duty_cycle;
@@ -269,6 +258,7 @@ void _update_brushless_phases(brushless_motor_t *motor);
 void _do_brushless_commutation(brushless_motor_t *motor);
 void _adc1_current_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
 void _adc3_voltage_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
+void _motorsSetDutyCycle(brushless_motor_t *motor, uint8_t duty_cycle);
 void _adcStart(void);
 void _timersStart(void);
 void _motorsInit(void);
@@ -324,7 +314,7 @@ static const uint8_t pwm_commutation_schemes[NB_OF_COMMUTATION_SCHEME] 			// 2 S
  *	Half bridges structure
  */
 #if (NB_OF_HALF_BRIDGES > 0)
-const half_bridge_t half_bridges[NB_OF_HALF_BRIDGES] = {
+static half_bridge_t half_bridges[NB_OF_HALF_BRIDGES] = {
 	{
 		.p_control_line					= P_CONTROL_LINE_1,
 		.n_control_line					= N_CONTROL_LINE_1,
@@ -473,7 +463,6 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
 		.phases[PHASE3] 	= &half_bridges[BRUSHLESS_MOTOR_1_PHASE3],
 		.commutation_scheme = BRUSHLESS_MOTOR_1_COMMUTATION,
 		.direction 			= BRUSHLESS_MOTOR_1_DIRECTION,
-		.duty_cycle			= 10,
 		.ADC_offset_off		= {1, 1, 1}
 	},
 #if (NB_OF_BRUSHLESS_MOTOR > 1)
@@ -486,7 +475,6 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
 		.phases[PHASE3] 	= &half_bridges[BRUSHLESS_MOTOR_2_PHASE3],
 		.commutation_scheme = BRUSHLESS_MOTOR_2_COMMUTATION,
 		.direction 			= BRUSHLESS_MOTOR_2_DIRECTION,
-		.duty_cycle			= 10,
 		.ADC_offset_off		= {10, 10, 10}
 	},
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 1) */
@@ -500,7 +488,6 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
 		.phases[PHASE3] 	= &half_bridges[BRUSHLESS_MOTOR_3_PHASE3],
 		.commutation_scheme = BRUSHLESS_MOTOR_3_COMMUTATION,
 		.direction 			= BRUSHLESS_MOTOR_3_DIRECTION,
-		.duty_cycle			= 10,
 		.ADC_offset_off		= {0, 0, 0}
 	},
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 2) */
@@ -514,7 +501,6 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
 		.phases[PHASE3] 	= &half_bridges[BRUSHLESS_MOTOR_4_PHASE3],
 		.commutation_scheme = BRUSHLESS_MOTOR_4_COMMUTATION,
 		.direction 			= BRUSHLESS_MOTOR_4_DIRECTION,
-		.duty_cycle			= 10,
 		.ADC_offset_off		= {8, 8, 8}
 	},
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 3) */
@@ -997,6 +983,44 @@ void _adc3_voltage_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n){
 
 }
 
+/**
+ * @brief  				Sets the given duty cycle to the given motor
+ * 
+ * @param motor 		Motor to set the duty cycle. See brushless_motor_t
+ * @param duty_cycle 	duty cycle to set. Between 0 and 100. No check is made 
+ * 						in this function !
+ */	
+void _motorsSetDutyCycle(brushless_motor_t *motor, uint8_t duty_cycle){
+	static half_bridge_t* phase1 = NULL;
+	static half_bridge_t* phase2 = NULL;
+	static half_bridge_t* phase3 = NULL;
+	static float dc = 0;
+
+	phase1 = motor->phases[PHASE1];
+	phase2 = motor->phases[PHASE2];
+	phase3 = motor->phases[PHASE3];
+
+	/* stores the duty cycle */ 
+	motor->duty_cycle = duty_cycle;
+
+	/* 
+	 * We invert the value because we use a PWM_mode 2 in the timers
+	 * so when CCR = 0, we have a duty cycle of 100%									
+	 */
+
+	dc = (float)(100 - duty_cycle)/100;
+
+	phase1->pwmp->tim->CCR[phase1->PWM_p_channel] = dc * phase1->pwmp->tim->ARR;
+	phase1->pwmp->tim->CCR[phase1->PWM_n_channel] = dc * phase1->pwmp->tim->ARR;
+	phase2->pwmp->tim->CCR[phase2->PWM_p_channel] = dc * phase2->pwmp->tim->ARR;
+	phase2->pwmp->tim->CCR[phase2->PWM_n_channel] = dc * phase2->pwmp->tim->ARR;
+	phase3->pwmp->tim->CCR[phase3->PWM_p_channel] = dc * phase3->pwmp->tim->ARR;
+	phase3->pwmp->tim->CCR[phase3->PWM_n_channel] = dc * phase3->pwmp->tim->ARR;
+}
+
+/**
+ * @brief 	Configures and starts the ADCs used by the motors control (ADC1 and ADC3).
+ */
 void _adcStart(void){
 
 	adcStart(&ADCD1, NULL);
@@ -1009,6 +1033,10 @@ void _adcStart(void){
 
 }
 
+/**
+ * @brief 	Configures and starts the timers used by the motors control 
+ * 			(timers 1, 2, 3, 4, 8).
+ */
 void _timersStart(void){
 
 	pwmStart(&PWMD1, &tim_1_cfg);
@@ -1050,28 +1078,6 @@ void _timersStart(void){
 
 	/* Enables the timers */ 
 	PWMD1.tim->CR1 |= STM32_TIM_CR1_CEN;
-
-	PWMD1.tim->CCR[TIM_CHANNEL_1] = 0.90 * PWMD1.tim->ARR;
-	PWMD1.tim->CCR[TIM_CHANNEL_2] = 0.90 * PWMD1.tim->ARR;
-	PWMD1.tim->CCR[TIM_CHANNEL_3] = 0.90 * PWMD1.tim->ARR;
-	PWMD2.tim->CCR[TIM_CHANNEL_1] = 0.90 * PWMD2.tim->ARR;
-	PWMD2.tim->CCR[TIM_CHANNEL_2] = 0.90 * PWMD2.tim->ARR;
-	PWMD2.tim->CCR[TIM_CHANNEL_3] = 0.90 * PWMD2.tim->ARR;
-	PWMD2.tim->CCR[TIM_CHANNEL_4] = 0.90 * PWMD2.tim->ARR;
-	PWMD3.tim->CCR[TIM_CHANNEL_1] = 0.90 * PWMD3.tim->ARR;
-	PWMD3.tim->CCR[TIM_CHANNEL_2] = 0.90 * PWMD3.tim->ARR;
-	PWMD3.tim->CCR[TIM_CHANNEL_3] = 0.90 * PWMD3.tim->ARR;
-	PWMD3.tim->CCR[TIM_CHANNEL_4] = 0.90 * PWMD3.tim->ARR;
-	PWMD4.tim->CCR[TIM_CHANNEL_1] = 0.90 * PWMD4.tim->ARR;
-	PWMD4.tim->CCR[TIM_CHANNEL_2] = 0.90 * PWMD4.tim->ARR;
-	PWMD4.tim->CCR[TIM_CHANNEL_3] = 0.90 * PWMD4.tim->ARR;
-	PWMD4.tim->CCR[TIM_CHANNEL_4] = 0.90 * PWMD4.tim->ARR;
-	PWMD8.tim->CCR[TIM_CHANNEL_1] = 0.90 * PWMD8.tim->ARR;
-	PWMD8.tim->CCR[TIM_CHANNEL_2] = 0.90 * PWMD8.tim->ARR;
-	PWMD8.tim->CCR[TIM_CHANNEL_3] = 0.90 * PWMD8.tim->ARR;
-
-	PWMD1.tim->EGR |= STM32_TIM_EGR_COMG;
-	PWMD8.tim->EGR |= STM32_TIM_EGR_COMG;
 }
 
 void _motorsInit(void){
@@ -1083,26 +1089,18 @@ void motorsStart(void){
 	_motorsInit();
 	_adcStart();
 	_timersStart();
+}
 
-	// brushless_motors[BRUSHLESS_MOTOR_1].step_iterator = 0;
-	// brushless_motors[BRUSHLESS_MOTOR_1].direction = 1;
-	// for(int i = 0 ; i < 6 ; i++){
-	// 	chprintf((BaseSequentialStream *)&USB_GDB,"step %d slope %d, direction %d\n",brushless_motors[BRUSHLESS_MOTOR_1].step_iterator , IS_BEMF_SLOPE_POSITIVE(&brushless_motors[BRUSHLESS_MOTOR_1]), brushless_motors[BRUSHLESS_MOTOR_1].direction);
-	// 	brushless_motors[BRUSHLESS_MOTOR_1].step_iterator++;
-	// }
+void motorSetDutyCycle(brushless_motors_names_t motor_name, uint8_t duty_cycle){
+	if(motor_name >= MAX_NB_OF_BRUSHLESS_MOTOR){
+		return;
+	}
 
-	// brushless_motors[BRUSHLESS_MOTOR_1].step_iterator = 0;
-	// brushless_motors[BRUSHLESS_MOTOR_1].direction = -1;
-	// for(int i = 0 ; i < 6 ; i++){
-	// 	chprintf((BaseSequentialStream *)&USB_GDB,"step %d slope %d direction %d\n",brushless_motors[BRUSHLESS_MOTOR_1].step_iterator , IS_BEMF_SLOPE_POSITIVE(&brushless_motors[BRUSHLESS_MOTOR_1]), brushless_motors[BRUSHLESS_MOTOR_1].direction);
-	// 	brushless_motors[BRUSHLESS_MOTOR_1].step_iterator++;
-	// }
+	if(duty_cycle > 100){
+		duty_cycle = 100;
+	}
 
-	// int32_t direction = -1000;
-	// for(int i = 0 ; i < 10000 ; i++){
-	// 	direction++;
-	// 	chprintf((BaseSequentialStream *)&USB_GDB,"direction %d (uint8_t)direction %d\n",direction, (uint8_t)direction);
-	// }
+	_motorsSetDutyCycle(&brushless_motors[motor_name], duty_cycle);
 }
 
 

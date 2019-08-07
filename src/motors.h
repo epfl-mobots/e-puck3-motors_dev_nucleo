@@ -10,8 +10,6 @@
 #define MOTORS_H
 
 
-#define MAX_NB_OF_BRUSHLESS_MOTOR   4
-
 /**
  * Timer's channels list
  */
@@ -23,6 +21,19 @@ typedef enum{
     TIM_CHANNEL_5,
     TIM_CHANNEL_6
 }tim_channel_t;
+
+/**
+ * Brushless motors list
+ */
+typedef enum
+{
+    BRUSHLESS_MOTOR_1 = 0,
+    BRUSHLESS_MOTOR_2,
+    BRUSHLESS_MOTOR_3,
+    BRUSHLESS_MOTOR_4,
+}brushless_motors_names_t;
+
+#define MAX_NB_OF_BRUSHLESS_MOTOR   4
 
 /**
  * Possible rotation directions
@@ -43,6 +54,8 @@ typedef enum{
 }commutation_schemes_t;
 
 void motorsStart(void);
+
+void motorSetDutyCycle(brushless_motors_names_t motor_name, uint8_t duty_cycle);
 
 #include "motors_conf.h"
 

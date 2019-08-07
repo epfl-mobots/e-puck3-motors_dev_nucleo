@@ -19,6 +19,7 @@
 #include "uc_usage.h"
 #include "gate_drivers.h"
 #include "usb_pd_controller.h"
+#include "motors.h"
 
 
 static THD_WORKING_AREA(waShell,2048);
@@ -149,6 +150,40 @@ static void cmd_motor_timing(BaseSequentialStream *chp, int argc, char *argv[])
   {
       chprintf(chp, "Not Implemented" SHELL_NEWLINE_STR);
       //shellUsage(chp, "set_motor_timing -30 to 30 degrees");
+  }
+}
+
+static void cmd_motor_set_speed(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  (void)argv;
+  if(argc == 2)
+  {
+    char *endptr;
+    uint8_t motNumber = strtol(argv[0], &endptr, 0);
+    float speed = strtol(argv[1], &endptr, 0);
+
+    brushless_motors_names_t motor_id;
+    if(motNumber == 1){
+      //pin = LINE_EN_DRIVER_1;
+      motor_id = 0;
+    }else if(motNumber == 2){
+      //pin = LINE_EN_DRIVER_2;
+      motor_id = 1;
+    }else if(motNumber == 3){
+      //pin = LINE_EN_DRIVER_3;
+      motor_id = 2;
+    }else if(motNumber == 4){
+      //pin = LINE_EN_DRIVER_4;
+      motor_id = 3;
+    }else{
+      return;
+    }
+    motorSetDutyCycle(motor_id, speed);
+
+  }
+  else
+  {
+      chprintf(chp, "motor_set_speed motNumber speed (0-100)" SHELL_NEWLINE_STR);
   }
 }
 
@@ -327,6 +362,7 @@ static const ShellCommand commands[] = {
 	{"power_drivers", cmd_power_drivers},
 	{"set_step_time", cmd_step_time},
 	{"set_direction",cmd_dir},
+  {"motor_set_speed",cmd_motor_set_speed},
 	{"set_sample_time",cmd_sample_time},
 	{"set_motor_timing",cmd_motor_timing},
 	{"get_source_cap", cmd_get_source_cap},

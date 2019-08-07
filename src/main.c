@@ -153,6 +153,11 @@ int main(void) {
 
 	// Configure the Thread that will blink the leds on the boards
 	chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO + 1, Thread1, NULL);
+
+  motorSetDutyCycle(BRUSHLESS_MOTOR_1, 10);
+  motorSetDutyCycle(BRUSHLESS_MOTOR_2, 10);
+  motorSetDutyCycle(BRUSHLESS_MOTOR_3, 10);
+  motorSetDutyCycle(BRUSHLESS_MOTOR_4, 10);
   
 	while (true)
 	{
