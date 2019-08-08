@@ -11,21 +11,22 @@
 #include "motors.h"
 #include "main.h"
 
-#define ADC3_BUFFER_DEPTH		2		//2 sequences of MAX_NB_OF_BRUSHLESS_MOTOR samples
-#define ADC1_BUFFER_DEPTH		2		//2 sequences of MAX_NB_OF_BRUSHLESS_MOTOR samples
-#define ADC1_NB_ELEMENT_SEQ		3		/* with 52KHz, we can do approx 24 measurements by PWM cycle 
+#define ADC3_BUFFER_DEPTH			2		//2 sequences of MAX_NB_OF_BRUSHLESS_MOTOR samples
+#define ADC1_BUFFER_DEPTH			2		//2 sequences of MAX_NB_OF_BRUSHLESS_MOTOR samples
+#define ADC1_NB_ELEMENT_SEQ			3		/* with 52KHz, we can do approx 24 measurements by PWM cycle 
 											so we need to do 2 sequences of 12 elements (3 * 4 motors)*/
-#define ADC3_OFF_SAMPLE_TIME	0.20f	
-#define ADC3_ON_SAMPLE_TIME		0.75f
+#define ADC3_OFF_SAMPLE_TIME		0.20f	//we sample the OFF time at 20% of the PWM cycle
+#define ADC3_ON_SAMPLE_TIME			0.75f	//we sample the ON time at 75% of the PWM cycle
+#define ZC_DETECT_METHOD_THESHOLD	30		//we use the ZC_DETECT_ON method above 30% duty cycle
 
-#define DEGAUSS_TICKS_ZC_OFF	1
-#define HALF_BUS_VOLTAGE		962
+#define DEGAUSS_TICKS_ZC_OFF		1
+#define HALF_BUS_VOLTAGE			962
 
-#define PERIOD_PWM_52_KHZ_APB2  4154	// STM32_TIMCLK2/52000 rounded to an even number to be divisible by 2
-#define PERIOD_PWM_52_KHZ_APB1 	PERIOD_PWM_52_KHZ_APB2/2
+#define PERIOD_PWM_52_KHZ_APB2  	4154	// STM32_TIMCLK2/52000 rounded to an even number to be divisible by 2
+#define PERIOD_PWM_52_KHZ_APB1 		PERIOD_PWM_52_KHZ_APB2/2
 
-#define LIMIT_CHANGE_DUTY_CYCLE	0.0001f
-#define RAMP_STEPS_DUTY_CYCLE 	0.001f
+#define LIMIT_CHANGE_DUTY_CYCLE		0.0001f
+#define RAMP_STEPS_DUTY_CYCLE 		0.001f
 
 
 /**
@@ -721,11 +722,11 @@ void _detect_zero_crossing(brushless_motor_t *motor){
 
 	zc = &motor->zero_crossing;
 
-	// if(motor->duty_cycle_now > 30){
-	// 	zc->zc_method = ZC_DETECT_ON;
-	// }else{
-	// 	zc->zc_method = ZC_DETECT_OFF;
-	// }
+	if(motor->duty_cycle_now > ZC_DETECT_METHOD_THESHOLD){
+		zc->zc_method = ZC_DETECT_ON;
+	}else{
+		zc->zc_method = ZC_DETECT_OFF;
+	}
 
 	if(!IS_ZC_FLAG(zc)){
 		zc_found = false;
@@ -741,7 +742,7 @@ void _detect_zero_crossing(brushless_motor_t *motor){
 			}
 		}else if(zc->zc_method == ZC_DETECT_ON){
 			//True if sign has changed
-			zc_found = ((((int32_t)zc->dataOn - HALF_BUS_VOLTAGE) ^ ((int32_t)zc->previous_dataOn - HALF_BUS_VOLTAGE)) > 0);
+			zc_found = ((((int32_t)zc->dataOn - HALF_BUS_VOLTAGE) ^ ((int32_t)zc->previous_dataOn - HALF_BUS_VOLTAGE)) < 0);
 		}
 
 		if(zc_found){
