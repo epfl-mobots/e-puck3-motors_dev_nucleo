@@ -52,8 +52,20 @@ typedef enum{
     NB_OF_COMMUTATION_SCHEME
 }commutation_schemes_t;
 
+/**
+ * @brief Does all the initializations related to the motor control module and starts it.
+ * 
+ * Uses Timers 1, 2, 3, 4, 8 and ADC 1 and 3.
+ */
 void motorsStart(void);
 
+/**
+ * @brief               Changes the duty cycle of the given motor. The duty cycle is internally
+ *                      changed with a ramp.
+ * 
+ * @param motor_name    Motor to change the duty cycle. See brushless_motors_names_t
+ * @param duty_cycle    Duty cycle to apply. Between 0 and 100.
+ */
 void motorSetDutyCycle(brushless_motors_names_t motor_name, uint8_t duty_cycle);
 
 #include "motors_conf.h"

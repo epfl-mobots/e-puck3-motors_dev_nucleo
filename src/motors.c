@@ -11,28 +11,30 @@
 #include "motors.h"
 #include "main.h"
 
-#define ADC3_BUFFER_DEPTH			2		//2 sequences of MAX_NB_OF_BRUSHLESS_MOTOR samples
-#define ADC1_BUFFER_DEPTH			2		//2 sequences of MAX_NB_OF_BRUSHLESS_MOTOR samples
-#define ADC1_NB_ELEMENT_SEQ			3		/* with 52KHz, we can do approx 24 measurements by PWM cycle 
+#define ADC3_BUFFER_DEPTH				2		//2 sequences of MAX_NB_OF_BRUSHLESS_MOTOR samples
+#define ADC1_BUFFER_DEPTH				2		//2 sequences of MAX_NB_OF_BRUSHLESS_MOTOR samples
+#define ADC1_NB_ELEMENT_SEQ				3		/* with 52KHz, we can do approx 24 measurements by PWM cycle 
 											so we need to do 2 sequences of 12 elements (3 * 4 motors)*/
-#define ADC3_OFF_SAMPLE_TIME		0.20f	//we sample the OFF time at 20% of the PWM cycle
-#define ADC3_ON_SAMPLE_TIME			0.75f	//we sample the ON time at 75% of the PWM cycle
-#define ZC_DETECT_METHOD_THESHOLD	30		//we use the ZC_DETECT_ON method above 30% duty cycle
+#define ADC3_OFF_SAMPLE_TIME			0.20f	//we sample the OFF time at 20% of the PWM cycle
+#define ADC3_ON_SAMPLE_TIME				0.75f	//we sample the ON time at 75% of the PWM cycle
+#define ZC_DETECT_METHOD_THESHOLD		30		//we use the ZC_DETECT_ON method above 30% duty cycle
 
-#define DEGAUSS_TICKS_ZC_OFF		1
-#define HALF_BUS_VOLTAGE			962
+#define NB_SAMPLE_OFFSET_CALIBRATION	1000
 
-#define PERIOD_PWM_52_KHZ_APB2  	4154	// STM32_TIMCLK2/52000 rounded to an even number to be divisible by 2
-#define PERIOD_PWM_52_KHZ_APB1 		PERIOD_PWM_52_KHZ_APB2/2
+#define DEGAUSS_TICKS_ZC_OFF			1
+#define HALF_BUS_VOLTAGE				962
 
-#define LIMIT_CHANGE_DUTY_CYCLE		0.0001f
-#define RAMP_STEPS_DUTY_CYCLE 		0.001f
+#define PERIOD_PWM_52_KHZ_APB2  		4154	// STM32_TIMCLK2/52000 rounded to an even number to be divisible by 2
+#define PERIOD_PWM_52_KHZ_APB1 			PERIOD_PWM_52_KHZ_APB2/2
+
+#define LIMIT_CHANGE_DUTY_CYCLE			0.0001f
+#define RAMP_STEPS_DUTY_CYCLE 			0.001f
 
 
 /**
  * NB of steps for a 6-steps commutation scheme 
  */
-#define NB_STEPS_BRUSHLESS			6
+#define NB_STEPS_BRUSHLESS				6
 
 /**
  * Possible phases for a brushless motor
@@ -65,8 +67,10 @@ typedef enum{
  * Zero crossing detection methods
  */
 typedef enum{
-	ZC_DETECT_OFF = 0,
-	ZC_DETECT_ON
+	ZC_DETECT_OFF = 0,	/* Function to detect the zero crossing with the PWM OFF voltage */
+	ZC_DETECT_ON,		/* Function to detect the zero crossing with the PWM ON voltage */
+	ZC_CALIBRATE_OFF, 	/* Function to calibrate the ADC offset for the PWM OFF voltage */
+	NB_ZC_METHODS
 }zc_det_methods_t;
 
 /**
@@ -91,9 +95,9 @@ typedef enum{
  * Motor states
  */
 typedef enum{
-	RUNNING = 0,
-	FREE_WHELLING,
-	TIED_TO_GROUND,
+	RUNNING = 0,		/* In this mode, the motor uses the commutation table configured in motors_conf.h */
+	FREE_WHELLING,		/* In this mode, each lines of the motor are kept in floating state */
+	TIED_TO_GROUND,		/* In this mode, each lines of the motor are tied to ground */
 	NB_MOTOR_STATES
 }motor_states_t;
 
@@ -268,15 +272,27 @@ typedef struct {
 	rotation_dir_t				direction;
 	motor_states_t				state;
 	zero_crossing_t				zero_crossing;
-	uint16_t					ADC_offset_off[NB_BRUSHLESS_PHASES];
+	uint32_t					ADC_offset_off[NB_BRUSHLESS_PHASES];
+	uint16_t					nb_offset_sample;
 } brushless_motor_t;
 
+//function pointer for zero crossing functions
+typedef bool (*zc_function_t)(brushless_motor_t *motor);
+
 /********************         PRIVATE FUCNTION DECLARATIONS         ********************/
-void _detect_zero_crossing(brushless_motor_t *motor);
+void _zero_crossing_reset(brushless_motor_t *motor);
+bool _zero_crossing_detect_off(brushless_motor_t *motor);
+bool _zero_crossing_detect_on(brushless_motor_t *motor);
+void _zero_crossing_cb(brushless_motor_t *motor);
+bool _zero_crossing_calibration_off(brushless_motor_t *motor);
 void _compute_next_commutation(zero_crossing_t *zc);
 void _update_brushless_line(timer_output_states_t state, ioline_t line);
 void _update_brushless_phases(brushless_motor_t *motor);
+void _do_brushless_calibration(brushless_motor_t *motor);
 void _do_brushless_commutation(brushless_motor_t *motor);
+void _set_running(brushless_motor_t *motor);
+void _set_free_wheeling(brushless_motor_t *motor);
+void _set_tied_to_ground(brushless_motor_t *motor);
 void _adc1_current_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
 void _adc3_voltage_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
 void _update_duty_cycle(brushless_motor_t *motor);
@@ -287,7 +303,10 @@ void _motorsInit(void);
 
 /********************               INTERNAL VARIABLES              ********************/
 
-static const brushless_commutation_scheme_line_t pwm_commutation_schemes[NB_OF_COMMUTATION_SCHEME][NB_STEPS_BRUSHLESS] ={
+/**
+ * Commutation tables
+ */
+static const brushless_commutation_scheme_line_t pwm_commutation_schemes[NB_OF_COMMUTATION_SCHEME][NB_STEPS_BRUSHLESS] = {
 	/*	Phase1 P	Phase1 N	Phase2 P	Phase2 N	Phase3 P	Phase3 N	Floating 	Low side	BEMF slope
 																				phase 		conducting
 																						 	phase 	*/
@@ -323,6 +342,15 @@ static const brushless_commutation_scheme_line_t pwm_free_wheeling =
 static const brushless_commutation_scheme_line_t pwm_ground = 
 { 
 	OUT_LOW, OUT_HIGH, OUT_LOW, OUT_HIGH, OUT_LOW, OUT_HIGH, 0, 0, 0
+};
+
+/**
+ * zc_function_t functions. See zc_det_methods_t for explanations
+ */
+static const zc_function_t brushless_zc_functions[NB_ZC_METHODS] = {
+	_zero_crossing_detect_off,
+	_zero_crossing_detect_on,
+	_zero_crossing_calibration_off
 };
 
 /**
@@ -478,8 +506,7 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
 		.phases[PHASE3] 	= &half_bridges[BRUSHLESS_MOTOR_1_PHASE3],
 		.commutation_scheme = BRUSHLESS_MOTOR_1_COMMUTATION,
 		.direction 			= BRUSHLESS_MOTOR_1_DIRECTION,
-		.ramp_steps 		= RAMP_STEPS_DUTY_CYCLE,
-		.ADC_offset_off		= {1, 1, 1}
+		.ramp_steps 		= RAMP_STEPS_DUTY_CYCLE
 	},
 #if (NB_OF_BRUSHLESS_MOTOR > 1)
 #if (NB_OF_HALF_BRIDGES < 6)
@@ -491,8 +518,7 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
 		.phases[PHASE3] 	= &half_bridges[BRUSHLESS_MOTOR_2_PHASE3],
 		.commutation_scheme = BRUSHLESS_MOTOR_2_COMMUTATION,
 		.direction 			= BRUSHLESS_MOTOR_2_DIRECTION,
-		.ramp_steps 		= RAMP_STEPS_DUTY_CYCLE,
-		.ADC_offset_off		= {10, 10, 10}
+		.ramp_steps 		= RAMP_STEPS_DUTY_CYCLE
 	},
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 1) */
 #if (NB_OF_BRUSHLESS_MOTOR > 2)
@@ -505,8 +531,7 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
 		.phases[PHASE3] 	= &half_bridges[BRUSHLESS_MOTOR_3_PHASE3],
 		.commutation_scheme = BRUSHLESS_MOTOR_3_COMMUTATION,
 		.direction 			= BRUSHLESS_MOTOR_3_DIRECTION,
-		.ramp_steps 		= RAMP_STEPS_DUTY_CYCLE,
-		.ADC_offset_off		= {0, 0, 0}
+		.ramp_steps 		= RAMP_STEPS_DUTY_CYCLE
 	},
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 2) */
 #if (NB_OF_BRUSHLESS_MOTOR > 3)
@@ -519,8 +544,7 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
 		.phases[PHASE3] 	= &half_bridges[BRUSHLESS_MOTOR_4_PHASE3],
 		.commutation_scheme = BRUSHLESS_MOTOR_4_COMMUTATION,
 		.direction 			= BRUSHLESS_MOTOR_4_DIRECTION,
-		.ramp_steps 		= RAMP_STEPS_DUTY_CYCLE,
-		.ADC_offset_off		= {8, 8, 8}
+		.ramp_steps 		= RAMP_STEPS_DUTY_CYCLE
 	},
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 3) */
 };
@@ -706,6 +730,9 @@ static PWMConfig tim_234_cfg = {
 								  	(x)->previous_dataOff = (x)->dataOff;\
 								  	(x)->dataOff = y;\
 								 }
+
+#define CALL_ZC_FUNCTION(x) (brushless_zc_functions[(x)->zero_crossing.zc_method](x))
+
 #define SET_ZC_FLAG(x)	((x)->flag = true)
 
 #define RESET_ZC_FLAG(x)((x)->flag = false)
@@ -716,33 +743,50 @@ static PWMConfig tim_234_cfg = {
 
 #define IS_BEMF_SLOPE_POSITIVE(x) (((x)->direction > 0) ? pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator].bemf_slope : !pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator].bemf_slope)
 
-void _detect_zero_crossing(brushless_motor_t *motor){
+/**
+ * @brief 			Resets the zero crossing structure of the given motor.
+ * 
+ * @param motor 	Motor to reset the zero crossing structure.
+ */
+void _zero_crossing_reset(brushless_motor_t *motor){
 	static zero_crossing_t *zc = NULL;
-	static bool zc_found = false;
 
 	zc = &motor->zero_crossing;
 
-	if(motor->duty_cycle_now > ZC_DETECT_METHOD_THESHOLD){
-		zc->zc_method = ZC_DETECT_ON;
-	}else{
-		zc->zc_method = ZC_DETECT_OFF;
-	}
+	zc->flag 					= false;
+	zc->time 					= 0;
+	zc->detection_time 			= 0;
+	zc->previous_detection_time	= 0;
+	zc->period 					= 0;
+	zc->period_filtered 		= 0;
+	zc->next_commutation_time 	= 0;
+	zc->ticks_since_last_comm 	= 0;
+
+}
+
+/**
+ * @brief 			Detect if a zero crossing occurs for the PWM OFF voltage.
+ * 
+ * @param motor 	Motor to detect the zero crossing. See brushless_motor_t
+ * @return 			True if a zero crossing has been detected, False otherwise.
+ */
+bool _zero_crossing_detect_off(brushless_motor_t *motor){
+	static zero_crossing_t *zc = NULL;
+	static bool zc_found = false;
+
+	zc_found = false;
+
+	zc = &motor->zero_crossing;
 
 	if(!IS_ZC_FLAG(zc)){
-		zc_found = false;
-		if(zc->zc_method == ZC_DETECT_OFF){
-			if(zc->ticks_since_last_comm > DEGAUSS_TICKS_ZC_OFF){
-				if(IS_BEMF_SLOPE_POSITIVE(motor)){
-					zc_found = (zc->dataOff > motor->ADC_offset_off[GET_FLOATING_PHASE(motor)]);
-				}else{
-					zc_found = (zc->dataOff <= motor->ADC_offset_off[GET_FLOATING_PHASE(motor)]);
-				}
+		if(zc->ticks_since_last_comm > DEGAUSS_TICKS_ZC_OFF){
+			if(IS_BEMF_SLOPE_POSITIVE(motor)){
+				zc_found = (zc->dataOff > motor->ADC_offset_off[GET_FLOATING_PHASE(motor)]);
 			}else{
-				zc->ticks_since_last_comm++;
+				zc_found = (zc->dataOff <= motor->ADC_offset_off[GET_FLOATING_PHASE(motor)]);
 			}
-		}else if(zc->zc_method == ZC_DETECT_ON){
-			//True if sign has changed
-			zc_found = ((((int32_t)zc->dataOn - HALF_BUS_VOLTAGE) ^ ((int32_t)zc->previous_dataOn - HALF_BUS_VOLTAGE)) < 0);
+		}else{
+			zc->ticks_since_last_comm++;
 		}
 
 		if(zc_found){
@@ -751,6 +795,60 @@ void _detect_zero_crossing(brushless_motor_t *motor){
 			SET_ZC_FLAG(zc);
 		}
 	}
+
+	return zc_found;
+}
+
+/**
+ * @brief 			Detect if a zero crossing occurs for the PWM ON voltage.
+ * 
+ * @param motor 	Motor to detect the zero crossing. See brushless_motor_t
+ * @return 			True if a zero crossing has been detected, False otherwise.
+ */
+bool _zero_crossing_detect_on(brushless_motor_t *motor){
+	static zero_crossing_t *zc = NULL;
+	static bool zc_found = false;
+
+	zc_found = false;
+
+	zc = &motor->zero_crossing;
+
+	if(!IS_ZC_FLAG(zc)){
+		//True if sign has changed
+		zc_found = ((((int32_t)zc->dataOn - HALF_BUS_VOLTAGE) ^ ((int32_t)zc->previous_dataOn - HALF_BUS_VOLTAGE)) < 0);
+
+		if(zc_found){
+			_compute_next_commutation(zc);
+			zc->ticks_since_last_comm = 0;
+			SET_ZC_FLAG(zc);
+		}
+	}
+
+	return zc_found;
+}
+
+/**
+ * @brief 			Function used to call the good zero crossing method.
+ * 					The duty cycle is updated here.
+ * 
+ * @param motor 	Motor to use. See brushless_motor_t
+ */
+void _zero_crossing_cb(brushless_motor_t *motor){
+	static zero_crossing_t *zc = NULL;
+
+	zc = &motor->zero_crossing;
+
+	if(zc->zc_method != ZC_CALIBRATE_OFF){
+		if(motor->duty_cycle_now > ZC_DETECT_METHOD_THESHOLD){
+			zc->zc_method = ZC_DETECT_ON;
+		}else{
+			zc->zc_method = ZC_DETECT_OFF;
+		}
+
+		_update_duty_cycle(motor);
+	}
+
+	CALL_ZC_FUNCTION(motor);
 
 	zc->time++;
 
@@ -765,6 +863,53 @@ void _detect_zero_crossing(brushless_motor_t *motor){
 	// 	zc->time = 0;
 	// }
 	
+}
+
+/**
+ * @brief 			It gathers the ADC OFF samples, performs an average and store them
+ * 					into the ADC_offset_off field of the motor.
+ * 					
+ * 					At the end, the motor is restored into its normal state
+ * 					with a duty cycle of 0.
+ * 
+ * @param motor 	Motor to calibrate. See brushless_motor_t
+ * @return 			Not used. Always returns 0
+ */
+bool _zero_crossing_calibration_off(brushless_motor_t *motor){
+
+	// We accumulate the ADC offset at the OFF time
+	motor->ADC_offset_off[GET_FLOATING_PHASE(motor)] += motor->zero_crossing.dataOff;
+
+	// Increment the counter each time we do a 6-step cycle
+	if(motor->step_iterator >= (NB_STEPS_BRUSHLESS - 1)){
+		motor->nb_offset_sample++;
+
+		// We have enough data. Now get the average and go to free wheeling mode
+		if(motor->nb_offset_sample >= NB_SAMPLE_OFFSET_CALIBRATION){
+			//each phase is sampled 2 times per 6-steps cycle
+			motor->nb_offset_sample *= 2;
+
+			motor->ADC_offset_off[PHASE1] /= motor->nb_offset_sample;
+			motor->ADC_offset_off[PHASE2] /= motor->nb_offset_sample;
+			motor->ADC_offset_off[PHASE3] /= motor->nb_offset_sample;
+			motor->nb_offset_sample = 0;
+
+			// When we set a duty cycle of 0, we go to free wheeling mode
+			_set_duty_cycle(motor, 0);
+
+			// Restores the zc method to a detect one
+			motor->zero_crossing.zc_method = ZC_DETECT_OFF;
+		}
+	}
+
+	/* We force the commutations at a arbitrary number of steps
+	 * to gather adc sample of each phase.
+	 */
+	if((motor->zero_crossing.time % 50) == 0){
+		_do_brushless_commutation(motor);
+	}
+
+	return 0;
 }
 
 /**
@@ -832,6 +977,7 @@ void _update_brushless_phases(brushless_motor_t *motor){
 		case TIED_TO_GROUND:
 		{
 			comm_line = &pwm_ground;
+			break;
 		}
 		default:
 		return;
@@ -843,6 +989,21 @@ void _update_brushless_phases(brushless_motor_t *motor){
 	_update_brushless_line(comm_line->phase2_n, motor->phases[PHASE2]->n_control_line);
 	_update_brushless_line(comm_line->phase3_p, motor->phases[PHASE3]->p_control_line);
 	_update_brushless_line(comm_line->phase3_n, motor->phases[PHASE3]->n_control_line);
+}
+
+/**
+ * @brief 			Configures the motor mode and zero crossing callback 
+ * 					to perform a ADC offset calibration for the OFF time
+ * 					
+ * 					At the end, the motor is restored into its normal state
+ * 					with a duty cycle of 0.
+ * 
+ * @param motor 	Motor to calibrate the ADC offsets. See brushless_motor_t
+ */	
+void _do_brushless_calibration(brushless_motor_t *motor){
+	motor->zero_crossing.zc_method = ZC_CALIBRATE_OFF;
+	motor->step_iterator = 0;
+	_set_tied_to_ground(motor);
 }
 
 /**
@@ -862,16 +1023,35 @@ void _do_brushless_commutation(brushless_motor_t *motor){
 
 }
 
+/**
+ * @brief 			Puts the motor into RUNNING mode. 
+ * 					See motor_states_t for mode explanations
+ * 
+ * @param motor 	Motor to put into RUNNING mode. See brushless_motor_t
+ */
 void _set_running(brushless_motor_t *motor){
+	_zero_crossing_reset(motor);
 	motor->state = RUNNING;
 	_update_brushless_phases(motor);
 }
 
+/**
+ * @brief 			Puts the motor into FREE_WHEELING mode.
+ * 					See motor_states_t for mode explanations
+ * 
+ * @param motor 	Motor to put into FREE_WHEELING mode. See brushless_motor_t
+ */
 void _set_free_wheeling(brushless_motor_t *motor){
 	motor->state = FREE_WHELLING;
 	_update_brushless_phases(motor);
 }
 
+/**
+ * @brief 			Puts the motor into TIED_TO_GROUND mode.
+ * 					See motor_states_t for mode explanations
+ * 
+ * @param motor 	Motor to put into TIED_TO_GROUND mode. See brushless_motor_t
+ */
 void _set_tied_to_ground(brushless_motor_t *motor){
 	motor->state = TIED_TO_GROUND;
 	_update_brushless_phases(motor);
@@ -947,16 +1127,10 @@ void _adc3_voltage_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n){
 		ADD_NEW_ZC_DATAON(&(brushless_motors[BRUSHLESS_MOTOR_3].zero_crossing), buffer[BRUSHLESS_MOTOR_3]);
 		ADD_NEW_ZC_DATAON(&(brushless_motors[BRUSHLESS_MOTOR_4].zero_crossing), buffer[BRUSHLESS_MOTOR_4]);
 
-		_detect_zero_crossing(&(brushless_motors[BRUSHLESS_MOTOR_1]));
-		_detect_zero_crossing(&(brushless_motors[BRUSHLESS_MOTOR_2]));
-		_detect_zero_crossing(&(brushless_motors[BRUSHLESS_MOTOR_3]));
-		_detect_zero_crossing(&(brushless_motors[BRUSHLESS_MOTOR_4]));
-
-		_update_duty_cycle(&(brushless_motors[BRUSHLESS_MOTOR_1]));
-		_update_duty_cycle(&(brushless_motors[BRUSHLESS_MOTOR_2]));
-		_update_duty_cycle(&(brushless_motors[BRUSHLESS_MOTOR_3]));
-		_update_duty_cycle(&(brushless_motors[BRUSHLESS_MOTOR_4]));
-
+		_zero_crossing_cb(&(brushless_motors[BRUSHLESS_MOTOR_1]));
+		_zero_crossing_cb(&(brushless_motors[BRUSHLESS_MOTOR_2]));
+		_zero_crossing_cb(&(brushless_motors[BRUSHLESS_MOTOR_3]));
+		_zero_crossing_cb(&(brushless_motors[BRUSHLESS_MOTOR_4]));
 
 	}
 	//switches the state
@@ -964,15 +1138,27 @@ void _adc3_voltage_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n){
 
 }
 
+/**
+ * @brief 			Updated the duty cycle of the given motor.
+ * 					This function is called at each PWM cycle
+ * 					and updates the duty cycle with a ramp steps
+ * 					to smooth the change in the duty cycle.
+ * 					
+ * 					It changes duty_cycle_now to get close to duty_cycle_goal
+ * 					
+ * @param motor 	Motor to update the duty_cycle. See brushless_motor_t
+ */
 void _update_duty_cycle(brushless_motor_t *motor){
 
 	static float duty_cycle = 0;
 
+	// We perform a ramp step
 	if(motor->duty_cycle_goal > (motor->duty_cycle_now + LIMIT_CHANGE_DUTY_CYCLE)){
 		duty_cycle = motor->duty_cycle_now + motor->ramp_steps;
 	}else if(motor->duty_cycle_goal < (motor->duty_cycle_now - LIMIT_CHANGE_DUTY_CYCLE)){
 		duty_cycle = motor->duty_cycle_now - motor->ramp_steps;
 	}else{
+		// If we are close enough, we stop trying to reach duty_cycle_goal
 		return;
 	}
 
@@ -986,7 +1172,12 @@ void _update_duty_cycle(brushless_motor_t *motor){
 }
 
 /**
- * @brief  				Sets the given duty cycle to the given motor
+ * @brief  				Sets the given duty cycle to the given motor.
+ * 						The duty cycle given is immediatly applied without check.
+ * 						!! A huge change can lead in really big currents and destroy the motor
+ * 						or the H-bridges !!
+ * 						
+ * 						When the duty cycle is 0, puts the motor into FREE_WHEELING mode.
  * 
  * @param motor 		Motor to set the duty cycle. See brushless_motor_t
  * @param duty_cycle 	duty cycle to set. Between 0 and 100. No check is made 
@@ -1005,7 +1196,7 @@ void _set_duty_cycle(brushless_motor_t *motor, float duty_cycle){
 	/* stores the duty cycle */ 
 	motor->duty_cycle_now = duty_cycle;
 
-	if(duty_cycle == 0){
+	if(duty_cycle <= 0){
 		_set_free_wheeling(motor);
 	}else if (motor->state != RUNNING){
 		_set_running(motor);
@@ -1088,8 +1279,15 @@ void _timersStart(void){
 	PWMD1.tim->CR1 |= STM32_TIM_CR1_CEN;
 }
 
+/**
+ * @brief 	Motors inits
+ */
 void _motorsInit(void){
-
+	_do_brushless_calibration(&brushless_motors[BRUSHLESS_MOTOR_1]);
+	_do_brushless_calibration(&brushless_motors[BRUSHLESS_MOTOR_2]);
+	_do_brushless_calibration(&brushless_motors[BRUSHLESS_MOTOR_3]);
+	_do_brushless_calibration(&brushless_motors[BRUSHLESS_MOTOR_4]);
+	
 }
 
 /********************               PUBLIC FUNCTIONS                ********************/
