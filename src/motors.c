@@ -24,6 +24,9 @@
 #define PERIOD_PWM_52_KHZ_APB2  4154	// STM32_TIMCLK2/52000 rounded to an even number to be divisible by 2
 #define PERIOD_PWM_52_KHZ_APB1 	PERIOD_PWM_52_KHZ_APB2/2
 
+#define LIMIT_CHANGE_DUTY_CYCLE	0.0001f
+#define RAMP_STEPS_DUTY_CYCLE 	0.001f
+
 
 /**
  * NB of steps for a 6-steps commutation scheme 
@@ -61,8 +64,8 @@ typedef enum{
  * Zero crossing detection methods
  */
 typedef enum{
-	ZC_DETECT_ON = 0,
-	ZC_DETECT_OFF
+	ZC_DETECT_OFF = 0,
+	ZC_DETECT_ON
 }zc_det_methods_t;
 
 /**
@@ -258,7 +261,9 @@ typedef struct {
 	const half_bridge_t*		phases[NB_BRUSHLESS_PHASES];
 	const commutation_schemes_t	commutation_scheme;
 	int8_t 						step_iterator;
-	float						duty_cycle;
+	float						duty_cycle_now;
+	float 						duty_cycle_goal;
+	float 						ramp_steps;
 	rotation_dir_t				direction;
 	motor_states_t				state;
 	zero_crossing_t				zero_crossing;
@@ -273,7 +278,8 @@ void _update_brushless_phases(brushless_motor_t *motor);
 void _do_brushless_commutation(brushless_motor_t *motor);
 void _adc1_current_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
 void _adc3_voltage_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
-void _set_duty_cycle(brushless_motor_t *motor, uint8_t duty_cycle);
+void _update_duty_cycle(brushless_motor_t *motor);
+void _set_duty_cycle(brushless_motor_t *motor, float duty_cycle);
 void _adcStart(void);
 void _timersStart(void);
 void _motorsInit(void);
@@ -471,6 +477,7 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
 		.phases[PHASE3] 	= &half_bridges[BRUSHLESS_MOTOR_1_PHASE3],
 		.commutation_scheme = BRUSHLESS_MOTOR_1_COMMUTATION,
 		.direction 			= BRUSHLESS_MOTOR_1_DIRECTION,
+		.ramp_steps 		= RAMP_STEPS_DUTY_CYCLE,
 		.ADC_offset_off		= {1, 1, 1}
 	},
 #if (NB_OF_BRUSHLESS_MOTOR > 1)
@@ -483,6 +490,7 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
 		.phases[PHASE3] 	= &half_bridges[BRUSHLESS_MOTOR_2_PHASE3],
 		.commutation_scheme = BRUSHLESS_MOTOR_2_COMMUTATION,
 		.direction 			= BRUSHLESS_MOTOR_2_DIRECTION,
+		.ramp_steps 		= RAMP_STEPS_DUTY_CYCLE,
 		.ADC_offset_off		= {10, 10, 10}
 	},
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 1) */
@@ -496,6 +504,7 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
 		.phases[PHASE3] 	= &half_bridges[BRUSHLESS_MOTOR_3_PHASE3],
 		.commutation_scheme = BRUSHLESS_MOTOR_3_COMMUTATION,
 		.direction 			= BRUSHLESS_MOTOR_3_DIRECTION,
+		.ramp_steps 		= RAMP_STEPS_DUTY_CYCLE,
 		.ADC_offset_off		= {0, 0, 0}
 	},
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 2) */
@@ -509,6 +518,7 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
 		.phases[PHASE3] 	= &half_bridges[BRUSHLESS_MOTOR_4_PHASE3],
 		.commutation_scheme = BRUSHLESS_MOTOR_4_COMMUTATION,
 		.direction 			= BRUSHLESS_MOTOR_4_DIRECTION,
+		.ramp_steps 		= RAMP_STEPS_DUTY_CYCLE,
 		.ADC_offset_off		= {8, 8, 8}
 	},
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 3) */
@@ -711,11 +721,11 @@ void _detect_zero_crossing(brushless_motor_t *motor){
 
 	zc = &motor->zero_crossing;
 
-	if(motor->duty_cycle > 30){
-		zc->zc_method = ZC_DETECT_ON;
-	}else{
-		zc->zc_method = ZC_DETECT_OFF;
-	}
+	// if(motor->duty_cycle_now > 30){
+	// 	zc->zc_method = ZC_DETECT_ON;
+	// }else{
+	// 	zc->zc_method = ZC_DETECT_OFF;
+	// }
 
 	if(!IS_ZC_FLAG(zc)){
 		zc_found = false;
@@ -941,10 +951,37 @@ void _adc3_voltage_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n){
 		_detect_zero_crossing(&(brushless_motors[BRUSHLESS_MOTOR_3]));
 		_detect_zero_crossing(&(brushless_motors[BRUSHLESS_MOTOR_4]));
 
+		_update_duty_cycle(&(brushless_motors[BRUSHLESS_MOTOR_1]));
+		_update_duty_cycle(&(brushless_motors[BRUSHLESS_MOTOR_2]));
+		_update_duty_cycle(&(brushless_motors[BRUSHLESS_MOTOR_3]));
+		_update_duty_cycle(&(brushless_motors[BRUSHLESS_MOTOR_4]));
+
+
 	}
 	//switches the state
 	state = !state;
 
+}
+
+void _update_duty_cycle(brushless_motor_t *motor){
+
+	static float duty_cycle = 0;
+
+	if(motor->duty_cycle_goal > (motor->duty_cycle_now + LIMIT_CHANGE_DUTY_CYCLE)){
+		duty_cycle = motor->duty_cycle_now + motor->ramp_steps;
+	}else if(motor->duty_cycle_goal < (motor->duty_cycle_now - LIMIT_CHANGE_DUTY_CYCLE)){
+		duty_cycle = motor->duty_cycle_now - motor->ramp_steps;
+	}else{
+		return;
+	}
+
+	if(duty_cycle > 100){
+		duty_cycle = 100;
+	}else if(duty_cycle < 0){
+		duty_cycle = 0;
+	}
+
+	_set_duty_cycle(motor, duty_cycle);
 }
 
 /**
@@ -954,7 +991,7 @@ void _adc3_voltage_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n){
  * @param duty_cycle 	duty cycle to set. Between 0 and 100. No check is made 
  * 						in this function !
  */	
-void _set_duty_cycle(brushless_motor_t *motor, uint8_t duty_cycle){
+void _set_duty_cycle(brushless_motor_t *motor, float duty_cycle){
 	static const half_bridge_t* phase1 = NULL;
 	static const half_bridge_t* phase2 = NULL;
 	static const half_bridge_t* phase3 = NULL;
@@ -965,7 +1002,7 @@ void _set_duty_cycle(brushless_motor_t *motor, uint8_t duty_cycle){
 	phase3 = motor->phases[PHASE3];
 
 	/* stores the duty cycle */ 
-	motor->duty_cycle = duty_cycle;
+	motor->duty_cycle_now = duty_cycle;
 
 	if(duty_cycle == 0){
 		_set_free_wheeling(motor);
@@ -978,7 +1015,7 @@ void _set_duty_cycle(brushless_motor_t *motor, uint8_t duty_cycle){
 	 * so when CCR = 0, we have a duty cycle of 100%									
 	 */
 
-	dc = (float)(100 - duty_cycle)/100;
+	dc = (100 - duty_cycle)/100;
 
 	phase1->pwmp->tim->CCR[phase1->PWM_p_channel] = dc * phase1->pwmp->tim->ARR;
 	phase1->pwmp->tim->CCR[phase1->PWM_n_channel] = dc * phase1->pwmp->tim->ARR;
@@ -1070,7 +1107,7 @@ void motorSetDutyCycle(brushless_motors_names_t motor_name, uint8_t duty_cycle){
 		duty_cycle = 100;
 	}
 
-	_set_duty_cycle(&brushless_motors[motor_name], duty_cycle);
+	brushless_motors[motor_name].duty_cycle_goal = duty_cycle;
 }
 
 
