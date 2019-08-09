@@ -27,7 +27,6 @@
 #define PERIOD_PWM_52_KHZ_APB2  		4154	// STM32_TIMCLK2/52000 rounded to an even number to be divisible by 2
 #define PERIOD_PWM_52_KHZ_APB1 			PERIOD_PWM_52_KHZ_APB2/2
 
-#define LIMIT_CHANGE_DUTY_CYCLE			0.0001f
 #define RAMP_STEPS_DUTY_CYCLE 			0.001f
 
 
@@ -1152,14 +1151,16 @@ void _update_duty_cycle(brushless_motor_t *motor){
 
 	static float duty_cycle = 0;
 
-	// We perform a ramp step
-	if(motor->duty_cycle_goal > (motor->duty_cycle_now + LIMIT_CHANGE_DUTY_CYCLE)){
+	if(motor->duty_cycle_goal > motor->duty_cycle_now){
+		if((motor->duty_cycle_goal - motor->duty_cycle_now) < motor->ramp_steps){
+			return;
+		}
 		duty_cycle = motor->duty_cycle_now + motor->ramp_steps;
-	}else if(motor->duty_cycle_goal < (motor->duty_cycle_now - LIMIT_CHANGE_DUTY_CYCLE)){
-		duty_cycle = motor->duty_cycle_now - motor->ramp_steps;
 	}else{
-		// If we are close enough, we stop trying to reach duty_cycle_goal
-		return;
+		if((motor->duty_cycle_now - motor->duty_cycle_goal) < motor->ramp_steps){
+			return;
+		}
+		duty_cycle = motor->duty_cycle_now - motor->ramp_steps;
 	}
 
 	if(duty_cycle > 100){
@@ -1188,6 +1189,7 @@ void _set_duty_cycle(brushless_motor_t *motor, float duty_cycle){
 	static const half_bridge_t* phase2 = NULL;
 	static const half_bridge_t* phase3 = NULL;
 	static float dc = 0;
+	static uint16_t new_ccr = 0;
 
 	phase1 = motor->phases[PHASE1];
 	phase2 = motor->phases[PHASE2];
@@ -1209,12 +1211,20 @@ void _set_duty_cycle(brushless_motor_t *motor, float duty_cycle){
 
 	dc = (100 - duty_cycle)/100;
 
-	phase1->pwmp->tim->CCR[phase1->PWM_p_channel] = dc * phase1->pwmp->tim->ARR;
-	phase1->pwmp->tim->CCR[phase1->PWM_n_channel] = dc * phase1->pwmp->tim->ARR;
-	phase2->pwmp->tim->CCR[phase2->PWM_p_channel] = dc * phase2->pwmp->tim->ARR;
-	phase2->pwmp->tim->CCR[phase2->PWM_n_channel] = dc * phase2->pwmp->tim->ARR;
-	phase3->pwmp->tim->CCR[phase3->PWM_p_channel] = dc * phase3->pwmp->tim->ARR;
-	phase3->pwmp->tim->CCR[phase3->PWM_n_channel] = dc * phase3->pwmp->tim->ARR;
+	if(phase1->pwmp == &PWMD1 || phase1->pwmp == &PWMD8){
+		new_ccr = dc * PERIOD_PWM_52_KHZ_APB2;
+		phase1->pwmp->tim->CCR[phase1->PWM_p_channel] = new_ccr;
+		phase2->pwmp->tim->CCR[phase2->PWM_p_channel] = new_ccr;
+		phase3->pwmp->tim->CCR[phase3->PWM_p_channel] = new_ccr;
+	}else{
+		new_ccr = dc * PERIOD_PWM_52_KHZ_APB1;
+		phase1->pwmp->tim->CCR[phase1->PWM_p_channel] = new_ccr;
+		phase1->pwmp->tim->CCR[phase1->PWM_n_channel] = new_ccr;
+		phase2->pwmp->tim->CCR[phase2->PWM_p_channel] = new_ccr;
+		phase2->pwmp->tim->CCR[phase2->PWM_n_channel] = new_ccr;
+		phase3->pwmp->tim->CCR[phase3->PWM_p_channel] = new_ccr;
+		phase3->pwmp->tim->CCR[phase3->PWM_n_channel] = new_ccr;
+	}
 }
 
 /**
