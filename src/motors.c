@@ -17,7 +17,7 @@
 											so we need to do 2 sequences of 12 elements (3 * 4 motors)*/
 #define ADC3_OFF_SAMPLE_TIME			0.20f	//we sample the OFF time at 20% of the PWM cycle
 #define ADC3_ON_SAMPLE_TIME				0.75f	//we sample the ON time at 75% of the PWM cycle
-#define ZC_DETECT_METHOD_THESHOLD		30		//we use the ZC_DETECT_ON method above 30% duty cycle
+#define ZC_DETECT_METHOD_THESHOLD		40		//we use the ZC_DETECT_ON method above 40% duty cycle
 
 #define NB_SAMPLE_OFFSET_CALIBRATION	1000
 
@@ -28,6 +28,9 @@
 #define PERIOD_PWM_52_KHZ_APB1 			PERIOD_PWM_52_KHZ_APB2/2
 
 #define RAMP_STEPS_DUTY_CYCLE 			0.001f
+
+#define LP_FILTER_COEFF_CURRENT			0.0001f
+#define LP_FILTER_COEFF_RPM 			0.1f
 
 
 /**
@@ -226,6 +229,16 @@ typedef struct {
 } brushless_commutation_scheme_line_t;
 
 /**
+ * Coefficients for a linear approximation functions
+ * y = ax + b
+ */
+typedef struct {
+  float   a;
+  float   b;
+} current_approx_coeff_t;
+
+
+/**
  * Zero Crossing variables
  */
 typedef struct{
@@ -238,12 +251,31 @@ typedef struct{
     uint32_t			advance_timing;
     uint32_t			next_commutation_time;
     uint32_t			ticks_since_last_comm;
+    uint32_t 			nb_commutations;
     zc_det_methods_t 	zc_method;	
     uint16_t 			dataOn;
     uint16_t			dataOff;
     uint16_t 			previous_dataOn;
     uint16_t 			previous_dataOff;
 }zero_crossing_t;
+
+/**
+ * RPM counter variables
+ */
+typedef struct{
+	uint32_t previous_nb_comms;
+	uint32_t nb_comms;
+	uint32_t count;
+	uint32_t rpm;
+}rpm_counter_t;
+
+/**
+ * current meter variables
+ */
+typedef struct{
+	float low_pass_1;
+	float current;
+}current_meter_t;
 
 /**
  * Structure representing a physical half_bridge.
@@ -264,6 +296,9 @@ typedef struct {
 typedef struct {
 	const half_bridge_t*		phases[NB_BRUSHLESS_PHASES];
 	const commutation_schemes_t	commutation_scheme;
+	uint8_t						nb_of_poles;
+	rpm_counter_t 				rpm_counter;
+	current_meter_t 			current_meter;
 	int8_t 						step_iterator;
 	float						duty_cycle_now;
 	float 						duty_cycle_goal;
@@ -292,6 +327,7 @@ void _do_brushless_commutation(brushless_motor_t *motor);
 void _set_running(brushless_motor_t *motor);
 void _set_free_wheeling(brushless_motor_t *motor);
 void _set_tied_to_ground(brushless_motor_t *motor);
+void _rpm_counter_update(brushless_motor_t *motor);
 void _adc1_current_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
 void _adc3_voltage_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n);
 void _update_duty_cycle(brushless_motor_t *motor);
@@ -350,6 +386,35 @@ static const zc_function_t brushless_zc_functions[NB_ZC_METHODS] = {
 	_zero_crossing_detect_off,
 	_zero_crossing_detect_on,
 	_zero_crossing_calibration_off
+};
+
+/**
+ * Coeffs of linear current aproximation functions based on collected data.
+ * The linear approximation is different for each duty cycle.
+ */
+static const current_approx_coeff_t current_approx_coeffs[22] = {
+  {0, 0},				//	0%
+  {0, 0},				//	5%
+  {-0.0009, 1.869},		//	15%
+  {-0.0014, 3.0555},	//	20%
+  {-0.002, 4.2347},		//	25%
+  {-0.0024, 5.2374},	//	30%
+  {-0.0029, 6.3813},	//	35%
+  {-0.0033, 7.2652},	//	40%
+  {-0.0038, 8.2135},	//	45%
+  {-0.0042, 9.0953},	//	50%
+  {-0.0047, 10.233},	//	55%
+  {-0.0052, 11.271},	//	60%
+  {-0.0058, 12.513},	//	65%
+  {-0.0061, 13.166},	//	70%
+  {-0.0069, 14.778},	//	75%
+  {-0.0068, 14.558},	//	80%
+  {-0.0073, 15.33},		//	85%
+  {-0.0081, 16.825},	//	90%
+  {-0.0084, 17.445},	//	95%
+  {-0.0094, 19.379},	//	100%
+  {-0.0096, 19.72},		//	-%
+  {0, 0}	//dummy 0 to spare an if statement and avoid the segmentation fault in the motorsGetCurrent function
 };
 
 /**
@@ -505,7 +570,8 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
 		.phases[PHASE3] 	= &half_bridges[BRUSHLESS_MOTOR_1_PHASE3],
 		.commutation_scheme = BRUSHLESS_MOTOR_1_COMMUTATION,
 		.direction 			= BRUSHLESS_MOTOR_1_DIRECTION,
-		.ramp_steps 		= RAMP_STEPS_DUTY_CYCLE
+		.ramp_steps 		= RAMP_STEPS_DUTY_CYCLE,
+		.nb_of_poles 		= 14
 	},
 #if (NB_OF_BRUSHLESS_MOTOR > 1)
 #if (NB_OF_HALF_BRIDGES < 6)
@@ -517,7 +583,8 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
 		.phases[PHASE3] 	= &half_bridges[BRUSHLESS_MOTOR_2_PHASE3],
 		.commutation_scheme = BRUSHLESS_MOTOR_2_COMMUTATION,
 		.direction 			= BRUSHLESS_MOTOR_2_DIRECTION,
-		.ramp_steps 		= RAMP_STEPS_DUTY_CYCLE
+		.ramp_steps 		= RAMP_STEPS_DUTY_CYCLE,
+		.nb_of_poles 		= 14
 	},
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 1) */
 #if (NB_OF_BRUSHLESS_MOTOR > 2)
@@ -530,7 +597,8 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
 		.phases[PHASE3] 	= &half_bridges[BRUSHLESS_MOTOR_3_PHASE3],
 		.commutation_scheme = BRUSHLESS_MOTOR_3_COMMUTATION,
 		.direction 			= BRUSHLESS_MOTOR_3_DIRECTION,
-		.ramp_steps 		= RAMP_STEPS_DUTY_CYCLE
+		.ramp_steps 		= RAMP_STEPS_DUTY_CYCLE,
+		.nb_of_poles 		= 14
 	},
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 2) */
 #if (NB_OF_BRUSHLESS_MOTOR > 3)
@@ -543,7 +611,8 @@ static brushless_motor_t brushless_motors[NB_OF_BRUSHLESS_MOTOR] = {
 		.phases[PHASE3] 	= &half_bridges[BRUSHLESS_MOTOR_4_PHASE3],
 		.commutation_scheme = BRUSHLESS_MOTOR_4_COMMUTATION,
 		.direction 			= BRUSHLESS_MOTOR_4_DIRECTION,
-		.ramp_steps 		= RAMP_STEPS_DUTY_CYCLE
+		.ramp_steps 		= RAMP_STEPS_DUTY_CYCLE,
+		.nb_of_poles 		= 14
 	},
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 3) */
 };
@@ -742,6 +811,8 @@ static PWMConfig tim_234_cfg = {
 
 #define IS_BEMF_SLOPE_POSITIVE(x) (((x)->direction > 0) ? pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator].bemf_slope : !pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator].bemf_slope)
 
+#define LOW_PASS_FILTER(actual, new_value, coeff) (actual -= coeff * (actual - new_value))
+
 /**
  * @brief 			Resets the zero crossing structure of the given motor.
  * 
@@ -922,7 +993,7 @@ void _compute_next_commutation(zero_crossing_t *zc)
 	zc->detection_time    		= zc->time;
 	zc->period 					= zc->detection_time - zc->previous_detection_time;
 	zc->period_filtered 		= (0.6 * (float)zc->period_filtered + 0.4 * (float)zc->period);
-	zc->next_commutation_time 	= zc->time + zc->period/2 - zc->advance_timing;
+	zc->next_commutation_time 	= zc->time + zc->period_filtered/2 - zc->advance_timing;
 }
 
 /**
@@ -1018,6 +1089,8 @@ void _do_brushless_commutation(brushless_motor_t *motor){
 	}else if(motor->step_iterator < 0){
 		motor->step_iterator = (NB_STEPS_BRUSHLESS-1);
 	}
+
+	motor->zero_crossing.nb_commutations++;
 	_update_brushless_phases(motor);
 
 }
@@ -1057,6 +1130,42 @@ void _set_tied_to_ground(brushless_motor_t *motor){
 }
 
 /**
+ * @brief 			Updates the actual current meter of the given motor
+ * 					Intended to be called at each adc current callback
+ * 				
+ * @param motor 	Motor to update the current. It is a pointer. See brushless_motor_t
+ * @param buffer 	buffer containing the ADC raw values. Be carefull. The address
+ * 					of the first element should be given.
+ */
+
+#define CURRENT_METER_UPDATE(motor, buffer) {\
+	LOW_PASS_FILTER((motor)->current_meter.low_pass_1, (buffer)[0 * MAX_NB_OF_BRUSHLESS_MOTOR], LP_FILTER_COEFF_CURRENT);\
+	LOW_PASS_FILTER((motor)->current_meter.low_pass_1, (buffer)[1 * MAX_NB_OF_BRUSHLESS_MOTOR], LP_FILTER_COEFF_CURRENT);\
+	LOW_PASS_FILTER((motor)->current_meter.low_pass_1, (buffer)[2 * MAX_NB_OF_BRUSHLESS_MOTOR], LP_FILTER_COEFF_CURRENT);\
+	LOW_PASS_FILTER((motor)->current_meter.current, (motor)->current_meter.low_pass_1, LP_FILTER_COEFF_CURRENT);\
+}
+
+/**
+ * @brief 		Updates the RPM counter of the given motor
+ * 				It is intended to be called at a frequency of 52kHz. Otherwise it needs to be modified
+ * @param motor Motor to update the RPM counter. See brushless_motor_t
+ */
+void _rpm_counter_update(brushless_motor_t *motor){
+
+	static rpm_counter_t *rpm = NULL;
+
+	rpm = &motor->rpm_counter;
+
+	rpm->count++;
+	if(rpm->count >= 520){
+		rpm->previous_nb_comms = rpm->nb_comms;
+		rpm->nb_comms = motor->zero_crossing.nb_commutations;
+		LOW_PASS_FILTER(rpm->rpm, ((float)(rpm->nb_comms - rpm->previous_nb_comms) * 6000) / motor->nb_of_poles, LP_FILTER_COEFF_RPM);
+		rpm->count = 0;
+	}
+}
+
+/**
  * @brief 			ADC1 callback. Used to gather the currents from the four motors
  * @param adcp 		Not used
  * @param buffer 	Buffer containing the new data
@@ -1082,6 +1191,11 @@ void _adc1_current_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n){
 	);
 	
 	DO_ONE_ADC1_SEQUENCE();
+
+	CURRENT_METER_UPDATE(&brushless_motors[BRUSHLESS_MOTOR_1], &buffer[BRUSHLESS_MOTOR_1]);
+	CURRENT_METER_UPDATE(&brushless_motors[BRUSHLESS_MOTOR_2], &buffer[BRUSHLESS_MOTOR_2]);
+	CURRENT_METER_UPDATE(&brushless_motors[BRUSHLESS_MOTOR_3], &buffer[BRUSHLESS_MOTOR_3]);
+	CURRENT_METER_UPDATE(&brushless_motors[BRUSHLESS_MOTOR_4], &buffer[BRUSHLESS_MOTOR_4]);
 }
 
 /**
@@ -1103,6 +1217,10 @@ void _adc3_voltage_cb(ADCDriver *adcp, adcsample_t *buffer, size_t n){
 		ADD_NEW_ZC_DATAOFF(&(brushless_motors[BRUSHLESS_MOTOR_2].zero_crossing), buffer[BRUSHLESS_MOTOR_2]);
 		ADD_NEW_ZC_DATAOFF(&(brushless_motors[BRUSHLESS_MOTOR_3].zero_crossing), buffer[BRUSHLESS_MOTOR_3]);
 		ADD_NEW_ZC_DATAOFF(&(brushless_motors[BRUSHLESS_MOTOR_4].zero_crossing), buffer[BRUSHLESS_MOTOR_4]);
+		_rpm_counter_update(&(brushless_motors[BRUSHLESS_MOTOR_1]));
+		_rpm_counter_update(&(brushless_motors[BRUSHLESS_MOTOR_2]));
+		_rpm_counter_update(&(brushless_motors[BRUSHLESS_MOTOR_3]));
+		_rpm_counter_update(&(brushless_motors[BRUSHLESS_MOTOR_4]));
 	}else{
 		//we sampled ON PWM
 		UPDATE_ADC3_TRIGGER(ADC3_OFF_SAMPLE_TIME);
@@ -1153,14 +1271,16 @@ void _update_duty_cycle(brushless_motor_t *motor){
 
 	if(motor->duty_cycle_goal > motor->duty_cycle_now){
 		if((motor->duty_cycle_goal - motor->duty_cycle_now) < motor->ramp_steps){
-			return;
+			duty_cycle = motor->duty_cycle_goal;
+		}else{
+			duty_cycle = motor->duty_cycle_now + motor->ramp_steps;
 		}
-		duty_cycle = motor->duty_cycle_now + motor->ramp_steps;
 	}else{
 		if((motor->duty_cycle_now - motor->duty_cycle_goal) < motor->ramp_steps){
-			return;
+			duty_cycle = motor->duty_cycle_goal;
+		}else{
+			duty_cycle = motor->duty_cycle_now - motor->ramp_steps;
 		}
-		duty_cycle = motor->duty_cycle_now - motor->ramp_steps;
 	}
 
 	if(duty_cycle > 100){
@@ -1168,8 +1288,9 @@ void _update_duty_cycle(brushless_motor_t *motor){
 	}else if(duty_cycle < 0){
 		duty_cycle = 0;
 	}
-
-	_set_duty_cycle(motor, duty_cycle);
+	if(duty_cycle != motor->duty_cycle_now){
+		_set_duty_cycle(motor, duty_cycle);
+	}
 }
 
 /**
@@ -1319,4 +1440,56 @@ void motorSetDutyCycle(brushless_motors_names_t motor_name, uint8_t duty_cycle){
 	brushless_motors[motor_name].duty_cycle_goal = duty_cycle;
 }
 
+float motorGetDutyCycle(brushless_motors_names_t motor_name){
+	if(motor_name >= MAX_NB_OF_BRUSHLESS_MOTOR){
+		return 0;
+	}
 
+	return brushless_motors[motor_name].duty_cycle_now;
+}
+
+float motorsGetCurrent(brushless_motors_names_t motor_name){
+	if(motor_name >= MAX_NB_OF_BRUSHLESS_MOTOR){
+		return 0;
+	}
+
+	static float float_index = 0;
+	static uint8_t int_index = 0;
+
+	static float a_part = 0;
+	static float b_part = 0;
+
+	static float a_coeff = 0;
+	static float b_coeff = 0;
+	
+	//we get a float index of which approximation coefficients to use
+	float_index = brushless_motors[motor_name].duty_cycle_now / 5;
+	//So now we get the usable index
+    int_index = (uint8_t)float_index;
+
+    /*
+    *	We do an interpolation of the coeffs of the two approximation functions
+    *	arround the duty cycle we have becasue we have an approximation function only
+    *	for each 5% step.
+    */
+
+    //this is the percentage of the int_index + 1 coeff we will use
+    b_part = float_index - int_index;
+    //this is the percentage of the index coeff we will use
+    a_part = 1 - b_part;
+
+    //computes the coeff a by taking a percentage of the two coeffs arround the duty_cycle we have
+    a_coeff = current_approx_coeffs[int_index].a * a_part + current_approx_coeffs[int_index+1].a * b_part;
+    //same with coeff b
+    b_coeff = current_approx_coeffs[int_index].b * a_part + current_approx_coeffs[int_index+1].b * b_part;
+
+    //finally computes the approximated current with the a and b coeffs found
+	return (a_coeff * brushless_motors[motor_name].current_meter.current + b_coeff);
+}
+
+float motorsGetRPM(brushless_motors_names_t motor_name){
+	if(motor_name >= MAX_NB_OF_BRUSHLESS_MOTOR){
+		return 0;
+	}
+	return brushless_motors[motor_name].rpm_counter.rpm;
+}

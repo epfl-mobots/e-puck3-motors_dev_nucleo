@@ -68,6 +68,30 @@ void motorsStart(void);
  */
 void motorSetDutyCycle(brushless_motors_names_t motor_name, uint8_t duty_cycle);
 
+/**
+ * @brief               Gets the actual duty cycle of the given motor
+ * 
+ * @param motor_name    Motor from which to get the duty cycle. See brushless_motors_names_t
+ * @return              The duty cycle in percent from 0 to 100
+ */
+float motorGetDutyCycle(brushless_motors_names_t motor_name);
+
+/**
+ * @brief               Gets the actual average current consummed by the given motor
+ * 
+ * @param motor_name    Motor from which to get the current. See brushless_motors_names_t
+ * @return              The current in A.
+ */
+float motorsGetCurrent(brushless_motors_names_t motor_name);
+
+/**
+ * @brief               Gets the actual RPM of the given motor
+ * 
+ * @param motor_name    Motor from which to get the RPM. See brushless_motors_names_t
+ * @return              The RPM in rpm...
+ */
+float motorsGetRPM(brushless_motors_names_t motor_name);
+
 #include "motors_conf.h"
 
 #endif /* MOTORS_H */

@@ -167,7 +167,9 @@ int main(void) {
 			//spawns the shell if the usb is connected
 			spawn_shell();
 		}
-		chThdSleepMilliseconds(10);
+		chThdSleepMilliseconds(100);
+
+    chprintf((BaseSequentialStream *)&USB_GDB, "rpm = %f, current = %f \r\n",motorsGetRPM(BRUSHLESS_MOTOR_2), motorsGetCurrent(BRUSHLESS_MOTOR_2));
 
     static float percent = 90;
 
