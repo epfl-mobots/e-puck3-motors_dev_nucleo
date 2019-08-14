@@ -33,6 +33,8 @@ typedef enum
     BRUSHLESS_MOTOR_4,
 }brushless_motors_names_t;
 
+#define MAX_NB_OF_HALF_BRIDGES      12
+
 #define MAX_NB_OF_BRUSHLESS_MOTOR   4
 
 /**
