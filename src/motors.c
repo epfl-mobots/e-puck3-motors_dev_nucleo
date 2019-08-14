@@ -734,19 +734,26 @@ static PWMConfig tim_234_cfg = {
 
 /**
  * Changes the value of the timer channel linked to the ADC3 trigger
+ * 
+ * @param time Percentage [0-1] representing at which moment of the PWM cycle we want to have the trigger
  */
-#define UPDATE_ADC3_TRIGGER(x) (PWMD1.tim->CCR[TIM_CHANNEL_4] = x * PWMD1.tim->ARR)
+#define UPDATE_ADC3_TRIGGER(time) (PWMD1.tim->CCR[TIM_CHANNEL_4] = time * PWMD1.tim->ARR)
 /**
  * Changes the sequence of the ADC3
+ * 
+ * @param reg	Values to put to the SQR3 register of ADC3	
  */
-#define UPDATE_ADC3_SEQUENCE(x) (ADCD3.adc->SQR3 = x)
+#define UPDATE_ADC3_SEQUENCE(reg) (ADCD3.adc->SQR3 = reg)
 /**
  * Changes the sequence of the ADC1
+ * 
+ * @param reg1	Values to put to the SQR3 register of ADC1	
+ * @param reg2	Values to put to the SQR2 register of ADC1	
  */
-#define UPDATE_ADC1_SEQUENCE(x, y) {\
-										ADCD1.adc->SQR3 = x; \
-										ADCD1.adc->SQR2 = y; \
-									}
+#define UPDATE_ADC1_SEQUENCE(reg1, reg2) {\
+	ADCD1.adc->SQR3 = reg1; \
+	ADCD1.adc->SQR2 = reg2; \
+}
 /**
  * Starts the ADC1 for one sequence
  */
@@ -756,61 +763,119 @@ static PWMConfig tim_234_cfg = {
 
 /**
  * Gives the floating phase 
+ * 
+ * @param motor	Pointer to the brushless_motor_t structure we want to use
  */
-#define GET_FLOATING_PHASE(x) (pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator].floating_phase)
+#define GET_FLOATING_PHASE(motor) (pwm_commutation_schemes[(motor)->commutation_scheme][(motor)->step_iterator].floating_phase)
 /**
  * Gives the ADC3 channel to measure given the motor 
+ * 
+ * @param motor	Pointer to the brushless_motor_t structure we want to use
  */
-#define GET_FLOATING_PHASE_CHANNEL(x) ((x)->phases[pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator].floating_phase]->ADC3FloatingMeasureChannel)
+#define GET_FLOATING_PHASE_CHANNEL(motor) ((motor)->phases[pwm_commutation_schemes[(motor)->commutation_scheme][(motor)->step_iterator].floating_phase]->ADC3FloatingMeasureChannel)
 /**
  * Gives the ADC1 channel to measure given the motor
+ * 
+ * @param motor	Pointer to the brushless_motor_t structure we want to use
  */
-#define GET_LOW_SIDE_CONDUCTING_PHASE_CHANNEL(x) ((x)->phases[pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator].low_side_conducting_phase]->ADC1ConductingMeasureChannel)
+#define GET_LOW_SIDE_CONDUCTING_PHASE_CHANNEL(motor) ((motor)->phases[pwm_commutation_schemes[(motor)->commutation_scheme][(motor)->step_iterator].low_side_conducting_phase]->ADC1ConductingMeasureChannel)
 
-#define SET_OUT_HIGH(x) {\
-							palSetLine(x);	\
-							SET_GPIO_OUTPUT_MODE(x);\
-						}
 #endif /* (NB_OF_BRUSHLESS_MOTOR > 0) */
 
 /**
  * Sets the GPIO mode of the given line to Alternate
- * The alternate NB should already have been set because it only changes the mode
+ * The alternate number should already have been set because it only changes the mode
+ * 
+ * @param line	Line we want to change
  */
-#define SET_GPIO_ALTERNATE_MODE(x){\
-									PAL_PORT(x)->MODER &= ~(3 << (2 * PAL_PAD(x))); \
-        							PAL_PORT(x)->MODER |= (2 << (2 * PAL_PAD(x))); \
-								  }
+#define SET_GPIO_ALTERNATE_MODE(line){\
+	PAL_PORT(line)->MODER &= ~(3 << (2 * PAL_PAD(line))); \
+	PAL_PORT(line)->MODER |= (2 << (2 * PAL_PAD(line))); \
+}
 /**
  * Sets the GPIO mode of the given line to Output
+ * 
+ * @param line	Line we want to change
  */
-#define SET_GPIO_OUTPUT_MODE(x){\
-									PAL_PORT(x)->MODER &= ~(3 << (2 * PAL_PAD(x))); \
-        							PAL_PORT(x)->MODER |= (1 << (2 * PAL_PAD(x))); \
-								  }
+#define SET_GPIO_OUTPUT_MODE(line){\
+	PAL_PORT(line)->MODER &= ~(3 << (2 * PAL_PAD(line))); \
+	PAL_PORT(line)->MODER |= (1 << (2 * PAL_PAD(line))); \
+}
 
-#define ADD_NEW_ZC_DATAON(x, y) {\
-								  	(x)->previous_dataOn = (x)->dataOn;\
-								  	(x)->dataOn = y;\
-								 }
+/**
+ * Adds the new zero crossing data to the correct fields of the zero_crossing
+ * structure given. Only for ADC data of the PWM ON time
+ * 
+ * @param zc		Pointer to the zero_crossing_t structure we want to update
+ * @param new_data	New zero crossing data to add
+ */
+#define ADD_NEW_ZC_DATAON(zc, new_data) {\
+  	(zc)->previous_dataOn = (zc)->dataOn;\
+  	(zc)->dataOn = new_data;\
+}
 
-#define ADD_NEW_ZC_DATAOFF(x, y) {\
-								  	(x)->previous_dataOff = (x)->dataOff;\
-								  	(x)->dataOff = y;\
-								 }
+/**
+ * Adds the new zero crossing data to the correct fields of the zero_crossing
+ * structure given. Only for ADC data of the PWM OFF time
+ * 
+ * @param zc		Pointer to the zero_crossing_t structure we want to update
+ * @param new_data	New zero crossing data to add
+ */
+#define ADD_NEW_ZC_DATAOFF(zc, new_data) {\
+  	(zc)->previous_dataOff = (zc)->dataOff;\
+  	(zc)->dataOff = new_data;\
+}
 
-#define CALL_ZC_FUNCTION(x) (brushless_zc_functions[(x)->zero_crossing.zc_method](x))
+/**
+ * Calls the zero crossing function corresponding to the one set is the zc_method array
+ * 
+ * @param motor		Pointer to the brushless_motor_t structure we want to use
+ */
+#define CALL_ZC_FUNCTION(motor) (brushless_zc_functions[(motor)->zero_crossing.zc_method](motor))
 
-#define SET_ZC_FLAG(x)	((x)->flag = true)
+/**
+ * Sets the zc flag of the given zero_crossing_t structure
+ * 
+ * @param zc Pointer to the zero_crossing_t structure we want to use
+ */
+#define SET_ZC_FLAG(zc)	((zc)->flag = true)
 
-#define RESET_ZC_FLAG(x)((x)->flag = false)
+/**
+ * Resets the zc flag of the given zero_crossing_t structure
+ * 
+ * @param zc Pointer to the zero_crossing_t structure we want to use
+ */
+#define RESET_ZC_FLAG(zc)((zc)->flag = false)
 
-#define IS_ZC_FLAG(x) ((x)->flag)
+/**
+ * Returns true if the zc flag of the given zero_crossing_t structure is set, false otherwise
+ * 
+ * @param zc Pointer to the zero_crossing_t structure we want to use
+ */
+#define IS_ZC_FLAG(zc) ((zc)->flag)
 
-#define TIME_TO_COMMUTE(x)	((((x)->time >= (x)->next_commutation_time) && (x)->flag))
+/**
+ * Returns true if it's the time to commute, false otherwise
+ * 
+ * @param zc Pointer to the zero_crossing_t structure we want to use
+ */
+#define TIME_TO_COMMUTE(zc)	((((zc)->time >= (zc)->next_commutation_time) && (zc)->flag))
 
-#define IS_BEMF_SLOPE_POSITIVE(x) (((x)->direction > 0) ? pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator].bemf_slope : !pwm_commutation_schemes[(x)->commutation_scheme][(x)->step_iterator].bemf_slope)
+/**
+ * Returns true if the slope of the actual step of the given motor is positive, false otherwise
+ * 
+ * @param motor Pointer to the brushless_motor_t structure we want to use
+ */
+#define IS_BEMF_SLOPE_POSITIVE(motor) (((motor)->direction > 0) ? pwm_commutation_schemes[(motor)->commutation_scheme][(motor)->step_iterator].bemf_slope : !pwm_commutation_schemes[(motor)->commutation_scheme][(motor)->step_iterator].bemf_slope)
 
+/**
+ * Condensed form of a discrete first order low pass filter y = (1-a)y + ax, 
+ * x beeing the new value, y the filtered one and a being the filter coefficient
+ * 
+ * @param actual		Filtered value to update
+ * @param new_value		New value to add to the filtered one
+ * @coeff coeff			Filter coefficient of the low_pass filter
+ */
 #define LOW_PASS_FILTER(actual, new_value, coeff) (actual -= coeff * (actual - new_value))
 
 /**
