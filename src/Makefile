@@ -123,8 +123,11 @@ include $(BLACKMAGIC)/src/platforms/stm32-ChibiOS/Blackmagic_ChibiOS.mk
 PDBLIB = ../usb_pd_controller/pdblib
 include $(PDBLIB)/pdblib.mk
 
+MPTOP = ../../micropython
+include $(MPTOP)/ports/ChibiOS/micropython_chibios.mk
+
 # Define linker script file here
-LDSCRIPT= $(STARTUPLD)/STM32F746xG.ld
+LDSCRIPT= $(STARTUPLD)/STM32F746xG_MAX.ld
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
@@ -235,10 +238,10 @@ UADEFS =
 UINCDIR =
 
 # List the user directory to look for the libraries here
-ULIBDIR =
+ULIBDIR = $(MPTOP)/ports/ChibiOS/
 
 # List all user libraries here
-ULIBS =
+ULIBS = $(MPTOP)/ports/ChibiOS/libmicropython.a
 
 #
 # End of user defines
