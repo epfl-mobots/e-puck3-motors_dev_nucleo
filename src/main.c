@@ -60,42 +60,54 @@ static THD_FUNCTION(Thread1,arg) {
   (void)arg;
   chRegSetThreadName("blinker");
   while(true){
-		palClearLine(LINE_STATUS_LED1_RED);
-		chThdSleepMilliseconds(50);
-		palClearLine(LINE_STATUS_LED2_RED);
-		chThdSleepMilliseconds(50);
-		palClearLine(LINE_STATUS_LED3_RED);
-		chThdSleepMilliseconds(50);
-		palClearLine(LINE_STATUS_LED1_GREEN);
-		chThdSleepMilliseconds(50);
-		palClearLine(LINE_STATUS_LED2_GREEN);
-		chThdSleepMilliseconds(50);
-		palClearLine(LINE_STATUS_LED3_GREEN);
-		chThdSleepMilliseconds(50);
-		palClearLine(LINE_STATUS_LED1_BLUE);
-		chThdSleepMilliseconds(50);
-		palClearLine(LINE_STATUS_LED2_BLUE);
-		chThdSleepMilliseconds(50);
-		palClearLine(LINE_STATUS_LED3_BLUE);
-		chThdSleepMilliseconds(50);
-		palSetLine(LINE_STATUS_LED1_RED);
-		chThdSleepMilliseconds(50);
-		palSetLine(LINE_STATUS_LED2_RED);
-		chThdSleepMilliseconds(50);
-		palSetLine(LINE_STATUS_LED3_RED);
-		chThdSleepMilliseconds(50);
-		palSetLine(LINE_STATUS_LED1_GREEN);
-		chThdSleepMilliseconds(50);
-		palSetLine(LINE_STATUS_LED2_GREEN);
-		chThdSleepMilliseconds(50);
-		palSetLine(LINE_STATUS_LED3_GREEN);
-		chThdSleepMilliseconds(50);
-		palSetLine(LINE_STATUS_LED1_BLUE);
-		chThdSleepMilliseconds(50);
-		palSetLine(LINE_STATUS_LED2_BLUE);
-		chThdSleepMilliseconds(50);
-		palSetLine(LINE_STATUS_LED3_BLUE);
-		chThdSleepMilliseconds(50);
+		// palClearLine(LINE_STATUS_LED1_RED);
+		// chThdSleepMilliseconds(50);
+		// palClearLine(LINE_STATUS_LED2_RED);
+		// chThdSleepMilliseconds(50);
+		// palClearLine(LINE_STATUS_LED3_RED);
+		// chThdSleepMilliseconds(50);
+		// palClearLine(LINE_STATUS_LED1_GREEN);
+		// chThdSleepMilliseconds(50);
+		// palClearLine(LINE_STATUS_LED2_GREEN);
+		// chThdSleepMilliseconds(50);
+		// palClearLine(LINE_STATUS_LED3_GREEN);
+		// chThdSleepMilliseconds(50);
+		// palClearLine(LINE_STATUS_LED1_BLUE);
+		// chThdSleepMilliseconds(50);
+		// palClearLine(LINE_STATUS_LED2_BLUE);
+		// chThdSleepMilliseconds(50);
+		// palClearLine(LINE_STATUS_LED3_BLUE);
+		// chThdSleepMilliseconds(50);
+		// palSetLine(LINE_STATUS_LED1_RED);
+		// chThdSleepMilliseconds(50);
+		// palSetLine(LINE_STATUS_LED2_RED);
+		// chThdSleepMilliseconds(50);
+		// palSetLine(LINE_STATUS_LED3_RED);
+		// chThdSleepMilliseconds(50);
+		// palSetLine(LINE_STATUS_LED1_GREEN);
+		// chThdSleepMilliseconds(50);
+		// palSetLine(LINE_STATUS_LED2_GREEN);
+		// chThdSleepMilliseconds(50);
+		// palSetLine(LINE_STATUS_LED3_GREEN);
+		// chThdSleepMilliseconds(50);
+		// palSetLine(LINE_STATUS_LED1_BLUE);
+		// chThdSleepMilliseconds(50);
+		// palSetLine(LINE_STATUS_LED2_BLUE);
+		// chThdSleepMilliseconds(50);
+		// palSetLine(LINE_STATUS_LED3_BLUE);
+		// chThdSleepMilliseconds(50);
+		palSetPad(GPIOB,0);
+		chThdSleepMilliseconds(150);
+		palSetPad(GPIOB,7);
+		chThdSleepMilliseconds(150);
+		palSetPad(GPIOB,14);
+		chThdSleepMilliseconds(150);
+		palClearPad(GPIOB,0);
+		chThdSleepMilliseconds(150);
+		palClearPad(GPIOB,7);
+		chThdSleepMilliseconds(150);
+		palClearPad(GPIOB,14);
+		chThdSleepMilliseconds(150);
   }
 }
 
@@ -179,6 +191,8 @@ static THD_FUNCTION(MicropythonThd,arg) {
 #if MICROPY_ENABLE_COMPILER
 	// Main script is finished, so now go into REPL mode.
 	// The REPL mode can change, or it can request a soft reset.
+
+soft_reset:
 	for (;;) {
 	    if (pyexec_mode_kind == PYEXEC_MODE_RAW_REPL) {
 	        if (pyexec_raw_repl() != 0) {
@@ -190,6 +204,8 @@ static THD_FUNCTION(MicropythonThd,arg) {
 	        }
 	    }
 	}
+	printf("MPY: soft reboot\n");
+	goto soft_reset;
 #else
 	pyexec_frozen_module("frozentest.py");
 #endif
@@ -234,6 +250,11 @@ int main(void) {
 	palClearLine(DEBUG_INT_LINE3);
 	palSetLineMode(DEBUG_INT_LINE4,PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
 	palClearLine(DEBUG_INT_LINE4);
+
+	/* leds Nucleo */
+	palSetPadMode(GPIOB, 0, PAL_MODE_OUTPUT_PUSHPULL);
+	palSetPadMode(GPIOB, 7, PAL_MODE_OUTPUT_PUSHPULL);
+	palSetPadMode(GPIOB, 14, PAL_MODE_OUTPUT_PUSHPULL);
 
 	/*
 	* Initializes two serial-over-USB CDC drivers and starts and connects the USB.
