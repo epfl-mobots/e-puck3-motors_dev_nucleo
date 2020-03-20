@@ -149,6 +149,7 @@ CSRC = $(ALLCSRC) \
        as5055.c \
        encoders.c \
        motors.c \
+       mp_platform.c
 
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
@@ -238,7 +239,7 @@ UADEFS =
 UINCDIR =
 
 # List the user directory to look for the libraries here
-ULIBDIR = $(MPTOP)/ports/ChibiOS/
+ULIBDIR =
 
 # List all user libraries here
 ULIBS = $(MPTOP)/ports/ChibiOS/libmicropython.a
