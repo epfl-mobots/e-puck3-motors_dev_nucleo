@@ -1,3 +1,0 @@
-
-extern const char myarray[];
-

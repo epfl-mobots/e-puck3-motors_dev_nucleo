@@ -1,6 +1,6 @@
-#include "test.py.h"
+#include "py_flash.h"
 
-const __attribute__((section(".py_flash"))) char myarray[] = {
+const __attribute__((section(".py_flash"))) char py_flash_code[] = {
 "\r\n"
 "import gc\r\n"
 "\r\n"

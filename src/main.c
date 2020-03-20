@@ -120,7 +120,7 @@ static THD_FUNCTION(Thread1,arg) {
 #include "mpconfigport.h"
 #include "mphalport.h"
 #include "lib/mp-readline/readline.h"
-#include "test.py.h"
+#include "py_flash.h"
 
 static char *stack_top;
 #if MICROPY_ENABLE_GC
@@ -311,7 +311,7 @@ int main(void) {
 			chThdCreateStatic(waMicropythonThd, sizeof(waMicropythonThd), NORMALPRIO, MicropythonThd, NULL);
 			configured = 1;
 			chThdSleepMilliseconds(1000);
-			micropython_parse_compile_execute_from_str(myarray);
+			micropython_parse_compile_execute_from_str(py_flash_code);
 		}
 		// chThdSleepMilliseconds(100);
 		chThdSleepMilliseconds(1000);
