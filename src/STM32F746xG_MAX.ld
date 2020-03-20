@@ -27,7 +27,8 @@
  */
 MEMORY
 {
-    flash0  : org = 0x08000000, len = 1M        /* Flash as AXIM (writable) */
+    flash0  : org = 0x08000000, len = 768k        /* Flash as AXIM (writable) */
+    py_flash : org = 0x002C0000, len = 268k     /* flash section as ITCM to store python code */
     flash1  : org = 0x00200000, len = 1M        /* Flash as ITCM */
     flash2  : org = 0x00000000, len = 0
     flash3  : org = 0x00000000, len = 0
@@ -51,6 +52,8 @@ MEMORY
 /* Flash region to be used for exception vectors.*/
 REGION_ALIAS("VECTORS_FLASH", flash1);
 REGION_ALIAS("VECTORS_FLASH_LMA", flash0);
+
+REGION_ALIAS("PY_FLASH", py_flash);
 
 /* Flash region to be used for constructors and destructors.*/
 REGION_ALIAS("XTORS_FLASH", flash1);
@@ -104,6 +107,12 @@ REGION_ALIAS("ETH_RAM", ram3);
 
 SECTIONS
 {
+    
+    .py_flash :
+    {
+        *(.py_flash*);
+    } > PY_FLASH
+
     /* Special section for non cache-able areas.*/
     .nocache (NOLOAD) : ALIGN(4)
     {
