@@ -118,34 +118,13 @@ static THD_FUNCTION(Thread1,arg) {
 #include "py/mperrno.h"
 #include "lib/utils/pyexec.h"
 #include "mpconfigport.h"
-#include "mphalport.h"
-#include "lib/mp-readline/readline.h"
-#include "py_flash.h"
+#include "mpport.h"
+#include "py_flash.h" 
 
 static char *stack_top;
 #if MICROPY_ENABLE_GC
 static char heap[120000];
 #endif
-
-bool micropython_parse_compile_execute_from_str(const char* str){
-	nlr_buf_t nlr;
-    if (nlr_push(&nlr) == 0) {
-    	mp_obj_t module_fun;
-    	mp_lexer_t *lex;
-    	lex = mp_lexer_new_from_str_len(1, str, strlen(str), 0);
-    	qstr source_name = 1; /*MP_QSTR_*/
-    	mp_parse_tree_t parse_tree = mp_parse(lex, MP_PARSE_FILE_INPUT);
-    	module_fun = mp_compile(&parse_tree, source_name, 0);
-    	mp_hal_set_interrupt_char(CHAR_CTRL_C); // allow ctrl-C to interrupt us
-    	mp_call_function_0(module_fun);
-        mp_hal_set_interrupt_char(-1); // disable interrupt
-        mp_handle_pending(true); // handle any pending exceptions (and any callbacks)
-        nlr_pop();
-        return true;
-    }else{
-    	return false;
-    }
-}
 
 void gc_collect(void) {
     // WARNING: This gc_collect implementation doesn't try to get root
@@ -159,18 +138,6 @@ void gc_collect(void) {
 
 // Receive single character
 int mp_hal_stdin_rx_chr(void) {
-//     unsigned char c = 0;
-// #if MICROPY_MIN_USE_STDOUT
-//     int r = read(0, &c, 1);
-//     (void)r;
-// #elif MICROPY_MIN_USE_STM32_MCU
-//     // wait for RXNE
-//     while ((USART3->SR & (1 << 5)) == 0) {
-//     }
-//     c = USART3->DR;
-// #endif
-//     return c;
-
     static uint8_t c[1] = {0};
 
 	chnRead((BaseChannel*)&USB_SERIAL, c, 1);
@@ -181,17 +148,6 @@ int mp_hal_stdin_rx_chr(void) {
 
 // Send string of given length
 void mp_hal_stdout_tx_strn(const char *str, mp_uint_t len) {
-// #if MICROPY_MIN_USE_STDOUT
-//     int r = write(1, str, len);
-//     (void)r;
-// #elif MICROPY_MIN_USE_STM32_MCU
-//     while (len--) {
-//         // wait for TXE
-//         while ((USART3->SR & (1 << 7)) == 0) {
-//         }
-//         USART3->DR = *str++;
-//     }
-// #endif
 
 	if(len > 0){
 		chnWrite((BaseChannel*)&USB_SERIAL, (uint8_t*)str, len);
