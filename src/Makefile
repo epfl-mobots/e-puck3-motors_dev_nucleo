@@ -127,7 +127,7 @@ MPTOP = ../../micropython
 include $(MPTOP)/ports/ChibiOS/micropython_chibios.mk
 
 # Define linker script file here
-LDSCRIPT= $(STARTUPLD)/STM32F746xG_MAX.ld
+LDSCRIPT= STM32F746xG_MAX.ld
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
@@ -148,7 +148,8 @@ CSRC = $(ALLCSRC) \
        usb_pd_controller.c \
        as5055.c \
        encoders.c \
-       motors.c
+       motors.c \
+       test.py.c
 
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
