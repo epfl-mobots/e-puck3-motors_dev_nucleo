@@ -124,7 +124,8 @@ PDBLIB = ../usb_pd_controller/pdblib
 include $(PDBLIB)/pdblib.mk
 
 MPTOP = ../../micropython
-include $(MPTOP)/ports/ChibiOS/micropython_chibios.mk
+MPTOP_CHIBIOS = $(MPTOP)/Micropython_ChibiOS
+include $(MPTOP_CHIBIOS)/micropython_chibios.mk
 
 # Define linker script file here
 LDSCRIPT= STM32F746xG_MAX.ld
@@ -148,8 +149,7 @@ CSRC = $(ALLCSRC) \
        usb_pd_controller.c \
        as5055.c \
        encoders.c \
-       motors.c \
-       mp_platform.c
+       motors.c
 
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
@@ -242,7 +242,7 @@ UINCDIR =
 ULIBDIR =
 
 # List all user libraries here
-ULIBS = $(MPTOP)/ports/ChibiOS/libmicropython.a
+ULIBS = $(MPTOP_CHIBIOS)/libmicropython.a
 
 #
 # End of user defines
