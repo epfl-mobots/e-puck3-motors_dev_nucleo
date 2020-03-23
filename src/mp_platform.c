@@ -8,6 +8,21 @@
 
 #include "mp_platform.h"
 
+#include "main.h"
+
+#include "py/compile.h"
+#include "py/runtime.h"
+#include "py/repl.h"
+#include "py/gc.h"
+#include "py/mperrno.h"
+#include "py/mphal.h"
+#include "lib/utils/pyexec.h"
+#include "mpconfigport.h"
+#include "mpport.h"
+#include "py_flash.h" 
+#include "lib/mp-readline/readline.h"
+#include "flash/flash.h"
+
 /////////////////////////////////////////PRIVATE FUNCTIONS/////////////////////////////////////////
 
 static char *stack_top;
@@ -15,15 +30,100 @@ static char *stack_top;
 static char heap[MICROPYTHON_HEAP_SIZE];
 #endif
 
+extern uint32_t _py_flash_rw_start;
+extern uint32_t _py_flash_rw_end;
+
+static uint32_t py_flash_rw_start = (uint32_t)&_py_flash_rw_start;
+static uint32_t py_flash_rw_end = (uint32_t)&_py_flash_rw_end;
+static uint32_t py_flash_sector_size = 0;
+static uint32_t flash_code_len = 0;
+
+void mpFlashWrite(uint8_t c){
+	//write c to flash
+
+	//writes the choice and the pattern on the flash 
+	flash_program_byte(py_flash_rw_start + flash_code_len, c);
+
+	//increment for the next write
+	flash_code_len += sizeof(uint8_t);
+}
+
+void mpFlashBegin(void){
+	flash_unlock();
+	flash_code_len = 0;
+	flash_erase_sector(MICROPYTHON_FLASH_CODE_SECTOR);
+}
+
+void mpFlashFinish(bool valid){
+
+	if(!valid){
+		//we mark the flash_code_length as a zero length str
+		flash_code_len = 0;
+	}
+
+	mpFlashWrite('\0');
+	flash_lock();
+}
+
+void mpStoreCodeToFlash(void){
+
+	static char c = 0;
+
+
+	chprintf((BaseSequentialStream *)&MICROPYTHON_PORT,"Do you want to send a python script to the flash ?\r\n");
+	chprintf((BaseSequentialStream *)&MICROPYTHON_PORT,"CTRL-E yes, CTRL-D no\r\n");
+	chprintf((BaseSequentialStream *)&MICROPYTHON_PORT,"=== ");
+
+	while(true){
+		c = mp_hal_stdin_rx_chr();	//wait infinitely for an answer
+		if(c == CHAR_CTRL_E){
+			//paste mode to write to the flash
+			mpFlashBegin();
+			chprintf((BaseSequentialStream *)&MICROPYTHON_PORT,"\r\npaste mode; Ctrl-C to cancel, Ctrl-D to finish\r\n=== ");
+			while(true){
+				c = mp_hal_stdin_rx_chr();	//wait infinitely for an answer
+				if(c == CHAR_CTRL_C){
+					mpFlashFinish(false);
+					mp_hal_stdout_tx_str("\r\n");
+					break;
+				}else if(c == CHAR_CTRL_D){
+					mpFlashFinish(true);
+					mp_hal_stdout_tx_str("\r\n");
+					break;
+				}else{
+					if(flash_code_len == py_flash_sector_size){
+                    	mp_hal_stdout_tx_str("\r\n Flash full. Stopped copying. Code not saved\r\n");
+                    	mpFlashFinish(false);
+                    	mp_hal_stdin_rx_flush();
+                    	break;
+                    }
+					mpFlashWrite(c);
+					if (c == '\r') {
+                        mp_hal_stdout_tx_str("\r\n=== ");
+                    } else {
+                        mp_hal_stdout_tx_strn(&c, 1);
+                    }
+				}
+			}
+			break;
+		}else if(c == CHAR_CTRL_D){
+			mp_hal_stdout_tx_str("\r\n");
+			break;
+		}
+	}
+}
+
 static THD_WORKING_AREA(waMicropythonThd,1024);
 static THD_FUNCTION(MicropythonThd,arg) {
   	(void)arg;
   	chRegSetThreadName("Micropython Thd");
 
-
   	int stack_dummy;
 	stack_top = (char*)&stack_dummy;
 
+	py_flash_sector_size = ((py_flash_rw_end - py_flash_rw_start) / sizeof(uint8_t)) - 1;
+
+soft_reset:
 #if MICROPY_ENABLE_GC
 	gc_init(heap, heap + sizeof(heap));
 #endif
@@ -31,11 +131,9 @@ static THD_FUNCTION(MicropythonThd,arg) {
 #if MICROPY_ENABLE_COMPILER
 	//compiles and eecutes the python script stored in flash
 	micropython_parse_compile_execute_from_str(py_flash_code);
-
 	// Main script is finished, so now go into REPL mode.
 	// The REPL mode can change, or it can request a soft reset.
 
-soft_reset:
 	//Waits to be connected to the terminal
 	while(!isUSBConfigured()){
 		chThdSleepMilliseconds(500);
@@ -52,7 +150,13 @@ soft_reset:
 	        }
 	    }
 	}
+	//receives python code to store to the flash if wanted
+	mpStoreCodeToFlash();
+
 	chprintf((BaseSequentialStream *)&MICROPYTHON_PORT,"MPY: soft reboot\r\n");
+	//resets the VM
+	gc_sweep_all();
+
 	goto soft_reset;
 #else
 	pyexec_frozen_module("frozentest.py");
@@ -70,6 +174,12 @@ void gc_collect(void) {
     gc_collect_root(&dummy, ((mp_uint_t)stack_top - (mp_uint_t)&dummy) / sizeof(mp_uint_t));
     gc_collect_end();
     gc_dump_info();
+}
+
+//flushes the input buffer
+void mp_hal_stdin_rx_flush(void){
+	static uint8_t c[1] = {0};
+	while(chnReadTimeout((BaseChannel*)&MICROPYTHON_PORT, c, 1,TIME_MS2I(100)) > 0);
 }
 
 // Receive single character

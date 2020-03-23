@@ -28,7 +28,8 @@
 MEMORY
 {
     flash0  : org = 0x08000000, len = 768k        /* Flash as AXIM (writable) */
-    py_flash : org = 0x002C0000, len = 268k     /* flash section as ITCM to store python code */
+    py_flash_ro : org = 0x002C0000, len = 268k     /* flash section as ITCM to store python code */
+    py_flash_rw : org = 0x080C0000, len = 268k     
     flash1  : org = 0x00200000, len = 1M        /* Flash as ITCM */
     flash2  : org = 0x00000000, len = 0
     flash3  : org = 0x00000000, len = 0
@@ -53,7 +54,9 @@ MEMORY
 REGION_ALIAS("VECTORS_FLASH", flash1);
 REGION_ALIAS("VECTORS_FLASH_LMA", flash0);
 
-REGION_ALIAS("PY_FLASH", py_flash);
+REGION_ALIAS("PY_FLASH", py_flash_ro);
+_py_flash_rw_start = ORIGIN(py_flash_rw);
+_py_flash_rw_end   = ORIGIN(py_flash_rw) + LENGTH(py_flash_rw);
 
 /* Flash region to be used for constructors and destructors.*/
 REGION_ALIAS("XTORS_FLASH", flash1);
