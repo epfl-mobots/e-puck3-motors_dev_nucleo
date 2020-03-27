@@ -7,3 +7,6 @@
 [submodule "usb_pd_controller"]
 	path = usb_pd_controller
 	url = https://github.com/e-puck3/usb_pd_controller.git
+[submodule "micropython"]
+	path = micropython
+	url = https://github.com/e-puck3/micropython.git

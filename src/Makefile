@@ -123,8 +123,11 @@ include $(BLACKMAGIC)/src/platforms/stm32-ChibiOS/Blackmagic_ChibiOS.mk
 PDBLIB = ../usb_pd_controller/pdblib
 include $(PDBLIB)/pdblib.mk
 
-MPTOP = ../../micropython
-MPTOP_CHIBIOS = $(MPTOP)/Micropython_ChibiOS
+MPTOP = ../micropython
+MPTOP_FOR_MP_MAKEFILE = ../../micropython
+MPTOP_CHIBIOS = Micropython_ChibiOS
+MP_FROZEN_PYTHON = yes
+MP_PYTHON_FLASH_CODE = yes
 include $(MPTOP_CHIBIOS)/micropython_chibios.mk
 
 # Define linker script file here
