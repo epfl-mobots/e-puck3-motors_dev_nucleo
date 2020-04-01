@@ -192,6 +192,7 @@ int main(void) {
 		}
 		// chThdSleepMilliseconds(100);
 		chThdSleepMilliseconds(1000);
+		//printStatThreads((BaseSequentialStream *)&USB_GDB);
   //   chprintf((BaseSequentialStream *)&USB_GDB, "rpm = %f, current = %f \r\n",motorsGetRPM(BRUSHLESS_MOTOR_2), motorsGetCurrent(BRUSHLESS_MOTOR_2));
 
   //   static float percent = 90;
