@@ -10,7 +10,6 @@
 #include <string.h>
 #include "main.h"
 #include "user_shell.h"
-#include "uc_usage.h"
 #include "gdb.h"
 #include "ch.h"
 #include "hal.h"
@@ -119,10 +118,10 @@ int main(void) {
 
 	powerButtonStart();
 
-	initGDBEvents();
-	gdbStart();
+	// initGDBEvents();
+	// gdbStart();
 
-	usbPDControllerStart();
+	// usbPDControllerStart();
 
 	// Debug MCU Config
 	DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM1_STOP | DBGMCU_APB2_FZ_DBG_TIM8_STOP; // Clock and outputs of TIM 1 are disabled when the core is halted
@@ -143,21 +142,21 @@ int main(void) {
 	*/
 	usbSerialStart();
 
-	shellInit();
-	gateDriversEnableAll();
-  gateDriversDisable(GATE_DRIVER_3);
+	// shellInit();
+	// gateDriversEnableAll();
+ //  gateDriversDisable(GATE_DRIVER_3);
 
-  motorsStart();
+ //  motorsStart();
 
-  encodersStartReading();
+ //  encodersStartReading();
 
 	// Configure the Thread that will blink the leds on the boards
 	chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO + 1, Thread1, NULL);
 
-  motorSetDutyCycle(BRUSHLESS_MOTOR_1, 10);
-  motorSetDutyCycle(BRUSHLESS_MOTOR_2, 10);
-  motorSetDutyCycle(BRUSHLESS_MOTOR_3, 10);
-  motorSetDutyCycle(BRUSHLESS_MOTOR_4, 10);
+  // motorSetDutyCycle(BRUSHLESS_MOTOR_1, 10);
+  // motorSetDutyCycle(BRUSHLESS_MOTOR_2, 10);
+  // motorSetDutyCycle(BRUSHLESS_MOTOR_3, 10);
+  // motorSetDutyCycle(BRUSHLESS_MOTOR_4, 10);
   
 	while (true)
 	{
@@ -169,19 +168,19 @@ int main(void) {
 		}
 		chThdSleepMilliseconds(100);
 
-    chprintf((BaseSequentialStream *)&USB_GDB, "rpm = %f, current = %f \r\n",motorsGetRPM(BRUSHLESS_MOTOR_2), motorsGetCurrent(BRUSHLESS_MOTOR_2));
+    // chprintf((BaseSequentialStream *)&USB_GDB, "rpm = %f, current = %f \r\n",motorsGetRPM(BRUSHLESS_MOTOR_2), motorsGetCurrent(BRUSHLESS_MOTOR_2));
 
     static float percent = 90;
 
-    if(palReadLine(LINE_NUCLEO_USER_BUTTON)){
-      percent -= 5;
-      if(percent < 0){
-        percent = 90;
-      }
+    // if(palReadLine(LINE_NUCLEO_USER_BUTTON)){
+    //   percent -= 5;
+    //   if(percent < 0){
+    //     percent = 90;
+    //   }
 
-      chprintf((BaseSequentialStream *)&USB_GDB, "duty cycle = %f\r\n",100-percent);
-      chThdSleepMilliseconds(500);
-    }
+    //   chprintf((BaseSequentialStream *)&USB_GDB, "duty cycle = %f\r\n",100-percent);
+    //   chThdSleepMilliseconds(500);
+    // }
     //chprintf((BaseSequentialStream *)&USB_GDB,"step = %d\n",gBrushCfg.ZCPeriod);
     //chprintf((BaseSequentialStream *) &USB_GDB, "Hi = %d, Lo = %d, Angle 1 = %.2f, Hi = %d, Lo = %d, Angle 2 = %.2f\n",data[0].alarm_hi, data[0].alarm_lo, data[0].angle, data[1].alarm_hi, data[1].alarm_lo, data[1].angle);
     //chprintf((BaseSequentialStream *)&USB_GDB, "averages : %d %d %d %d %d %d\r\n",gBrushCfg.kChannelNeutralPoint[1], gBrushCfg.kChannelNeutralPoint[2],gBrushCfg.kChannelNeutralPoint[3],gBrushCfg.kChannelNeutralPoint[4],gBrushCfg.kChannelNeutralPoint[5],gBrushCfg.kChannelNeutralPoint[6]);

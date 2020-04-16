@@ -123,8 +123,14 @@ include $(BLACKMAGIC)/src/platforms/stm32-ChibiOS/Blackmagic_ChibiOS.mk
 PDBLIB = ../usb_pd_controller/pdblib
 include $(PDBLIB)/pdblib.mk
 
+THDULIB = ../threads_utilities_ChibiOS
+USE_THREADS_TIMESTAMPS = true
+THREADS_TIMESTAMPS_LOG_SIZE = 5000
+THREADS_TIMESTAMPS_DEFAULT_LOG  =  false
+include $(THDULIB)/threads_utilities.mk
+
 # Define linker script file here
-LDSCRIPT= $(STARTUPLD)/STM32F746xG.ld
+LDSCRIPT= $(STARTUPLD)/STM32F746xG_max.ld
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
@@ -135,7 +141,6 @@ CSRC = $(ALLCSRC) \
        main.c \
        panic.c \
        i2c_bus.c \
-       uc_usage.c \
        user_shell.c \
        drv8323.c \
        gate_drivers.c \

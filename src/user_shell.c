@@ -16,27 +16,16 @@
 #include "usbcfg.h"
 #include "main.h"
 #include "user_shell.h"
-#include "uc_usage.h"
 #include "gate_drivers.h"
 #include "usb_pd_controller.h"
 #include "motors.h"
+#include "threads_utilities.h"
 
 
 static THD_WORKING_AREA(waShell,2048);
 
 static char sc_histbuf[SHELL_MAX_HIST_BUFF];
 static char* completion_buffer[SHELL_MAX_COMPLETIONS];
-
-static void cmd_uc_usage(BaseSequentialStream *chp, int argc, char *argv[])
-{
-    (void) argv;
-    if (argc > 0) {
-    	shellUsage(chp, "uc_usage");
-        return;
-    }
-
-    printUcUsage(chp);
-}
 
 static void cmd_set_phase(BaseSequentialStream *chp, int argc, char *argv[]) {
 
@@ -357,7 +346,7 @@ static void cmd_get_contract(BaseSequentialStream *chp, int argc, char *argv[])
 }
 
 static const ShellCommand commands[] = {
-	{"uc_usage", cmd_uc_usage},
+  THREADS_UTILITIES_SHELL_CMD
 	{"set_phase", cmd_set_phase},
 	{"power_drivers", cmd_power_drivers},
 	{"set_step_time", cmd_step_time},

@@ -7,3 +7,6 @@
 [submodule "usb_pd_controller"]
 	path = usb_pd_controller
 	url = https://github.com/e-puck3/usb_pd_controller.git
+[submodule "threads_utilities_ChibiOS"]
+	path = threads_utilities_ChibiOS
+	url = https://github.com/e-puck3/threads_utilities_ChibiOS.git
