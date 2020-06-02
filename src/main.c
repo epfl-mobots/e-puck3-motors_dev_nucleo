@@ -19,6 +19,7 @@
 #include "custom_io.h"
 #include "encoders.h"
 #include "motors.h"
+#include "threads_utilities.h"
 
 
 /*===========================================================================*/
@@ -98,12 +99,142 @@ static THD_FUNCTION(Thread1,arg) {
   }
 }
 
+#define THD15_WA_SIZE   THD_WORKING_AREA_SIZE(128)
+static THD_FUNCTION(Thd15, arg) {
+
+    chRegSetThreadName(__FUNCTION__);
+    //logThisThreadTimestamps();
+    (void)arg;
+	systime_t time;
+	time = chVTGetSystemTime() + TIME_MS2I(1000);
+    while(1){
+        for(uint32_t i = 0 ; i < 1350000 ; i++){
+            __asm__ volatile ("nop");
+        }
+        chThdSleepMilliseconds(80);
+        if(chVTGetSystemTime() > time){
+        	break;
+        }
+    }
+}
+
+static THD_WORKING_AREA(waThd16, 128);
+static THD_FUNCTION(Thd16, arg) {
+
+    chRegSetThreadName(__FUNCTION__);
+    (void)arg;
+	systime_t time;
+	time = chVTGetSystemTime() + TIME_MS2I(1000);
+    while(1){
+        for(uint32_t i = 0 ; i < 1350000 ; i++){
+            __asm__ volatile ("nop");
+        }
+        chThdSleepMilliseconds(80);
+        if(chVTGetSystemTime() > time){
+        	break;
+        }
+    }
+}
+
+static THD_WORKING_AREA(waThd17, 128);
+#define THD17_WA_SIZE   THD_WORKING_AREA_SIZE(128)
+static THD_FUNCTION(Thd17, arg) {
+
+    chRegSetThreadName(__FUNCTION__);
+    (void)arg;
+	systime_t time;
+	time = chVTGetSystemTime() + TIME_MS2I(1000);
+    while(1){
+        for(uint32_t i = 0 ; i < 1350000 ; i++){
+            __asm__ volatile ("nop");
+        }
+        chThdSleepMilliseconds(80);
+        if(chVTGetSystemTime() > time){
+        	break;
+        }
+    }
+}
+
+static THD_WORKING_AREA(waThd18, 128);
+static THD_FUNCTION(Thd18, arg) {
+
+    chRegSetThreadName(__FUNCTION__);
+    (void)arg;
+	systime_t time;
+	time = chVTGetSystemTime() + TIME_MS2I(600);
+    while(1){
+        for(uint32_t i = 0 ; i < 1350000 ; i++){
+            __asm__ volatile ("nop");
+        }
+        chThdSleepMilliseconds(80);
+        if(chVTGetSystemTime() > time){
+        	break;
+        }
+    }
+}
+
+static THD_WORKING_AREA(waThd19, 128);
+#define THD19_WA_SIZE   THD_WORKING_AREA_SIZE(128)
+static THD_FUNCTION(Thd19, arg) {
+
+    chRegSetThreadName(__FUNCTION__);
+    (void)arg;
+	systime_t time;
+	time = chVTGetSystemTime() + TIME_MS2I(100);
+    while(1){
+        for(uint32_t i = 0 ; i < 1350000 ; i++){
+            __asm__ volatile ("nop");
+        }
+        chThdSleepMilliseconds(80);
+        if(chVTGetSystemTime() > time){
+        	break;
+        }
+    }
+}
+
+static THD_WORKING_AREA(waThd20, 128);
+static THD_FUNCTION(Thd20, arg) {
+
+    chRegSetThreadName(__FUNCTION__);
+    (void)arg;
+	systime_t time;
+	time = chVTGetSystemTime() + TIME_MS2I(500);
+    while(1){
+        for(uint32_t i = 0 ; i < 1350000 ; i++){
+            __asm__ volatile ("nop");
+        }
+        chThdSleepMilliseconds(80);
+        if(chVTGetSystemTime() > time){
+        	break;
+        }
+    }
+}
+
+static THD_WORKING_AREA(waThd21, 128);
+#define THD21_WA_SIZE   THD_WORKING_AREA_SIZE(128)
+static THD_FUNCTION(Thd21, arg) {
+
+    chRegSetThreadName(__FUNCTION__);
+    (void)arg;
+	systime_t time;
+	time = chVTGetSystemTime() + TIME_MS2I(100);
+    while(1){
+        for(uint32_t i = 0 ; i < 1350000 ; i++){
+            __asm__ volatile ("nop");
+        }
+        chThdSleepMilliseconds(80);
+        if(chVTGetSystemTime() > time){
+        	break;
+        }
+    }
+}
+
 /*===========================================================================*/
 /* Main.                                                       */
 /*===========================================================================*/
 
 int main(void) {
-
+	logNextCreatedThreadsTimestamps();
 	powerButtonStartSequence();
 
 	/*
@@ -115,6 +246,7 @@ int main(void) {
 	*/
 	halInit();
 	chSysInit();
+	logThisThreadTimestamps();
 
 	powerButtonStart();
 
@@ -149,9 +281,31 @@ int main(void) {
  //  motorsStart();
 
  //  encodersStartReading();
-
+	//dontLogNextCreatedThreadsTimestamps();
 	// Configure the Thread that will blink the leds on the boards
 	chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO + 1, Thread1, NULL);
+
+	chThdCreateFromHeap(NULL, THD15_WA_SIZE,"", NORMALPRIO, Thd15, NULL);
+    chThdSleepMilliseconds(100);
+    chThdCreateStatic(waThd16, sizeof(waThd16),NORMALPRIO, Thd16, NULL);
+    chThdSleepMilliseconds(100);
+    chThdCreateStatic(waThd17, sizeof(waThd17), NORMALPRIO, Thd17, NULL);
+    // chThdCreateFromHeap(NULL, THD17_WA_SIZE, NORMALPRIO, Thd17, NULL);
+    chThdSleepMilliseconds(100);
+    chThdCreateStatic(waThd18, sizeof(waThd18), NORMALPRIO, Thd18, NULL);
+    chThdSleepMilliseconds(100);
+    chThdCreateStatic(waThd19, sizeof(waThd19), NORMALPRIO, Thd19, NULL);
+    // chThdCreateFromHeap(NULL, THD19_WA_SIZE, NORMALPRIO, Thd19, NULL);
+    chThdSleepMilliseconds(100);
+    chThdCreateStatic(waThd20, sizeof(waThd20), NORMALPRIO, Thd20, NULL);
+
+    chThdSleepMilliseconds(2000);
+    setTriggerTimestamps(__FUNCTION__);
+    chThdCreateStatic(waThd21, sizeof(waThd21), NORMALPRIO, Thd21, NULL);
+    // chThdCreateFromHeap(NULL, THD21_WA_SIZE, NORMALPRIO, Thd21, NULL);
+    chThdCreateFromHeap(NULL, THD15_WA_SIZE,"", NORMALPRIO, Thd15, NULL);
+
+    //chThdCreateStatic(waThd16, sizeof(waThd16), NORMALPRIO, Thd16, NULL);
 
   // motorSetDutyCycle(BRUSHLESS_MOTOR_1, 10);
   // motorSetDutyCycle(BRUSHLESS_MOTOR_2, 10);
